@@ -1,27 +1,6 @@
-= Install the OSC operator
+= Install the operator
 
-Openshift sandboxed containers support for Red Hat Openshift provides you with built-in support for running Kata Containers as an additional optional runtime. The new runtime supports containers in dedicated virtual machines (VMs), providing improved workload isolation. This is particularly useful for performing the following tasks:
-
-* Run privileged or untrusted workloads
-* Ensure isolation for sensitive workloads
-* Ensure kernel isolation for each workload
-* Share the same workload across tenants
-* Ensure proper isolation and sandboxing for testing software
-* Ensure default resource containment through VM boundaries
-
-Please refer to https://docs.redhat.com/en/documentation/openshift_sandboxed_containers[Openshift sandboxed containers official documentation, window=blank] for more information.
-
-When runnig on Openshift cluster deployed on cloud, OSC is capable of deploying containers using the **peer-pods** technology.
-
-The peer-pods solution extends Red Hat Openshift sandboxed containers (OSC) to run on any environment without requiring bare-metal servers or nested virtualization support. It does this by extending Kata containers runtime (which OSC is built on) to handle VM lifecycle management using cloud provider APIs (AWS, Azure, etc...) or third-party hypervisors APIs (such as VMware vSphere). More info on the peer pods solution is available https://www.redhat.com/en/blog/red-hat-openshift-sandboxed-containers-peer-pods-solution-overview[here, window=blank].
-
-Together with its full integration with Trustee, and the support of hardware TEE, the OSC operator is capable of offering the **Confidential Containers (CoCo)** technology on ARO.
-
-To summarize, a Confidential Container on ARO is simply a container running in a Confidential VM backed up by TEE hardware and set up using the peer-pods technology. The Confidential VM runs RHEL and it contains components to automatically connect with Trustee and perform attestation.
-
-After setting up the Trustee operator, in this chapter we are going to set up OSC to enable CoCo.
-
-There are two ways to install the OSC operator:
+There are two ways to install the operator:
 
 * xref:01-install-osc.adoc#webui[Install the operator using the web interface]
 * xref:01-install-osc.adoc#cmdline[Install the operator using the command line]
@@ -45,7 +24,7 @@ image::02-install-ui.png[link=self, window=blank]
 
 NOTE: Attempting to install the Openshift sandboxed containers Operator in a namespace other than `openshift-sandboxed-containers-operator` causes the installation to fail.
 
-. Verify that **Automatic** is selected for **Update approval**. **Automatic** is the default value, and enables automatic updates to Openshift sandboxed containers when a new z-stream release is available.
+. Verify that **Automatic** is selected for **Approval Strategy**. **Automatic** is the default value, and enables automatic updates to Openshift sandboxed containers when a new z-stream release is available.
 
 . Click **Install**.
 +
@@ -120,7 +99,7 @@ spec:
   name: sandboxed-containers-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: sandboxed-containers-operator.v1.8.1
+  startingCSV: sandboxed-containers-operator.v1.6.0
 EOF
 ----
 +
@@ -142,7 +121,7 @@ oc get csv -n openshift-sandboxed-containers-operator
 [source,texinfo,subs="attributes"]
 ----
 NAME                             DISPLAY                                  VERSION             REPLACES                   PHASE
-openshift-sandboxed-containers   openshift-sandboxed-containers-operator  1.8.1                                          Succeeded
+openshift-sandboxed-containers   openshift-sandboxed-containers-operator  1.6.0                                          Succeeded
 ----
 
 [#scripts]
@@ -178,7 +157,7 @@ spec:
   name: sandboxed-containers-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: sandboxed-containers-operator.v1.8.1
+  startingCSV: sandboxed-containers-operator.v1.6.0
 EOF
 ----
 
@@ -186,5 +165,5 @@ EOF
 Ensure that the Operator is correctly installed by running the following command and checking that the `PHASE` is in `Succeeded` state:
 [source,sh,role=execute]
 ----
-watch oc get csv -n openshift-sandboxed-containers-operator
+oc get csv -n openshift-sandboxed-containers-operator
 ----

@@ -1,9 +1,15 @@
-=== Understanding Confidential Containers - Workshop on ARO
+=== Using Openshift sandboxed containers - Workshop on ARO
 
-Red Hat https://docs.redhat.com/en/documentation/openshift_sandboxed_containers[Openshift sandboxed containers, window=blank] provides the capability to run https://www.redhat.com/en/blog/learn-about-confidential-containers[**Confidential Containers (CoCo)**, window=blank]. Confidential Containers are containers deployed within an isolated hardware enclave protecting data and code from privileged users such as cloud or cluster administrators. The https://confidentialcontainers.org/[CNCF Confidential Containers project, window=blank] is the foundation for the OpenShift CoCo solution.Note that CoCo is an additional feature provided by OpenShift sandboxed containers, and consequently, it's available through the OpenShift sandboxed containers operator.
+Openshift sandboxed containers support for Red Hat Openshift provides you with built-in support for running Kata Containers as an additional optional runtime. The new runtime supports containers in dedicated virtual machines (VMs), providing improved workload isolation. This is particularly useful for performing the following tasks:
 
-In this workshop, we are also showing another operator, the **confidential compute attestation operator** (also known as `Trustee`), which can verify the trustworthiness of TEEs remotely. For more information, please refer to https://www.redhat.com/en/blog/introducing-confidential-containers-trustee-attestation-services-solution-overview-and-use-cases[this blogpost, window=blank].
+* Run privileged or untrusted workloads
+* Ensure kernel isolation for each workload
+* Share the same workload across tenants
+* Ensure proper isolation and sandboxing for testing software
+* Ensure default resource containment through VM boundaries
 
-We will show how to set up the Trustee and OSC operator and run a simple hello-openshift **Confidential Container** running with the *kata-remote* runtime class (peer pods solution). This effectively means that the hello-openshift container runs in a **separate**, **confidential**, **independent** virtual machine, and not in the worker node. In a another example, we will also show how **attestation** and **secure key retrieval** worflow happens between a CoCo pod and Trustee.
+Please refer to https://docs.redhat.com/en/documentation/openshift_sandboxed_containers[Openshift sandboxedcontainers official documentation] for more information.
 
-The goal of this workshop is to provide the user not only an environment and documentation to test CoCo, but also provide additional explanations on the design choices behind some options and the benefit they bring to the overall user experience. CoCo is designed to bring **confidential computing** at kubernetes level, making it **as simple as possible** while preserving all security benefits that confidential computing brings.
+This workshop will show how to set up the OSC operator and run a simple hello-openshift container running with the kata-remote runtime class (peer pods solution). This effectively means that the hello-openshift container runs in a separate, independent virtual machine, and not in the worker node.
+
+The peer-pods solution extends Red Hat Openshift sandboxed containers (OSC) to run on any environment without requiring bare-metal servers or nested virtualization support. It does this by extending Kata containers runtime (which OSC is built on) to handle VM lifecycle management using cloud provider APIs (AWS, Azure, etc...) or third-party hypervisors APIs (such as VMware vSphere). More info on the peer pods solution is available https://www.redhat.com/en/blog/red-hat-openshift-sandboxed-containers-peer-pods-solution-overview[here].

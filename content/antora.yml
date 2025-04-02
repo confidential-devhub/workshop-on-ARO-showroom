@@ -1,12 +1,12 @@
 name: modules
-title: Understanding Confidential Containers - Workshop on ARO
+title: Understanding Openshift sandboxed containers - Workshop on ARO
 version: master
 nav:
   - modules/ROOT/nav.adoc
 
 asciidoc:
   attributes:
-    lab_name: "Understanding Confidential Containers - Workshop on ARO"
+    lab_name: "Understanding Openshift sandboxed containers - Workshop on ARO"
     release-version: master
     page-pagination: true
     aro_console: https://placehoder_openshift_web_console

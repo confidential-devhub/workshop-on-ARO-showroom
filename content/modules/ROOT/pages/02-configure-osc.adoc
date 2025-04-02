@@ -1,12 +1,10 @@
-= Configure the OSC operator
+= Configure the operator
 
-Now that the OSC operator is installed, we need to set it up.
+Now that the operator is installed, we need to set it up.
 
 **Prerequisites**
 
 To complete this section, it is mandatory to have all ARO credentials at hand defined in the xref:index.adoc#credentials[introduction], because they will have to be inserted in the various resources that we are going to create.
-
-In order to create the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap], it is necessary to have Trustee xref:01-install-trustee.adoc#twebui[installed] and xref:02-configure-trustee.adoc#trustee-route[configured].
 
 [#pp-secret]
 == Create the peer-pods secret
@@ -27,7 +25,6 @@ echo "AZURE_CLIENT_ID: \"$AZURE_CLIENT_ID\""
 echo "AZURE_CLIENT_SECRET: \"$AZURE_CLIENT_SECRET\""
 echo "AZURE_TENANT_ID: \"$AZURE_TENANT_ID\""
 echo "AZURE_SUBSCRIPTION_ID: \"$AZURE_SUBSCRIPTION_ID\""
-echo ""
 ----
 
 . Create and apply the `peer-pods-secret.yaml` Secret
@@ -56,31 +53,6 @@ cat pp-secret.yaml
 oc apply -f pp-secret.yaml
 ----
 
-[#feature-gate]
-== Enable Confidential Containers feature gate
-
-Create and apply `cc-fg.yaml` ConfigMap
-
-[source,sh,role=execute]
-----
-cat > cc-fg.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: osc-feature-gates
-  namespace: openshift-sandboxed-containers-operator
-data:
-  confidential: "true"
-EOF
-
-cat cc-fg.yaml
-----
-
-[source,sh,role=execute]
-----
-oc apply -f cc-fg.yaml
-----
-
 [#pp-cm]
 == Create the peer-pods configmap
 
@@ -89,8 +61,6 @@ oc apply -f cc-fg.yaml
 +
 [source,sh,role=execute]
 ----
-echo ""
-
 # Get the ARO created RG
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 
@@ -98,23 +68,23 @@ ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platfor
 ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
 
 # Get VNET name used by ARO. This exists in the admin created RG.
-# In this ARO infrastructure, there are 2 VNETs: pick the one starting with "aro-".
-# The other is used internally by this workshop
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
+# In this ARO infrastructure, there are 2 VNETs: pick the first one,
+# ie the one starting with "aro-".
+ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[0].{Name:name}" --output tsv)
 
 # Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
 ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
 
 ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
 
+
 echo "ARO_REGION: \"$ARO_REGION\""
 echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
 echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
 echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
-echo ""
 ----
 
-. Create and apply the `peer-pods-configmap.yaml` ConfigMap. Note that at this point you must have already xref:01-install-trustee.adoc#webui[installed Trustee] and got `${TRUSTEE_HOST}`.
+. Create and apply the `peer-pods-configmap.yaml` ConfigMap.
 +
 [source,sh,role=execute]
 ----
@@ -127,37 +97,30 @@ metadata:
 data:
   CLOUD_PROVIDER: "azure"
   VXLAN_PORT: "9000"
-  AZURE_INSTANCE_SIZE: "Standard_DC8es_v5"
-  AZURE_INSTANCE_SIZES: "Standard_DC8as_v5,Standard_DC8ads_v5, Standard_DC8es_v5, Standard_DC8eds_v5"
+  AZURE_INSTANCE_SIZE: "Standard_D8as_v5"
+  AZURE_INSTANCE_SIZES: "Standard_D16as_v5,Standard_D32as_v5"
   AZURE_RESOURCE_GROUP: "${ARO_RESOURCE_GROUP}"
   AZURE_REGION: "${ARO_REGION}"
   AZURE_SUBNET_ID: "${ARO_WORKER_SUBNET_ID}"
   AZURE_NSG_ID: "${ARO_NSG_ID}"
   AZURE_IMAGE_ID: ""
   PROXY_TIMEOUT: "5m"
-  DISABLECVM: "false"
-  ENABLE_SECURE_BOOT: "true"
-  AA_KBC_PARAMS: "cc_kbc::https://${TRUSTEE_HOST}"
+  DISABLECVM: "true"
 EOF
 
 cat pp-cm.yaml
 ----
 +
 IMPORTANT: Note the `AZURE_INSTANCE_SIZES` field. This field is used to specify additional instance sizes that the operator should support. By default, if not specified all new pod VM will be of type `AZURE_INSTANCE_SIZE`, but if specified in the pod yaml (see xref:03-deploy-worload.adoc#options[here]), it will use one of the types indicated in `AZURE_INSTANCE_SIZES`.
-Azure instance types are explained and listed https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/overview?tabs=breakdownseries%2Cgeneralsizelist%2Ccomputesizelist%2Cmemorysizelist%2Cstoragesizelist%2Cgpusizelist%2Cfpgasizelist%2Chpcsizelist[here, window=blank].
-Because of the quota limitations of this workshop, it is unlikely that it will be possible to deploy instances bigger than `Standard_DC8*`.
-
-It is also worth pointing the azure terminology for instances: the pattern is usually `Standard_X{C}{num_cpus}{a or e}xx_vx` where `C` stands for **Confidential**, `a` for CPUs using **AMD SEV/SNP** technology, and `e` for CPUs using **Intel TDX** technology. Therefore `Standard_DC8_es_v5` is a confidential instance with 8 Intel CPUs using TDX to provide data in use confidentiality.
-
-For this example, we are going to default the instance deployment AMD cpus, because they are available in all regions. If you want to deploy a TDX instance, check the catalog region availability (usually `northeurope` or `westeurope` are a good choice) and deploy a new workshop in that region.
-
+Azure instance types are explained and listed https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/overview?tabs=breakdownseries%2Cgeneralsizelist%2Ccomputesizelist%2Cmemorysizelist%2Cstoragesizelist%2Cgpusizelist%2Cfpgasizelist%2Chpcsizelist[here, window=blank]
++
 [source,sh,role=execute]
 ----
 oc apply -f pp-cm.yaml
 ----
-
++
 NOTE: As you might have noticed, `AZURE_IMAGE_ID` is purposefully left empty. It will be filled in automatically by a Job created by the operator later.
-
++
 [NOTE]
 ====
 If you later update the peer pods config map, you must restart the peerpodconfig-ctrl-caa-daemon daemonset to apply the changes.
@@ -171,7 +134,7 @@ Keep in mind that restarting the daemonset recreates the peer pods, it does not 
 
 [#pp-key]
 == Create the peer-pods SSH key
-When CoCo mode is disabled (so the VM is not confidential), this key is also useful to enter the pod VM, inspect it and debug. In CoCo, ssh into the VM is disabled by default. We need to create it anyways because an SSH key is required to create Azure VMs, but as we will see, it will be discarded immediately.
+This key is also useful to enter the pod VM, inspect it and debug. An SSH key is required to create Azure VMs.
 
 . Create an ssh key:
 +
@@ -180,17 +143,20 @@ When CoCo mode is disabled (so the VM is not confidential), this key is also use
 ssh-keygen -f ./id_rsa -N ""
 ----
 
-. Upload `id_rsa.pub` as `Secret` into Openshift.
+. Upload `id_rsa` and `id_rsa.pub` as `Secret` into Openshift.
 +
+[IMPORTANT]
+====
+For the purpose of this workshop, and since we are later going to ssh into the pod VM, we need to also upload `id_rsa`. This is not intended for production purposes, since whoever has the key can ssh into the pod VM. The intended and officially documented command is:
 [source,sh,role=execute]
 ----
 oc create secret generic ssh-key-secret -n openshift-sandboxed-containers-operator --from-file=id_rsa.pub=./id_rsa.pub
 ----
-. Once the public key is uploaded, delete both private and public from the local setup.
+====
 +
 [source,sh,role=execute]
 ----
-shred --remove id_rsa.pub id_rsa
+oc create secret generic ssh-key-secret -n openshift-sandboxed-containers-operator --from-file=id_rsa.pub=./id_rsa.pub --from-file=id_rsa=./id_rsa
 ----
 
 [#pp-kc]
@@ -260,7 +226,7 @@ kata-oc   rendered-kata-oc-894630a1c9cdf3ebef8bd98c72e26608   True      False   
 oc get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o yaml
 ----
 +
-If `data: AZURE_IMAGE_ID:` is still empty, check the job:
+If `AZURE_IMAGE_ID` is still empty, check the job:
 +
 [source,sh,role=execute]
 ----
@@ -302,11 +268,6 @@ kata-remote      kata-remote      152m
 ----
 
 This is the expected output when looking at the OSC pods (note the random character ending will change):
-[source,sh,role=execute]
-----
-oc get pods -n openshift-sandboxed-containers-operator
-----
-
 [source,texinfo,subs="attributes"]
 ----
 NAME                                           READY   STATUS      RESTARTS   AGE

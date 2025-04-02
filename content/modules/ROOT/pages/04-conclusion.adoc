@@ -2,19 +2,17 @@
 
 **Congratulations!**
 
-Now you have successfully learned how to install and set up the **Openshift sandboxed containers** and **Trustee** operators on **ARO**, and discovered how to run **Confidential Containers**!
+Now you have successfully learned how to install and set up the **Openshift sandboxed containers** operator on **ARO**, and are capable of running any pod in a virtual machine!
 
-If you have any question or are interested to know more about OSC, Trustee or CoCo, please feel free to ping us on `#forum-sandboxed-containers` on the Slack Red Hat workspace!
+If you have any question or are interested to know more about OSC, please feel free to ping us on `#forum-sandboxed-containers` on Slack!
 
-If you are interested on more demos/POCs that are in progress, here are some interesting blogposts:
+Next guides will cover:
 
-* https://www.redhat.com/en/blog/secure-ai-inferencing-poc-nvidia-nim-coco-openshift-ai[Secure AI inferencing: POC with NVIDIA NIM on CoCo with OpenShift AI, window=blank]
-* https://www.redhat.com/en/blog/ai-meets-security-poc-run-workloads-confidential-containers-using-nvidia-accelerated-computing[AI meets security: POC to run workloads in Confidential Containers using NVIDIA accelerated computing, window=blank]
-* https://www.redhat.com/en/blog/secure-cloud-bursting-leveraging-confidential-computing-peace-mind[Secure cloud bursting: Leveraging confidential computing for peace of mind, window=blank]
-* https://www.redhat.com/en/blog/confidential-containers-fsi-public-cloud[Confidential Containers for Financial Services on Public Cloud, window=blank]
-* https://www.redhat.com/en/blog/introducing-confidential-containers-bare-metal[Introducing Confidential Containers on bare metal, window=blank]
-* https://events.redhat.com/profile/form/index.cfm?PKformID=0x1232360abcd&sc_cid=7015Y0000048WqmQAE[Confidential Computing 101: online webinar, window=blank] (register to get email recording)
+* How to attach a GPU to a pod VM in ARO
+* How to install the `Trustee` operator to perform attestation and safely retrieve secrets for Confidential Containers
+* How to run a Confidential Container on ARO
+* How to protect the fraud detection demo with Confidential Containers on ARO
 
-**Thank you for taking the time to explore CoCo!**
+**Thank you for taking the time to explore OSC!**
 
-For any feedback on this workshop, please write an email to eesposit@redhat.com or submit an Issue/Pull request to https://github.com/esposem/osc-demo-showroom[our OSC lab github repository, window=blank].
+For any feedback on this workshop, please write an email to eesposit@redhat.com or submit a Issue/Pull request to https://github.com/esposem/osc-demo-showroom[our OSC lab github repository, window=blank].

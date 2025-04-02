@@ -3,9 +3,9 @@
 Now that the everything is ready, we can run a sample workload.
 Let's first see what we can and must add into the pod yaml to make it run in a VM.
 
-NOTE: Because of CPU Quota limitations of this ARO subscription, and since each CoCo runs in a Confidential VM, you are just allowed to get **one single CoCo pod** at time. Trying to deploy a second one will result in failure and container stuck in `ContainerCreating` state.
+NOTE: All **yaml** files in this section could be also created in the web UI by clicking on the **Import yaml** button in the top bar on the right (circled in red in the image below). Importing a yaml in this way corresponds to creating a `.yaml` file and applying it with `oc apply -f`. Because we are going to perform also other command-line operations, like fetching ARO credentials, we will perform all operations via command line. Note that this does not apply for `az` or `bash` (`cat`, `oc`) commands
 
-In this section, we will show you two simple examples of how to respectively enable CoCo in a traditional pod and how to perform attestation. Please refer to the xref:04-conclusion.adoc[next section] to learn about more complex examples with AI, gpus, and so on.
+image::05-bar.png[link=self, window=blank]
 
 [#options]
 == Available options
@@ -23,7 +23,6 @@ spec:
 # ...
 ----
 
-[#optional-options]
 === Optionals
 
 * Add an annotation to the pod-templated object to use a manually defined instance size or an automatic instance size:
@@ -34,7 +33,7 @@ apiVersion: v1
 kind: <Pod>
 metadata:
   annotations:
-    io.katacontainers.config.hypervisor.machine_type: Standard_DC8as_v5
+    io.katacontainers.config.hypervisor.machine_type: Standard_D32as_v5
 # ...
 ----
 +
@@ -53,124 +52,9 @@ metadata:
 # ...
 ----
 
-* Relax the default policy to enable logs and/or exec. A Confidential Container doesn't enable by default logging or exec into the pod, otherwise a malicious actor (oc admin) could be able to enter and see the secrets. For the purpose of this workshop, it is possible to enable logs using an https://github.com/kata-containers/kata-containers/blob/main/docs/how-to/how-to-use-the-kata-agent-policy.md#encode-a-policy-file[alternative Kata policy, window=blank].
-+
-A Kata policy is defined as `io.katacontainers.config.agent.policy` under `annotation` in the pod yaml, and it's base64 encoded. It defines what a CoCo pod is allowed to do and not.
-+
-For example the https://github.com/kata-containers/kata-containers/blob/main/src/kata-opa/allow-all-except-exec-process.rego[allow-all-except-exec-process.rego, window=blank] enables pod logs while keeping exec disabled.
-+
-If we want to allow exec (but not logs), we can simply download that file and convert it to base64:
-+
-[source,sh,role=execute]
-----
-curl -s https://raw.githubusercontent.com/kata-containers/kata-containers/refs/heads/main/src/kata-opa/allow-all-except-exec-process.rego | base64
-----
-+
-And it can be provided to any CoCo pod by adding it as `metadata:annotations:io.katacontainers.config.agent.policy`:
-+
-[source,sh,role=execute]
-----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: policy-exec-rejected
-  annotations:
-    io.katacontainers.config.agent.policy: cGFja2....
-...
-----
-+
-This is a generic template for a policy:
-+
-[source,sh,role=execute]
-----
-cat > default-osc-policy.yaml << EOF
-package agent_policy
-
-import future.keywords.in
-import future.keywords.if
-import future.keywords.every
-
-default AddARPNeighborsRequest := true
-default AddSwapRequest := true
-default CloseStdinRequest := true
-default CopyFileRequest := true
-default CreateSandboxRequest := true
-default DestroySandboxRequest := true
-default GetMetricsRequest := true
-default GetOOMEventRequest := true
-default GuestDetailsRequest := true
-default ListInterfacesRequest := true
-default ListRoutesRequest := true
-default MemHotplugByProbeRequest := true
-default OnlineCPUMemRequest := true
-default PauseContainerRequest := true
-default PullImageRequest := true
-default RemoveContainerRequest := true
-default RemoveStaleVirtiofsShareMountsRequest := true
-default ReseedRandomDevRequest := true
-default ResumeContainerRequest := true
-default SetGuestDateTimeRequest := true
-default SignalProcessRequest := true
-default StartContainerRequest := true
-default StartTracingRequest := true
-default StatsContainerRequest := true
-default StopTracingRequest := true
-default TtyWinResizeRequest := true
-default UpdateContainerRequest := true
-default UpdateEphemeralMountsRequest := true
-default UpdateInterfaceRequest := true
-default UpdateRoutesRequest := true
-default WaitProcessRequest := true
-default WriteStreamRequest := true
-default CreateContainerRequest := true
-default SetPolicyRequest := true
-
-# Enable/disable logs
-default ReadStreamRequest := true
-
-# Enable/disable exec
-default ExecProcessRequest := false
-
-ExecProcessRequest if {
-    input_command = concat(" ", input.process.Args)
-    some allowed_command in policy_data.allowed_commands
-    input_command == allowed_command
-}
-
-# Add allowed commands for exec
-policy_data := {
-  "allowed_commands": [
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1"
-  ]
-}
-EOF
-
-cat default-osc-policy.yaml
-----
-+
-The main two switches in the policy are `ReadStreamRequest` and `ExecProcessRequest`. The former enables logs, and the latter exec. Note that if `ExecProcessRequest` is enabled, but `ReadStreamRequest` is not, the user can still inject commands, but won't be able to see the output. **This does not mean the command won't be executed**.
-+
-This policy shows that is also possible to define some specific `exec` commands by defining `ExecProcessRequest if {}` and `policy_data := {}` functions and leaving `ExecProcessRequest` to `false`. In this case it only allows the command `curl http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1`. What this means is that the defined command will work, but **any** other command will fail. Even `oc exec -it pods/your_pod -- curl http://127.0.0.1:8006/cdh/resource/default/kbsres1/key2` will not work.
-+
-This is extremely useful if the pod has to provide restricted access to an untrusted actor (admin, developer) to for example debug the application logic inside the Confidential Container.
-+
-If limiting exec commands is not important, the whole `ExecProcessRequest if {}` and `policy_data := {}` can be safely deleted from the policy, and as long as `ExecProcessRequest` is `true`, any exec command will be allowed to run.
-+
-Once the policy has been customized, translate it in `base64`:
-+
-[source,sh,role=execute]
-----
-cat default-osc-policy.yaml | base64
-----
-+
-And then add it to `metadata:annotations:io.katacontainers.config.agent.policy`.
-
 [#example]
 == Hello world example
-
-In this example we will show how easy is to modify an existing pod to make it running in CoCo, i.e. specifying the `runtimeclass` in the podspec. No other action is necessary w.r.t the pod itself, and the confidential VM is completely transparent to it.
-
-This is a sample yaml that runs an `hello-openshift` pod in the `default` namespace. The pod application is not developed by the CoCo team, nor was modified purposefully for this example. The code is available https://github.com/openshift-for-developers/hello[here, window=blank]. This pod creates a server and outputs `"Hello Openshift!"` every time it is reached. The difference between this pod deployed as Confidential Container and traditional pod is just that the former has `spec.runtimeClassName: kata-remote` defined in the pod spec.
+This is a sample yaml that runs an `hello-openshift` pod. This pod acts as server and outputs `"Hello Openshift!"` every time is reached.
 
 . Create and apply the yaml file.
 +
@@ -181,7 +65,6 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: hello-openshift
-  namespace: default
   labels:
     app: hello-openshift
 spec:
@@ -206,7 +89,6 @@ kind: Service
 apiVersion: v1
 metadata:
   name: hello-openshift-service
-  namespace: default
   labels:
     app: hello-openshift
 spec:
@@ -223,14 +105,6 @@ cat sample-openshift.yaml
 ----
 oc apply -f sample-openshift.yaml
 ----
-
-. Switch to the `default` namespace
-+
-[source,sh,role=execute]
-----
-oc project default
-----
-+
 
 . Wait that the pod is created.
 +
@@ -260,15 +134,28 @@ curl ${APP_URL}
 == Verify that the pod is running in a VM
 How to be sure that all what we did so far is actually running in a VM? There are several ways to check this.
 
-We can check via command line using `az`.
+. Via ARO web UI.
+  * Go to the https://portal.azure.com/#browse/Microsoft.Compute%2FVirtualMachines/subscriptionId/{azure_subscription}[Azure VM web console, window=blank] and login. Insert the email associated with your RHDP account and proceed with login.
+  * In the `Subscription` filter, make sure {aro_sandbox_name} is selected. In this example, it is `pool-01-344`.
++
+image::06-subscription.png[link=self, window=blank]
+  * Look at the various VMs. You will see there are:
+    ** 3 masters VM (called _aro-cluster-{guid}-<random chars>-master-0/1/2_)
+    ** 3 workers VM (called _aro-cluster-{guid}-<random chars>-worker-<region>-<random chars>_)
+    ** 1 _bastion-{guid}_ VM, used internally by the workshop infrastructure. The console on the right is actually connected to this VM, and all commands are being performed from here.
+    ** 1 **podvm-hello-openshift-<random chars>**. This is where the `hello-openshift` pod is actually running! Note also how the instance tyoe under `Size` column at the right side is not the same as the other VMs. It is indeed `Standard_D8as_v5`, as specified in the OSC xref:02-configure-osc.adoc#pp-cm[ConfigMap].
++
+image::07-hello.png[link=self, window=blank]
 
+. Via command line using `az`. Result and observations are same as the web UI.
++
 [source,sh,role=execute]
 ----
 az vm list --query "[].{Name:name, VMSize:hardwareProfile.vmSize}" --output table
 ----
-
++
 Example output:
-
++
 [source,texinfo,subs="attributes"]
 ----
 Name                                          VMSize
@@ -283,160 +170,187 @@ podvm-hello-openshift-c0311387                Standard_D8as_v5
 bastion-q5hqf                                 Standard_DS1_v2
 ----
 
-Look at the various VMs. You will see there are:
-
-* 3 masters VM (called _aro-cluster-{guid}-<random chars>-master-0/1/2_)
-* 3 workers VM (called _aro-cluster-{guid}-<random chars>-worker-<region>-<random chars>_)
-* 1 _bastion-{guid}_ VM, used internally by the workshop infrastructure. The console on the right is actually connected to this VM, and all commands are being performed from here.
-* 1 **podvm-hello-openshift-<random chars>**. This is where the `hello-openshift` pod is actually running! Note also how the instance tyoe under `Size` column at the right side is not the same as the other VMs. It is indeed `Standard_D8as_v5`, as specified in the OSC xref:02-configure-osc.adoc#pp-cm[ConfigMap].
-
-[#verify-security]
-== Verify the CoCo pod security restrictions
-This `hello-openshift` test pod runs under the default OSC policy, therefore logs and exec are disabled by default.
-
-. Check that logs are disabled
+. By SSH'ing into the VM.
+  * Recall `id_rsa` created when xref:02-configure-osc.adoc#pp-key[setting up the operator]. We will use that to log into the pod VM. If you followed all the commands so far, your key should be in the folder where you currently are.
+  * Get the pod VM private ip address:
+    ** List all VMs to find your pod VM name. For our hello world example, it should be something like `podvm-hello-openshift-<random chars>`:
 +
 [source,sh,role=execute]
 ----
-oc logs pods/hello-openshift
-----
-+
-And notice how no log is printed. This is because of the default Kata policy disallows that.
-+
-NOTE: if you used https://github.com/kata-containers/kata-containers/blob/main/src/kata-opa/allow-all-except-exec-process.rego[allow-all-except-exec-process.rego, window=blank], logs would be visible. As an exercise (not suitable for production), try to deploy the same `sample-openshift.yaml` with the custom policy, and see how the log works.
+ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 
-. Check that pod exec is disabled
-+
-[source,sh,role=execute]
-----
-oc exec -it pods/hello-openshift -- bash
+az vm list \
+  --resource-group $ARO_RESOURCE_GROUP \
+  --output table
 ----
 +
-And notice how an error is returned:
+Example output:
 +
 [source,texinfo,subs="attributes"]
 ----
-error: Internal error occurred: error executing command in container: cannot enter container 8c0001fb69f7b8e728a3ccc8ad51d362f284f17450765f895db91dce7fc00413, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
+Name                                          ResourceGroup    Location    Zones
+--------------------------------------------  ---------------  ----------  -------
+aro-cluster-q5hqf-xs7zb-master-0              aro-gqvj3nvq     eastus      1
+aro-cluster-q5hqf-xs7zb-master-1              aro-gqvj3nvq     eastus      2
+aro-cluster-q5hqf-xs7zb-master-2              aro-gqvj3nvq     eastus      3
+aro-cluster-q5hqf-xs7zb-worker-eastus1-6rlsl  aro-gqvj3nvq     eastus      1
+aro-cluster-q5hqf-xs7zb-worker-eastus2-vt87j  aro-gqvj3nvq     eastus      2
+aro-cluster-q5hqf-xs7zb-worker-eastus3-6dzt4  aro-gqvj3nvq     eastus      3
+podvm-hello-openshift-c0311387                aro-gqvj3nvq     eastus
 ----
-
-. Check that ssh'ing into the pod Confidential VM is disabled.
-+
-There are multiple ways to accomplish this, for example using the ssh key created when xref:02-configure-osc.adoc#pp-key[setting up the ssh key in OSC]. If `id_rsa` is not destroyed, it could be used to try and ssh into the VM. However, such attempt will fail, as the VM does not accept any SSH incoming connection.
-
-[#example-att]
-== Attestation with strict exec policy example
-
-In this example you will try how the attestation mechanism works, and how easy is to trigger it to get a secret.
-
-IMPORTANT: If you are following this guide in order, make sure that the `hello-openshift` pod has been fully terminated before running this next one, otherwise you will run into quota issues related to the Azure subscription.
-
-The `ocp-cc-pod` by itself is simply a CoCo pod that sleeps for an hour and then dies. The particularity is that has a more relaxed Kata policy, exactly the same shown in xref:03-deploy-worload.adoc#optional-options[the options section]. This policy allows us to exec into it and be able to manually trigger attestation to fetch a secret. No other command is allowed.
-
-. Switch to the `default` namespace if not done already
+    ** Get private ip of the **podvm-hello-openshift-<random_char>** VM (in this case, `podvm-hello-openshift-c0311387`):
 +
 [source,sh,role=execute]
 ----
-oc project default
+VM_NAME=podvm-hello-openshift-c0311387 # replace it with your pod vm name!
+ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
+
+az vm list-ip-addresses --name $VM_NAME \
+  --resource-group $ARO_RESOURCE_GROUP \
+  --output table
 ----
 +
-
-. Create `verification-pod.yaml`:
+Example output, the ip will probably be different for you:
++
+[source,texinfo,subs="attributes"]
+----
+VirtualMachine                  PrivateIPAddresses
+------------------------------  --------------------
+podvm-hello-openshift-c0311387  10.0.2.10
+----
+  * Log into one of the CAA pods running in the worker nodes. These pods are part the OSC operator and take care of creating, handling and destroying all the peer pods containers and VMs:
 +
 [source,sh,role=execute]
 ----
-cat > verification-pod.yaml <<EOF
+# in the bastion node:
+oc exec -it -n openshift-sandboxed-containers-operator ds/peerpodconfig-ctrl-caa-daemon -- bash
+----
++
+Example output:
++
+[source,texinfo,subs="attributes"]
+----
+[azure@bastion-q5hqf ~]$ # <--- Notice how we are now in the bastion node
+[azure@bastion-q5hqf ~]$ oc exec -it -n openshift-sandboxed-containers-operator ds/peerpodconfig-ctrl-caa-daemon -- bash
+[root@aro-cluster-q5hqf-xs7zb-worker-eastus1-6rlsl /]# # <--- Notice how we are now in a pod running in a worker node!
+----
+  * Once inside the CAA pod, the `id_rsa` key to access the pod is already embedded inside in `/root/.ssh/`. Therefore from the CAA pod, simply ssh into the pod VM using the IP that you just found. In our case, it's `10.0.2.10`. By default, a peer pod VM has always an user called `peerpod`. Let's log in with that:
++
+[source,sh,role=execute]
+----
+# in the CAA pod:
+PEER_POD_VM_IP=10.0.2.10 # replace it with your pod vm ip!
+ssh peerpod@$PEER_POD_VM_IP
+----
++
+Example output:
++
+[source,texinfo,subs="attributes"]
+----
+[root@aro-cluster-q5hqf-xs7zb-worker-eastus1-6rlsl /]# ssh peerpod@10.0.2.10 # <--- Notice how we are now in a pod running in a worker node!
+[...]
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+[...]
+[peerpod@podvm-hello-openshift-c0311387 ~]$ # <--- Notice how we are now in the pod VM!
+----
+  * Inspect the VM. For example, check the ip address with `ip addr` and see how it differs from the original VM, check the kernel version with `uname -r`, processes running with `ps -aux`, os-release with `cat /etc/os-release` and so on.
++
+Example: check the kernel version in both a normal pod running in the worker node, and the pod VM.
+  ** If you still are ssh'ed in the pod VM, exit from it using `exit` or pressing the key combination Ctrl+d:
++
+[source,texinfo,subs="attributes"]
+----
+[peerpod@podvm-hello-openshift-c0311387 ~]$ exit # <--- Notice how we are now in the pod VM!
+[root@aro-cluster-q5hqf-xs7zb-worker-eastus1-6rlsl /]# # <--- Notice how we are now in a pod running in a worker node!
+----
+  ** Run `uname -r` in the CAA pod running in the worker node. Notice which kernel it prints.
++
+[source,sh,role=execute]
+----
+# in the CAA pod:
+uname -r # get current worker node kernel
+----
++
+Example output:
++
+[source,texinfo,subs="attributes"]
+----
+# in the CAA pod:
+[root@aro-cluster-q5hqf-xs7zb-worker-eastus1-6rlsl /] uname -r # get current worker node kernel
+4.18.0-372.64.1.el8_6.x86_64 # <----------------
+----
+  ** Run `uname -r` in the pod VM. Notice which kernel it prints, and how it differs from the worker node.
++
+[source,sh,role=execute]
+----
+# in the CAA pod:
+ssh peerpod@$PEER_POD_VM_IP uname -r # get pod VM kernel
+----
++
+Example output. The worker node kernel above is `4.18.0-372.64.1.el8_6.x86_64` while the pod VM is `5.14.0-362.8.1.el9_3.x86_64`:
++
+[source,texinfo,subs="attributes"]
+----
+# in the CAA pod:
+[root@aro-cluster-q5hqf-xs7zb-worker-eastus1-6rlsl /] ssh peerpod@$PEER_POD_VM_IP uname -r
+[...]
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+[...]
+5.14.0-362.8.1.el9_3.x86_64 # <----------------
+----
+** Now, exit from the CAA pod by typing either `exit` or pressing the key combination Ctrl+d.
++
+[source,texinfo,subs="attributes"]
+----
+[root@aro-cluster-q5hqf-xs7zb-worker-eastus1-6rlsl /]# exit # <--- Notice how we are now in a pod running in a worker node!
+[azure@bastion-q5hqf ~]$ # <--- back to the bastion node!
+----
+** To confirm the kernel difference, run another test pod without using the `kata-remote` runtimeclass. This pod, just like all the traditional ones, is also expected to run in the worker node.
++
+[source,sh,role=execute]
+----
+oc apply -f-<<EOF
 apiVersion: v1
 kind: Pod
 metadata:
-  name: ocp-cc-pod
-  namespace: default
+  name: test
   labels:
-    app: ocp-cc-pod
-  annotations:
-    io.katacontainers.config.agent.policy: cGFja2FnZSBhZ2VudF9wb2xpY3kKCmltcG9ydCBmdXR1cmUua2V5d29yZHMuaW4KaW1wb3J0IGZ1dHVyZS5rZXl3b3Jkcy5pZgppbXBvcnQgZnV0dXJlLmtleXdvcmRzLmV2ZXJ5CgpkZWZhdWx0IEFkZEFSUE5laWdoYm9yc1JlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IEFkZFN3YXBSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBDbG9zZVN0ZGluUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgQ29weUZpbGVSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBDcmVhdGVTYW5kYm94UmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgRGVzdHJveVNhbmRib3hSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBHZXRNZXRyaWNzUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgR2V0T09NRXZlbnRSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBHdWVzdERldGFpbHNSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBMaXN0SW50ZXJmYWNlc1JlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IExpc3RSb3V0ZXNSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBNZW1Ib3RwbHVnQnlQcm9iZVJlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IE9ubGluZUNQVU1lbVJlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IFBhdXNlQ29udGFpbmVyUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgUHVsbEltYWdlUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgUmVtb3ZlQ29udGFpbmVyUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgUmVtb3ZlU3RhbGVWaXJ0aW9mc1NoYXJlTW91bnRzUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgUmVzZWVkUmFuZG9tRGV2UmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgUmVzdW1lQ29udGFpbmVyUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgU2V0R3Vlc3REYXRlVGltZVJlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IFNpZ25hbFByb2Nlc3NSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBTdGFydENvbnRhaW5lclJlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IFN0YXJ0VHJhY2luZ1JlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IFN0YXRzQ29udGFpbmVyUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgU3RvcFRyYWNpbmdSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBUdHlXaW5SZXNpemVSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBVcGRhdGVDb250YWluZXJSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBVcGRhdGVFcGhlbWVyYWxNb3VudHNSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBVcGRhdGVJbnRlcmZhY2VSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBVcGRhdGVSb3V0ZXNSZXF1ZXN0IDo9IHRydWUKZGVmYXVsdCBXYWl0UHJvY2Vzc1JlcXVlc3QgOj0gdHJ1ZQpkZWZhdWx0IFdyaXRlU3RyZWFtUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgQ3JlYXRlQ29udGFpbmVyUmVxdWVzdCA6PSB0cnVlCmRlZmF1bHQgU2V0UG9saWN5UmVxdWVzdCA6PSB0cnVlCgojIEVuYWJsZS9kaXNhYmxlIGxvZ3MKZGVmYXVsdCBSZWFkU3RyZWFtUmVxdWVzdCA6PSB0cnVlCgojIEVuYWJsZS9kaXNhYmxlIGV4ZWMKZGVmYXVsdCBFeGVjUHJvY2Vzc1JlcXVlc3QgOj0gZmFsc2UKCkV4ZWNQcm9jZXNzUmVxdWVzdCBpZiB7CiAgICBpbnB1dF9jb21tYW5kID0gY29uY2F0KCIgIiwgaW5wdXQucHJvY2Vzcy5BcmdzKQogICAgc29tZSBhbGxvd2VkX2NvbW1hbmQgaW4gcG9saWN5X2RhdGEuYWxsb3dlZF9jb21tYW5kcwogICAgaW5wdXRfY29tbWFuZCA9PSBhbGxvd2VkX2NvbW1hbmQKfQoKIyBBZGQgYWxsb3dlZCBjb21tYW5kcyBmb3IgZXhlYwpwb2xpY3lfZGF0YSA6PSB7CiAgImFsbG93ZWRfY29tbWFuZHMiOiBbCiAgICAgICAgImN1cmwgLXMgaHR0cDovLzEyNy4wLjAuMTo4MDA2L2NkaC9yZXNvdXJjZS9kZWZhdWx0L2tic3JlczEva2V5MSIKICBdCn0K
+    app: test
 spec:
-  runtimeClassName: kata-remote
   containers:
-    - name: skr-openshift
-      image: registry.access.redhat.com/ubi9/ubi:9.3
-      command:
-        - sleep
-        - "36000"
+    - name: test
+      image: quay.io/openshift/origin-hello-openshift
+      ports:
+        - containerPort: 8888
       securityContext:
         privileged: false
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
         seccompProfile:
           type: RuntimeDefault
 EOF
+----
 
-cat verification-pod.yaml
-----
-+
-Create the pod.
+** Enter inside the newly created `test` pod and confirm that it is running on the same worker node kernel, `4.18.0-372.64.1.el8_6.x86_64`, and therefore it differs from the pod VM kernel:
 +
 [source,sh,role=execute]
 ----
-oc apply -f verification-pod.yaml
+# in the bastion node:
+oc exec pods/test -- uname -r
 ----
 +
-Wait that the pod is created.
-+
-[source,sh,role=execute]
-----
-watch oc get pods/ocp-cc-pod
-----
-+
-The pod is ready when the `STATUS` is in `Running`.
-
-. Since this is the only command allowed, `exec` to get the Trustee `key1` secret into the pod. This key was added in Trustee when xref:02-configure-trustee.adoc#trustee-key[configuring it]. If you followed the exact instructions, `key1` was configured to contain `Confidential_Secret!`.
-+
-[source,sh,role=execute]
-----
-oc exec -it ocp-cc-pod -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
-----
-+
-And as expected, the secret is returned successfully.
+Example output:
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it ocp-cc-pod -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
-Confidential_Secret!
+[azure@bastion-q5hqf ~]$ oc exec pods/test -- uname -r
+4.18.0-372.64.1.el8_6.x86_64
 ----
-+
-IMPORTANT: Notice how the `curl` call is connecting with `http://127.0.0.1`. This is done on purpose, because the CoCo technology is designed to avoid hardcoding any special logic into the pod application. This means that a Confidential Container doesn't have to know where the Trustee lives, what is its ip, or even care about the attestation report. This is provided in the OSC `AA_KBC_PARAMS` given in the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap]. Such url is then forwarded to the local `Trustee agent` running in side the CoCo Confidential VM automatically, so all the CoCo pod application has to do is communicate **locally** (therefore `http` is enough) with the local `Trustee agent` and ask for the path representing the secret it would like to get, in this case `kbsres1/key1`. The `Trustee agent` will then take care of collecting hardware & software attestation proofs, create an attestation report, enstablish an `https` connection with the remote attester `Trustee operator`, and then perform the attestation process.
-
-. Trying any other command in `exec` will fail.
-+
-[source,texinfo,subs="attributes"]
-----
-[azure@bastion ~]# oc exec -it ocp-cc-pod -- bash
-error: Internal error occurred: error executing command in container: cannot enter container d60d9d18412d0e4d9bb2e29975b420e4535bac9d966452bc58775ba847cb940c, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
-----
-
-. It is also possible to inspect Trustee logs to understand how the process worked.
-+
-[source,sh,role=execute]
-----
-POD_NAME=$(oc get pods -l app=kbs -o jsonpath='{.items[0].metadata.name}' -n trustee-operator-system)
-
-oc logs -n trustee-operator-system $POD_NAME
-----
-+
-Expected output (filtering the important logs only):
-+
-[source,texinfo,subs="attributes"]
-----
-...
-[INFO  api_server::http::attest] Attest API called.
-[INFO  attestation_service] AzSnpVtpm Verifier/endorsement check passed.
-[INFO  attestation_service] Policy check passed.
-...
-[INFO  api_server::http::resource] Get resource from kbs:///default/kbsres1/key1
-[INFO  api_server::http::resource] Resource access request passes policy check.
-[INFO  actix_web::middleware::logger] 10.131.0.9 "GET /kbs/v0/resource/default/kbsres1/key1 HTTP/1.1" 200 514 "-" "attestation-agent-kbs-client/0.1.0" 0.001004
-----
-+
-In this redacted log, we can see how the `AzSnpVtpm` Verifier check passed, how the policy and resource check passed, and eventually the key is sent to the CoCo pod.
 
 [#destroy]
-== Destroy the example pods
-The pods created in this example section are no different from any other pod, therefore it can be destroyed just as the others (via command line, web ui, etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
+== Destroy the hello-openshift pod
+The `hello-openshift` pod is no different from any other pod, therefore it can be destroyed just as the others (via command line, web ui, etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
