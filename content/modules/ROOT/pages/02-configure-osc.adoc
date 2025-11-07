@@ -41,7 +41,7 @@ oc apply -f cc-fg.yaml
 == Create the peer-pods configmap
 
 . Get the necessary credentials. In case you didn't do it at the beginning, run
-`AZURE_RESOURCE_GROUP={azure_resource_group}`.
+`export AZURE_RESOURCE_GROUP={azure_resource_group}`.
 +
 Follow the comments in the code if this workshop is being run in an Azure self managed cluster.
 +
