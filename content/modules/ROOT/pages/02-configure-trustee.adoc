@@ -229,7 +229,7 @@ We can apply an initdata configuration by using one of the following methods:
 * Globally by including it in the peer pods config map, setting a cluster-wide default for all pods.
 * For a specific pod when configuring a pod workload object, allowing customization for individual workloads.
 +
-The `io.katacontainers.config.runtime.cc_init_data` annotation under `metadata:annotations:` in the pod yaml spec overrides the global `INITDATA` setting in the xref:02-configure-osc.adoc#pp-cm[peer pods config map] for that specific pod. The Kata runtime handles this precedence automatically at pod creation time.
+The `io.katacontainers.config.hypervisor.cc_init_data` annotation under `metadata:annotations:` in the pod yaml spec overrides the global `INITDATA` setting in the xref:02-configure-osc.adoc#pp-cm[peer pods config map] for that specific pod. The Kata runtime handles this precedence automatically at pod creation time.
 
 The initdata content configures the following components:
 
