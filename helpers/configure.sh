@@ -794,18 +794,6 @@ oc apply -f pp-cm.yaml
 ####################################################################
 echo "################################################"
 
-# Create key
-ssh-keygen -f ./id_rsa -N ""
-
-# Upload it into openshift as secret
-oc create secret generic ssh-key-secret -n openshift-sandboxed-containers-operator --from-file=id_rsa.pub=./id_rsa.pub
-
-# Destroy the key, it's not needed
-shred --remove id_rsa.pub id_rsa
-
-####################################################################
-echo "################################################"
-
 oc label node $(oc get nodes -l node-role.kubernetes.io/worker -o jsonpath='{.items[0].metadata.name}') workerType=kataWorker
 
 cat > kataconfig.yaml <<EOF
