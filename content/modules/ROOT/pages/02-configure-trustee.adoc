@@ -415,14 +415,9 @@ In order to download the right image, you will need to know:
 [source,sh,role=execute]
 ----
 # 1. Prepare required files
+sudo dnf install -y skopeo
 
-# Pick the latest podvm image, as we freshly installed the cluster
-IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:latest"
-# alternatively, use the operator-version tag:
-# OSC_VERSION=1.10.3
-# IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:${OSC_VERSION}"
-
-# Download the pull secret from openshig
+# Download the pull secret from openshift
 oc get -n openshift-config secret/pull-secret -o json \
 | jq -r '.data.".dockerconfigjson"' \
 | base64 -d \
@@ -431,6 +426,16 @@ oc get -n openshift-config secret/pull-secret -o json \
 # podman login registry.redhat.io
 # Username: {REGISTRY-SERVICE-ACCOUNT-USERNAME}
 # Password: {REGISTRY-SERVICE-ACCOUNT-PASSWORD}
+
+# Pick the latest podvm image, as we freshly installed the cluster
+OSC_VERSION=latest
+# alternatively, use the operator-version tag:
+# OSC_VERSION=1.10.3
+VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
+
+TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)
+
+IMAGE=${VERITY_IMAGE}@${TAG}
 
 # On the ARO workshop, we don't have enough space for podman.
 # Use a different folder.
@@ -456,7 +461,7 @@ REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   --arg pcr8_val "$PCR8_HASH" '
   .measurements.sha256 | to_entries | map({
     "name": .key,
-    "expiration": "2026-12-12T00:00:00Z",
+    "expiration": "2027-12-12T00:00:00Z",
     "hash-value": [
       {
         "alg": "sha256",
@@ -468,7 +473,7 @@ REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   [
     {
       "name": "pcr08",
-      "expiration": "2026-12-12T00:00:00Z",
+      "expiration": "2027-12-12T00:00:00Z",
       "hash-value": [
         {
           "alg": "sha256",
