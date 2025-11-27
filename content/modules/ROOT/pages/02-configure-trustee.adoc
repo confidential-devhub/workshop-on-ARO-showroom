@@ -216,7 +216,7 @@ oc apply -f kbs-configmap.yaml
 
 === About initdata
 
-This step will be also useful in the xref:02-configure-osc.adoc#pp-cm[OSC operator setup]. However, since this policy is part of the attestation and we need the expected PCR to be added in the Trustee reference values, we will create the file now.
+This step will be also useful in the xref:02-configure-osc.adoc#pp-cm[OSC operator setup]. However, since this policy is part of the attestation and we need the expected PCR(Platform Configuration Register see xref:02-configure-trustee.adoc#trustee-ap[Attestation policy]) to be added in the Trustee reference values, we will create the file now.
 
 The initdata specification provides a flexible way to initialize a CoCo peer pod with sensitive or workload-specific data at runtime, avoiding the need to embed such data in the virtual machine (VM) image. This enhances security by reducing exposure of confidential information and improves flexibility by eliminating custom image builds. For example, initdata can include three configuration settings:
 
@@ -613,7 +613,7 @@ oc apply -f tdx-config.yaml
 [#trustee-cisvp]
 === Container image signature verification policy
 
-**Purpose of this resource**: Sets wether to enforce or not the container image signature verification feature. If enabled, all containers images not signed by the trusted certificate provided in the container image verification secret will not be run.
+**Purpose of this resource**: Sets whether to enforce or not the container image signature verification feature. If enabled, all containers images not signed by the trusted certificate provided in the container image verification secret will not be run.
 
 The Trustee Operator returns this secret to the CoCo CVM components (which will run the CoCo pod) after attestation, to make sure they will perform the intended check. The CVM components will then compare the secret with the actual pod signature to determine whether to run it or not, ensuring that only trusted and authenticated container images are deployed in your environment.
 
