@@ -1,0 +1,56 @@
+= How to deploy a CoCo pod
+
+Now that the everything is ready, we can finally run a CoCo workload.
+Let's first see what we can and must add into an **existing** pod yaml to make it run in a confidential environment.
+
+NOTE: Because of CPU Quota limitations of this ARO subscription, and since each CoCo runs in a Confidential VM, you are just allowed to deploy max **two single CoCo pods** at time. Trying to deploy a third one will result in failure and container stuck in `ContainerCreating` state.
+
+In this section, we will show you how easy is to modify an existing pod into CoCo and how to additionally customize it.
+
+== Mandatory options
+In order to run a pod as CoCo, it is mandatory to specify the `runtimeClassName` field in the pod `spec`. For peer-pods, the runtime class is called `kata-remote`.
+
+[source,yaml,role=execute]
+----
+apiVersion: v1
+kind: <Pod>
+# ...
+spec:
+  runtimeClassName: kata-remote
+# ...
+----
+
+[#optional-options]
+== Optionals
+
+* Change the image to be used for the given pod manifest:
++
+[source,yaml,role=execute]
+----
+apiVersion: v1
+kind: <Pod>
+metadata:
+  annotations:
+    io.katacontainers.config.hypervisor.image: /your/custom/image/path/here
+# ...
+----
++
+This overrides `AZURE_IMAGE_ID` in peer-pods configmap, and it's simply a path to the Azure image gallery/definition/version containing the custom image. Note that the image has to be accessible by the Openshift cluster resource group, otherwise it won't be able to pull it.
+
+* Change the instance size to be used for the given pod manifest:
++
+[source,yaml,role=execute]
+----
+apiVersion: v1
+kind: <Pod>
+metadata:
+  annotations:
+    io.katacontainers.config.hypervisor.machine_type: Standard_DC8as_v5
+# ...
+----
++
+Note that the `machine_type` must be one of the one specified in `AZURE_INSTANCE_SIZES` in the OSC xref:02-configure-osc.adoc#pp-cm[ConfigMap]. If the defined instance size is allowed by `AZURE_INSTANCE_SIZES`, it will override `AZURE_INSTANCE_SIZE` defined in the peer-pods ConfigMap. Otherwise, it will default to `AZURE_INSTANCE_SIZE`.
+
+* Change the initdata policy to be used for the given pod manifest. As explained in the xref:02-configure-trustee.adoc#trustee-initdata[initdata] section, it is also possible to change the initdata policy by adding the base64 encoded policy as `io.katacontainers.config.runtime.cc_init_data` under `metadata:annotations` in the podspec.
++
+IMPORTANT: you will need to also update the `PCR8` value in the xref:02-configure-trustee.adoc#trustee-refval[Trustee reference values].

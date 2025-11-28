@@ -131,7 +131,7 @@ IMPORTANT: Settings that accept multiple, comma separated parameters like `AZURE
 +
 Explanation:
 +
-.. `AZURE_INSTANCE_SIZE`: default instance size, if not specified in the `io.katacontainers.config.hypervisor.machine_type` xref:03-deploy-workload.adoc#optional-options[pod annotation].
+.. `AZURE_INSTANCE_SIZE`: default instance size, if not specified in the `io.katacontainers.config.hypervisor.machine_type` xref:03-deployment-settings.adoc#optional-options[pod annotation].
 +
 Note the azure terminology for instances: the pattern is usually `Standard_X[C][num_cpus][a or e]xx_vx` where `C` stands for **Confidential**, `a` for CPUs using **AMD SEV/SNP** technology, and `e` for CPUs using **Intel TDX** technology. Therefore `Standard_DC4_es_v5` is a confidential instance with 4 Intel CPUs using TDX to provide data in use confidentiality.
 +
