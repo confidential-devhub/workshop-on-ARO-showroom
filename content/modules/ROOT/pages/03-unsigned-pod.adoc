@@ -1,0 +1,161 @@
+= Test the image signature verification
+
+In this example, we will show how a pod fails when it doesn't meet the signature verification requirements we defined when xref:02-configure-trustee.adoc#trustee-cisvp[configuring Trustee].
+
+== Signature check flow
+
+Let's recap the flow:
+
+When a confidential container starts, its component internally look at the configured initdata and see that for the image, it has to get the following policy from Trustee:
+[source,sh,role=execute]
+----
+cat ~/trustee/initdata.toml | grep -B 1 image_
+----
+
+[source,texinfo,subs="attributes"]
+----
+[image]
+image_security_policy_uri = 'kbs:///default/conf-devhub-image-policy/policy'
+----
+
+How is the `conf-devhub-image-policy/policy` set?
+
+[source,sh,role=execute]
+----
+oc extract secrets/conf-devhub-image-policy -n trustee-operator-system --to=-
+----
+
+[source,texinfo,subs="attributes"]
+----
+# policy
+{
+  "default": [
+      {
+      "type": "insecureAcceptAnything"
+      }
+  ],
+  "transports": {
+      "docker": {
+          "quay.io/confidential-devhub":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/conf-devhub-signature/pub-key"
+              }
+          ]
+      }
+  }
+}
+----
+
+Which means that inside the CoCo component, when the image of the container is coming from `quay.io/confidential-devhub`, they **must** ensure it is signed, and its signature will be checked against the Trustee key `conf-devhub-signature/pub-key`.
+
+When instead the image is **not** coming from `quay.io/confidential-devhub`, they should not check if it signed but just run it.
+The reason for this is to allow the user of the workshop to also run unsigned container images, as the majority of them are currently like this. In production this is of course not safe.
+
+So what happens when an image from `quay.io/confidential-devhub` is not signed?
+
+== Unsigned image from confidential-devhub
+
+Let's find out! Let's run the following:
+
+[source,sh,role=execute]
+----
+cat > unsigned-confidential-devhub.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned-confidential-devhub
+  namespace: default
+  labels:
+    app: unsigned-confidential-devhub
+spec:
+  runtimeClassName: kata-remote
+  containers:
+    - name: unsigned-confidential-devhub
+      image: quay.io/confidential-devhub/http-echo:latest
+      ports:
+        - containerPort: 8888
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      volumeMounts:
+          - name: sealed-secret-volume
+            mountPath: "/sealed/secret-value"
+  volumes:
+    - name: sealed-secret-volume
+      secret:
+        secretName: sealed-secret
+EOF
+
+clear
+cat unsigned-confidential-devhub.yaml
+----
+
+This is very similar to xref:03-deploy-workload.adoc[hello openshift], but the image changes: it's `quay.io/confidential-devhub/http-echo:latest`. This image is not signed.
+
+Let's run it and see what happens:
+
+[source,sh,role=execute]
+----
+oc apply -f unsigned-confidential-devhub.yaml
+----
+
+While we wait that it boots, let's look at the events in the pod:
+
+[source,sh,role=execute]
+----
+watch oc get events --field-selector involvedObject.name=unsigned-confidential-devhub -n default
+----
+
+And here we see that after some successful events (meaning the CVM booted fine and the CoCo component managed to connect with the OCP worker node and also Trustee), we see that the image pull failed:
+
+[source,texinfo,subs="attributes"]
+----
+46m         Warning   Failed           pod/unsigned-confidential-devhub   Error: CreateContain
+er failed: rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Image Pull error: Fai
+led to pull image quay.io/confidential-devhub/http-echo:latest from all mirror/mapping locatio
+ns or original location: image: quay.io/confidential-devhub/http-echo:latest, error: Image pol
+icy rejected: Denied by policy: rejected by `sigstoreSigned` rule", details: [], special_field
+s: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { s
+ize: 0 } } }...
+----
+
+And the explanation is very clear: `error: Image policy rejected: Denied by policy: rejected by sigstoreSigned rule"`, meaning the signature policy detected the image is coming from `quay.io/confidential-devhub`, but since it is not signed, it does not allow it to run.
+
+Just like in xref:03-deploy-workload.adoc[hello openshift], we can inspect Trustee and see in the logs how the CoCo pod fetched the image policy and the public key assigned to `quay.io/confidential-devhub`, but because the internal signature check did not pass, the pod didn't ask for any secret.
+
+[source,sh,role=execute]
+----
+POD_NAME=$(oc get pods -l app=kbs -o jsonpath='{.items[0].metadata.name}' -n trustee-operator-system)
+clear
+oc logs -n trustee-operator-system $POD_NAME
+----
+
+This is the expected output:
+
+[source,texinfo,subs="attributes"]
+----
+...
+[2025-11-28T20:09:46Z INFO attestation_service] AzTdxVtpm Verifier/endorsement check passed.
+[2025-11-28T20:09:46Z INFO actix_web::middleware::logger] 10.128.2.73 "POST /kbs/v0/attest HTTP/1.1" 200 7733 "-" "attestation-agent-kbs-client/0.1.0" 0.892395
+[2025-11-28T20:09:46Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-image-policy/policy HTTP/1.1" 200 850 "-" "attestation-agent-kbs-client/0.1.0" 0.001137
+[2025-11-28T20:09:47Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-signature/pub-key HTTP/1.1" 200 629 "-" "attestation-agent-kbs-client/0.1.0" 0.001067
+----
+
+== Destroy the pod
+
+Of course to clean up resources, make sure to delete the pod you just created.
+
+[source,sh,role=execute]
+----
+oc delete pods/unsigned-confidential-devhub -n default
+----
+

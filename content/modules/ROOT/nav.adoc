@@ -27,8 +27,10 @@
 * xref:index-user.adoc[User guide]
 
 * xref:03-deployment-settings.adoc[How to deploy a CoCo pod]
-*
-* xref:03-deploy-workload.adoc[Hello world]
+
+* xref:03-deploy-workload.adoc[Hello openshift]
+
+* xref:03-unsigned-pod.adoc[Test the image signature verification]
 
 * xref:05-fraud-detection-simple.adoc[Fraud-detection notebook]
 

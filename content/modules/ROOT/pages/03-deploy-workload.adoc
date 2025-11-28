@@ -1,4 +1,4 @@
-= Hello world
+= Hello openshift
 
 In this example we will show how easy is to modify an existing pod to make it running in CoCo, i.e. specifying `runtimeClassName` in the podspec. No other action is necessary w.r.t the pod itself, and the confidential VM is completely transparent to it.
 
@@ -227,8 +227,8 @@ Expected output (filtering the important logs only):
 In this formatted log, we can see how the `AzSnpVtpm` Verifier check passed, how the `conf-devhub-image-policy/policy` policy for the image signature was requested and how subsequently the `conf-devhub-signature/pub-key` public key was fetched to ensure the signature is correct. Lastly, `default/hellosecret/key2` was automatically requested by the sealed secret, and `default/hellosecret/key2` by us manually in the previous step.
 
 [#destroy]
-== Destroy the example pods
-The pods created in this example section are no different from any other pod, therefore it can be destroyed just as the others (via command line, web ui, etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
+== Destroy the example pod
+The pod created in this example section are no different from any other pod, therefore it can be destroyed just as the others (via command line, web ui, etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
 
 [source,sh,role=execute]
 ----

@@ -218,6 +218,8 @@ In this example, we are going to create a policy that:
 * Ensures that the images under `quay.io/confidential-devhub` (regardless of the image or tag) are signed, otherwise they will not be run.
 * As a global policy, accept non-signed images from any other registry. This means only the images under `quay.io/confidential-devhub` need to be signed, the rest can also be unsigned. Such policy can be also more restrictive, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
 
+The reason for this wider policy is to allow the user of the workshop to also run unsigned container images, as the majority of them are currently like this. In production this is of course not safe.
+
 Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
 
 [source,sh,role=execute]
