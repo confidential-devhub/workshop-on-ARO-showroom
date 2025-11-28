@@ -2,7 +2,7 @@
 
 Now that the Trustee operator is installed, we need to set it up.
 
-Reminder: You can assume that **everything running in the trustee-operator-sysem namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+Reminder: You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
 
 [NOTE]
 ====
@@ -152,7 +152,7 @@ cat trusteeconfig-restricted.yaml
 
 Note how the `httpsSpec:tlsSecretName` points to `trustee-tls-cert` and `attestationTokenVerificationSpec:tlsSecretName` points to `trustee-token-cert`.
 Such secrets will be copied over by the `Trusteeconfig` into the `trusteeconfig-https-key-secret`, `trusteeconfig-https-cert-secret` and `trusteeconfig-auth-secret` secrets.
-Lastly, these secrets will be given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respecively in the `kbsHttpsKeySecretName`,`kbsHttpsCertSecretName` and `kbsAuthSecretName` fields.
+Lastly, these secrets will be given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respectively in the `kbsHttpsKeySecretName`,`kbsHttpsCertSecretName` and `kbsAuthSecretName` fields.
 
 Let's now apply `Trusteeconfig` and see if the secrets and configs are created:
 
@@ -201,7 +201,7 @@ https://kbs-service-trustee-operator-system.apps.rs01nyk5.eastus.aroapp.io
 [#trustee-cisvp]
 == Container image signature verification policy
 
-Sets wether to enforce the container image signature verification feature. If enabled, all containers images not signed by the trusted certificate provided in the container image verification secret will not be run.
+Sets whether to enforce the container image signature verification feature. If enabled, all containers images not signed by the trusted certificate provided in the container image verification secret will not be run.
 
 First of all, we have two components to set up:
 
