@@ -130,7 +130,7 @@ If you have deployed this workshop with the RHDP catalog, you can choose to have
 
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/increase_worker_size.sh -o increase_worker_size.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/increase_worker_size.sh -o increase_worker_size.sh
 
 chmod +x increase_worker_size.sh
 
@@ -151,7 +151,7 @@ In order to simplify the installation of OAI and since it's not the focus of thi
 
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/install-oai.sh -o install-oai.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/install-oai.sh -o install-oai.sh
 
 chmod +x install-oai.sh
 
@@ -170,11 +170,11 @@ Now you can xref:fraud-detection.adoc#fd-run[go through the notebook].
 [#fd-plain]
 === Plain Jupyter notebook
 
-If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
+If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
 
 [source,sh,role=execute]
 ----
-oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
+oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/fraud-encrypted-datasets/notebook.yaml
 ----
 
 Switch to the newly created `fraud-detection` namespace.

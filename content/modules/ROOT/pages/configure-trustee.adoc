@@ -15,7 +15,7 @@ This whole section can be automated with the following command:
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-trustee.sh -o configure-trustee.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-trustee.sh -o configure-trustee.sh
 
 chmod +x configure-trustee.sh
 
@@ -28,7 +28,7 @@ endif::[]
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-trustee.sh -o configure-trustee.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-trustee.sh -o configure-trustee.sh
 
 chmod +x configure-trustee.sh
 
