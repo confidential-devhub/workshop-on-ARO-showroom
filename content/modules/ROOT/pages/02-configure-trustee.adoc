@@ -203,19 +203,20 @@ https://kbs-service-trustee-operator-system.apps.rs01nyk5.eastus.aroapp.io
 
 Sets whether to enforce the container image signature verification feature. If enabled, all containers images not signed by the trusted certificate provided in the container image verification secret will not be run.
 
-First of all, we have two components to set up:
+First of all, we have three components to set up:
 
-* The secret containing the public key used to sign the container image. This has to reside in Trustee.
+* One or more secret containing the public key used by the trusted registry repository to sign the container images. Those have to reside in Trustee.
+* A secret containing the container image signature policy used in Trustee. This policy specifies which registry maps with which key added in the previous point. This has to reside in Trustee.
 * The xref:02-configure-trustee.adoc#trustee-initdata[initdata] config in the CoCo pod will have a section that points to that secret
 
-The Trustee Operator returns the secret to the CoCo CVM components (which will run the CoCo pod) only after attestation is successful. This is to ensure that the components perform the intended check, and the initdata is pointing to the intended secret. The CVM components will then compare the secret (public key) with the actual pod signature to determine whether to run it or not, ensuring that only trusted and authenticated container images are deployed in your environment.
+The Trustee Operator returns the policy to the CoCo CVM components (which will run the CoCo pod) only after attestation is successful. This is to ensure that the components perform the intended check, and the initdata is pointing to the intended secret. The CVM components will then analyze the policy, check whether the running image is expected to be signed or not, and if so ask the Trustee for the public key to prove that the image has been signed by an entity we trust. In this way, we are sure that only trusted and authenticated container images are deployed in your environment.
 
-This container signature check is optional. However, in this workshop we will enable it.
+This container signature check is optional. If not added, CoCo will run any image, signed or not. However, in this workshop we will enable it.
 
 In this example, we are going to create a policy that:
 
-* Ensures that the container `quay.io/confidential-devhub` (regardless of the image or tag) is signed, otherwise it will not be run.
-* As a global policy, accept non-signed images from any other registry. This means only the images under `quay.io/confidential-devhub` need to be signed, the rest can also be unsigned. Such policy can be also restricted, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
+* Ensures that the images under `quay.io/confidential-devhub` (regardless of the image or tag) are signed, otherwise they will not be run.
+* As a global policy, accept non-signed images from any other registry. This means only the images under `quay.io/confidential-devhub` need to be signed, the rest can also be unsigned. Such policy can be also more restrictive, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
 
 Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
 
@@ -224,8 +225,8 @@ Let's create a secret containing the public key used to signed the above contain
 # Download the key
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/showroom/helpers/cosign.pub -o cosign.pub
 
-SIGNATURE_SECRET_NAME=cosign-key
-SIGNATURE_SECRET_FILE=hello-pub-key
+SIGNATURE_SECRET_NAME=conf-devhub-signature
+SIGNATURE_SECRET_FILE=pub-key
 
 oc create secret generic $SIGNATURE_SECRET_NAME \
     --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
@@ -234,13 +235,13 @@ oc create secret generic $SIGNATURE_SECRET_NAME \
 
 If you want to sign your own container, refer to the https://developers.redhat.com/products/trusted-artifact-signer/overview[Red Hat Trusted Artifact Signer, window=blank] or other tools to sign container images. A simple guide on how to use upstream `cosign` is xref:04-sign-pod.adoc[here].
 
-Note that `$SIGNATURE_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and referred (together with `$SIGNATURE_SECRET_FILE`) by the CoCo pod xref:02-configure-trustee.adoc#trustee-initdata[initdata].
+Note that `$SIGNATURE_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
 
 Then, create `verification-policy.json` that enables signature verification.
 
 In this example, the transport method is `docker`. In case you want to change transport type, see https://github.com/containers/image/blob/main/docs/containers-transports.5.md[containers-transports 5, window=blank].
 
-Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`.
+Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`. Here is where we specify that `$SECURITY_POLICY_IMAGE` has to be signed with a key present in `default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE`.
 
 [source,sh,role=execute]
 ----
@@ -277,14 +278,15 @@ After `verification-policy.json` is created, upload it as a secret with the foll
 
 [source,sh,role=execute]
 ----
-POLICY_SECRET_NAME=hello-image-policy
+POLICY_SECRET_NAME=conf-devhub-image-policy
+POLICY_SECRET_FILE=policy
 
 oc create secret generic $POLICY_SECRET_NAME \
-  --from-file=osc=./verification-policy.json \
+  --from-file=$POLICY_SECRET_FILE=./verification-policy.json \
   -n trustee-operator-system
 ----
 
-Note that this `$POLICY_SECRET_NAME` secret will be later added in the generated xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+Note that this `$POLICY_SECRET_NAME` secret will be later added in the generated xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and referred (together with `$POLICY_SECRET_FILE`) by the CoCo pod xref:02-configure-trustee.adoc#trustee-initdata[initdata]
 
 [#trustee-initdata]
 == Create the initdata policy
@@ -352,7 +354,7 @@ ${TRUSTEE_CERT}
 """
 
 [image]
-image_security_policy_uri = 'kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE'
+image_security_policy_uri = 'kbs:///default/$POLICY_SECRET_NAME/$POLICY_SECRET_FILE'
 '''
 
 "policy.rego" = '''

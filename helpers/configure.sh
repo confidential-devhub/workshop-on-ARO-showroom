@@ -318,8 +318,8 @@ echo "################################################"
 
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/showroom/helpers/cosign.pub -o cosign.pub
 
-SIGNATURE_SECRET_NAME=cosign-key
-SIGNATURE_SECRET_FILE=hello-pub-key
+SIGNATURE_SECRET_NAME=conf-devhub-signature
+SIGNATURE_SECRET_FILE=pub-key
 
 oc create secret generic $SIGNATURE_SECRET_NAME \
     --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
@@ -348,10 +348,11 @@ cat > verification-policy.json <<EOF
 }
 EOF
 
-POLICY_SECRET_NAME=hello-image-policy
+POLICY_SECRET_NAME=conf-devhub-image-policy
+POLICY_SECRET_FILE=policy
 
 oc create secret generic $POLICY_SECRET_NAME \
-  --from-file=osc=./verification-policy.json \
+  --from-file=$POLICY_SECRET_FILE=./verification-policy.json \
   -n trustee-operator-system
 
 ####################################################################
@@ -386,7 +387,7 @@ ${TRUSTEE_CERT}
 """
 
 [image]
-image_security_policy_uri = 'kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE'
+image_security_policy_uri = 'kbs:///default/$POLICY_SECRET_NAME/$POLICY_SECRET_FILE'
 '''
 
 "policy.rego" = '''
@@ -794,6 +795,12 @@ oc set image daemonset.apps/osc-caa-ds -n openshift-sandboxed-containers-operato
 # oc apply -f crio-setup.yaml
 # sleep 5
 # wait_for_mcp kata-oc || exit 1
+
+# ostree admin unlock --hotfix
+# chroot /host
+# curl -L https://people.redhat.com/eesposit/kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm -o kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
+# rpm -Uvh --replacefiles kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
+# systemctl restart crio
 
 echo ""
 echo ""
