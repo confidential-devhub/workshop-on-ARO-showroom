@@ -2,6 +2,10 @@ name: github pages
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Bi-Directional Branch Sync"]
+    types:
+      - completed
   push:
     branches: [showroom, next]
     paths-ignore:
