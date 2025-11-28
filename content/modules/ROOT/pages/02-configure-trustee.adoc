@@ -16,49 +16,151 @@ oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 [#trustee-keys]
 == Create the required keys
 
-In order to simplify the flow, we will create here all the keys necessary to securely run Trustee.
+In order to simplify the flow, we will ask the cert-manager operator to create  all the keys necessary to securely run Trustee. Such keys and certs will be uploaded into the Trustee namespace as secrets.
 
 More specifically, these keys are:
 
-* admin authentication keys
-* https keys
-* attestation token key
+* Https keys, to ensure a secure connection between the CoCo pod and Trustee
+* Attestation token key (see xref:02-configure-trustee.adoc#keys[here])
 
-Of course the user can also bring his own existing keys. The exact purpose of these keys will be explained as they are used in the following sections.
+Of course the user can also bring his own existing keys, especially the `https` one.
 
 [source,sh,role=execute]
 ----
 mkdir -p trustee
 cd trustee
 
-# Admin authentication keys
-openssl genpkey -algorithm ed25519 > privateKey
-openssl pkey -in privateKey -pubout -out publicKey
-
-# HTTPS keys
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
 ROUTE_NAME=kbs-service
+ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
 
 CN_NAME=kbs-trustee-operator-system
 ORG_NAME=my_org
 
-ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
-echo "ROUTE: $ROUTE"
-echo ""
+# Alternative to create https certs manually:
+# openssl req -x509 -nodes -days 365 \
+#  -newkey rsa:2048 \
+#  -keyout tls.key \
+#  -out tls.crt \
+#  -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
+#  -addext "subjectAltName=DNS:${ROUTE}"
 
-openssl req -x509 -nodes -days 365 \
-  -newkey rsa:2048 \
-  -keyout tls.key \
-  -out tls.crt \
-  -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
-  -addext "subjectAltName=DNS:${ROUTE}"
+oc apply -f-<<EOF
+# issuer-and-certificates.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: kbs-issuer
+  namespace: trustee-operator-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kbs-https
+  namespace: trustee-operator-system
+spec:
+  # 1. Matches /CN=${CN_NAME}
+  commonName: ${CN_NAME}
 
-# Attestation token
-openssl ecparam -name prime256v1 -genkey -noout -out token.key
-openssl req -new -x509 -key token.key -out token.crt -days 365 \
-	-subj "/CN=${CN_NAME}/O=${ORG_NAME}"
+  # 2. Matches /O=${ORG_NAME}
+  subject:
+    organizations:
+      - ${ORG_NAME}
 
+  # 3. Matches -addext "subjectAltName=DNS:${ROUTE}"
+  dnsNames:
+    - ${ROUTE}
+
+  # 4. Matches -newkey rsa:2048
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+
+  # 5. Matches -days 365 (8760 hours)
+  duration: 8760h
+  renewBefore: 360h # Standard practice: renew 15 days before expiry
+
+  secretName: trustee-tls-cert
+  issuerRef:
+    name: kbs-issuer
+    kind: Issuer # or ClusterIssuer
+---
+# attestation token key
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kbs-token
+  namespace: trustee-operator-system
+spec:
+  dnsNames:
+    - kbs-service
+  secretName: trustee-token-cert
+  issuerRef:
+    name: kbs-issuer
+  privateKey:
+    algorithm: ECDSA
+    encoding: PKCS8
+    size: 256
+EOF
+----
+
+Let's see what it created:
+
+[source,sh,role=execute]
+----
+oc get secrets -n trustee-operator-system | grep /tls
+----
+
+We can see it created 2 secrets, `trustee-tls-cert` for https and `trustee-token-cert` for attestation token.
+
+[#trusteeconfig]
+== Create the Trusteeconfig
+
+Starting from `1.0.0`, Trustee can generate most of the settings by itself, via `Trusteeconfig`. In this example, we will generate a restrictive config, where all security flags are enabled.
+
+[source,sh,role=execute]
+----
+cat > trusteeconfig-restricted.yaml <<EOF
+apiVersion: confidentialcontainers.org/v1alpha1
+kind: TrusteeConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: trusteeconfig
+    app.kubernetes.io/instance: trusteeconfig
+    app.kubernetes.io/part-of: trustee-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: trustee-operator
+  name: trusteeconfig
+  namespace: trustee-operator-system
+spec:
+  profileType: Restricted
+  kbsServiceType: ClusterIP
+  httpsSpec:
+    tlsSecretName: trustee-tls-cert
+  attestationTokenVerificationSpec:
+    tlsSecretName: trustee-token-cert
+EOF
+
+clear
+cat trusteeconfig-restricted.yaml
+----
+
+Note how the `httpsSpec:tlsSecretName` points to `trustee-tls-cert` and `attestationTokenVerificationSpec:tlsSecretName` points to `trustee-token-cert`.
+Such secrets will be copied over by the `Trusteeconfig` into the `trusteeconfig-https-key-secret`, `trusteeconfig-https-cert-secret` and `trusteeconfig-auth-secret` secrets.
+Lastly, these secrets will be given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respecively in the `kbsHttpsKeySecretName`,`kbsHttpsCertSecretName` and `kbsAuthSecretName` fields.
+
+Let's now apply `Trusteeconfig` and see if the secrets and configs are created:
+
+[source,sh,role=execute]
+----
+oc apply -f trusteeconfig-restricted.yaml
+
+oc get secrets -n trustee-operator-system | grep trusteeconfig
+oc get configmaps -n trustee-operator-system | grep trusteeconfig
 ----
 
 [#trustee-route]
@@ -67,28 +169,15 @@ openssl req -new -x509 -key token.key -out token.crt -days 365 \
 Create a secure route with `passthrough` TLS termination for Trustee. External ingress traffic does not get decrypted by the router but forwarded directly to Trustee pod.
 It is also possible to create an `edge` route, but then the connection between Trustee and OCP router will be in plain text (http). In this workshop, we will use `passthrough`.
 
-Upload the previously self-signed certificates in the Trustee namespace:
-[source,sh,role=execute]
-----
-oc create secret generic kbs-https-certificate --from-file=tls.crt -n trustee-operator-system
-
-oc create secret generic kbs-https-key --from-file=tls.key -n trustee-operator-system
-
-TRUSTEE_CERT=$(cat tls.crt)
-
-clear
-echo "$TRUSTEE_CERT"
-echo ""
-echo "ROUTE: $ROUTE"
-echo ""
-oc get secrets -n trustee-operator-system | grep kbs-https
-----
-
 Create the route and set `TRUSTEE_HOST`, which together with `TRUSTEE_CERT` will be used later when configuring the xref:02-configure-trustee.adoc#trustee-ip[initdata].
 
 [source,sh,role=execute]
 ----
-HTTP="https://"
+# Download the HTTPS cert
+oc get secret trustee-tls-cert -n trustee-operator-system -o json | jq -r '.data."tls.crt"' | base64 --decode > https.crt
+
+TRUSTEE_CERT=$(cat https.crt)
+
 oc create route passthrough kbs-service \
   --service=kbs-service \
   --port=kbs-port \
@@ -97,122 +186,107 @@ oc create route passthrough kbs-service \
 TRUSTEE_ROUTE="$(oc get route -n trustee-operator-system kbs-service \
   -o jsonpath={.spec.host})"
 
-TRUSTEE_HOST=${HTTP}${TRUSTEE_ROUTE}
+TRUSTEE_HOST=https://${TRUSTEE_ROUTE}
 
 echo $TRUSTEE_HOST
 ----
 
 Example output:
-
 [source,texinfo,subs="attributes"]
 ----
 https://kbs-service-trustee-operator-system.apps.rs01nyk5.eastus.aroapp.io
 ----
 
-[#trustee-secret]
-== Create the Trustee authentication secret
+[#trustee-cisvp]
+== Container image signature verification policy
 
-Such key is not really used when the Trustee is run as Openshift operator, but it is needed in order to start the trustee application.
+Sets wether to enforce the container image signature verification feature. If enabled, all containers images not signed by the trusted certificate provided in the container image verification secret will not be run.
 
-Create a secret with the public key:
-[source,sh,role=execute]
-----
-oc create secret generic kbs-auth-public-key --from-file=./publicKey -n trustee-operator-system
-----
+First of all, we have two components to set up:
 
-[#trustee-jwk]
-== Create the attestation token key
+* The secret containing the public key used to sign the container image. This has to reside in Trustee.
+* The xref:02-configure-trustee.adoc#trustee-initdata[initdata] config in the CoCo pod will have a section that points to that secret
 
-Secret retrieval works in a two-step authentication:
+The Trustee Operator returns the secret to the CoCo CVM components (which will run the CoCo pod) only after attestation is successful. This is to ensure that the components perform the intended check, and the initdata is pointing to the intended secret. The CVM components will then compare the secret (public key) with the actual pod signature to determine whether to run it or not, ensuring that only trusted and authenticated container images are deployed in your environment.
 
-* First, a confidential container sends the reference values to the Trustee
-* The Trustee checks the reference values and if they match, generates and signs an attestation token
-* The attestation token is then sent to the CoCo pod
-* The CoCo pod can now use this token without doing the attestation again to request a secret, and the same token can be reused multiple times until it expires.
+This container signature check is optional. However, in this workshop we will enable it.
 
-The attestation token has to therefore be signed by the Trustee, otherwise a malicious CoCo pod can sign its own fake attestation token and request secrets from the Trustee bypassing the whole reference values check.
+In this example, we are going to create a policy that:
 
-Upload the attestation token key and certificate as secret:
-[source,sh,role=execute]
-----
+* Ensures that the container `quay.io/confidential-devhub/*` (regardless of the image or tag) is signed, otherwise it will not be run.
+* As a global policy, reject any other registry and non-signed image. This means only the above image is allowed to run, and only if it's signed. Such policy can be also relaxed, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to restrict the image signature to only such org/container pair while allowing all the others to be unsigned (change `reject` to `insecureAcceptAnything`).
 
-oc create secret generic attestation-token --from-file=token.crt --from-file=token.key -n trustee-operator-system
-----
-
-[#trustee-cm]
-== Create Trustee ConfigMap
-
-Create the and apply the Trustee `kbs-configmap.yaml` ConfigMap.
-Among the others, in this ConfigMap we will enable HTTPS, authenticated admin API and signed attestation token verification.
+Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
 
 [source,sh,role=execute]
 ----
-cat > kbs-configmap.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kbs-config-cm
-  namespace: trustee-operator-system
-data:
-  kbs-config.toml: |
-    [http_server]
-    sockets = ["0.0.0.0:8080"]
-    insecure_http = false
-    private_key = "/etc/https-key/tls.key"
-    certificate = "/etc/https-cert/tls.crt"
+# Download the key
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/showroom/helpers/cosign.pub -o cosign.pub
 
-    [admin]
-    insecure_api = false
-    auth_public_key = "/etc/auth-secret/publicKey"
+SIGNATURE_SECRET_NAME=cosign-key
+SIGNATURE_SECRET_FILE=hello-pub-key
 
-    [attestation_token]
-    insecure_key = false
-    trusted_certs_paths = ["/opt/confidential-containers/kbs/repository/default/attestation-token/token.crt"]
-    attestation_token_type = "CoCo"
+oc create secret generic $SIGNATURE_SECRET_NAME \
+    --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
+    -n trustee-operator-system
+----
 
-    [attestation_service.attestation_token_broker.signer]
-    key_path = "/opt/confidential-containers/kbs/repository/default/attestation-token/token.key"
-    cert_path = "/opt/confidential-containers/kbs/repository/default/attestation-token/token.crt"
+If you want to sign your own container, refer to the https://developers.redhat.com/products/trusted-artifact-signer/overview[Red Hat Trusted Artifact Signer, window=blank] or other tools to sign container images. A simple guide on how to use upstream `cosign` is xref:04-sign-pod.adoc[here].
 
-    [attestation_service]
-    type = "coco_as_builtin"
-    work_dir = "/opt/confidential-containers/attestation-service"
-    policy_engine = "opa"
+Note that `$SIGNATURE_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and referred (together with `$SIGNATURE_SECRET_FILE`) by the CoCo pod xref:02-configure-trustee.adoc#trustee-initdata[initdata].
 
-    [attestation_service.attestation_token_broker]
-    type = "Ear"
-    policy_dir = "/opt/confidential-containers/attestation-service/policies"
+Then, create `verification-policy.json` that enables signature verification.
 
-    [attestation_service.attestation_token_config]
-    duration_min = 5
+In this example, the transport method is `docker`. In case you want to change transport type, see https://github.com/containers/image/blob/main/docs/containers-transports.5.md[containers-transports 5, window=blank].
 
-    [attestation_service.rvps_config]
-    type = "BuiltIn"
+Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`.
 
-    [attestation_service.rvps_config.storage]
-    type = "LocalJson"
-    file_path = "/opt/confidential-containers/rvps/reference-values/reference-values.json"
+[source,sh,role=execute]
+----
+SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
 
-    [[plugins]]
-    name = "resource"
-    type = "LocalFs"
-    dir_path = "/opt/confidential-containers/kbs/repository"
-
-    [policy_engine]
-    policy_path = "/opt/confidential-containers/opa/policy.rego"
+cat > verification-policy.json <<EOF
+{
+  "default": [
+      {
+      "type": "reject"
+      }
+  ],
+  "transports": {
+      "docker": {
+          "$SECURITY_POLICY_IMAGE":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE"
+              }
+          ]
+      }
+  }
+}
 EOF
 
 clear
-cat kbs-configmap.yaml
+cat verification-policy.json
 ----
+
+For more information on security policy, see https://github.com/containers/image/blob/main/docs/containers-policy.json.5.md[containers-policy.json.5, window=blank] and in particular https://github.com/containers/image/blob/main/docs/containers-policy.json.5.md#a-reasonably-locked-down-system[this example,  window=blank].
+
+After `verification-policy.json` is created, upload it as a secret with the following command:
 
 [source,sh,role=execute]
 ----
-oc apply -f kbs-configmap.yaml
+POLICY_SECRET_NAME=hello-image-policy
+
+oc create secret generic $POLICY_SECRET_NAME \
+  --from-file=osc=./verification-policy.json \
+  -n trustee-operator-system
 ----
 
+Note that this `$POLICY_SECRET_NAME` secret will be later added in the generated xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+
 [#trustee-initdata]
-== The initdata policy
+== Create the initdata policy
 
 === About initdata
 
@@ -275,6 +349,9 @@ url = "${TRUSTEE_HOST}"
 kbs_cert = """
 ${TRUSTEE_CERT}
 """
+
+[image]
+image_security_policy_uri = 'kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE'
 '''
 
 "policy.rego" = '''
@@ -333,7 +410,7 @@ ExecProcessRequest if {
 # Add allowed commands for exec
 policy_data := {
   "allowed_commands": [
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/hellosecret/key1",
         "cat /sealed/secret-value/key2"
   ]
 }
@@ -352,7 +429,7 @@ Under `policy.rego`, you can specify a custom Kata Agent policy. The default pol
 
 In this demo, we try something a bit more advanced: in order to securely allow the user to manually perform attestation, we restrict the `exec` commands to only allow the secret fetching, and nothing else. `allowed_commands` defines the only commands allowed to be exec'ed into the CoCo pod.
 
-What the above means is that the defined command to `curl key1` and `cat /sealed/secret-value/key2` will work, but **any** other command will fail. Even `oc exec -it pods/your_pod -- curl http://127.0.0.1:8006/cdh/resource/default/kbsres1/key2` will not work.
+What the above means is that the defined command to `curl key1` and `cat /sealed/secret-value/key2` will work, but **any** other command will fail. Even `oc exec -it pods/your_pod -- curl http://127.0.0.1:8006/cdh/resource/default/hellosecret/key2` will not work.
 
 This is extremely useful if the pod has to provide restricted access to an untrusted actor (admin, developer) to for example debug the application logic inside the Confidential Container.
 
@@ -380,27 +457,16 @@ echo ""
 echo "PCR 8:" $PCR8_HASH
 ----
 
-[#trustee-conf]
-== Configure Trustee
-
-You can configure the following values, policies, and secrets for Trustee:
-
-* xref:02-configure-trustee.adoc#trustee-refval[Reference values]
-* xref:02-configure-trustee.adoc#trustee-ap[Attestation policy]
-* xref:02-configure-trustee.adoc#trustee-tdx[TDX ConfigMap] (**used in this workshop but optional for non-TDX instances**).
-* xref:02-configure-trustee.adoc#trustee-cisvp[Container image signature verification policy]
-* xref:02-configure-trustee.adoc#trustee-rap[Resource access policy]
-
-In the sections below, we will elencate how to set up all these options, but for the purpose of the workshop, we will not enforce the image signature verification.
-
 [#trustee-refval]
-=== Reference values for the Reference Value Provider Service
+== Reference values for the Reference Value Provider Service
 
-**Purpose of this resource**: In an attestation scenario, the client (CoCo) collects measurements from the running software, the Trusted Execution Environment (TEE) hardware and firmware and it submits a quote with the claims to the Attestation Server (Trustee, what we are setting right now). These measurements must match the trusted digests registered to the Trustee. This process ensures that the confidential VM (CVM) is running the expected software stack and has not been tampered with. By setting reference values, the user effectively defines the trusted digest (expected values) that Trustee expects from a valid client.
+In an attestation scenario, the client (CoCo) collects measurements from the running software, the Trusted Execution Environment (TEE) hardware and firmware and it submits a quote with the claims to the Attestation Server (Trustee, what we are setting right now). These measurements must match the trusted digests registered to the Trustee. This process ensures that the confidential VM (CVM) is running the expected software stack and has not been tampered with. By setting reference values, the user effectively defines the trusted digest (expected values) that Trustee expects from a valid client.
 
 You can configure reference values for the Reference Value Provider Service (RVPS) by specifying the trusted digests of your hardware platform.
 
 Red Hat currently ships an official CoCo podVM image (Confidential VM disk pre-installed and configured with CoCo components)  together with its measurements. Therefore we simply need to insert the values into `rvps-configmap.yaml`. Such values ensure that CoCo is running that specific image, with a RH kernel and specific features like initdata policy enabled.
+
+A dummy reference value config is created by `Trusteeconfig` as `trusteeconfig-rvps-reference-values` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsRvpsRefValuesConfigMapName` field.
 
 Let's download the measurements from Redhat and then convert them into a reference value configmap.
 
@@ -459,38 +525,32 @@ JSON_DATA=$(cat /podvm/measurements.json)
 # 3. Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   --arg pcr8_val "$PCR8_HASH" '
-  .measurements.sha256 | to_entries | map({
+  # 1. Process the existing measurements from JSON_DATA
+  (.measurements.sha256 | to_entries | map({
     "name": .key,
     "expiration": "2027-12-12T00:00:00Z",
-    "hash-value": [
-      {
-        "alg": "sha256",
-        "value": (.value | ltrimstr("0x"))
-      }
-    ]
-  })
+    "value": (.value | ltrimstr("0x"))
+  }))
   +
+  # 2. Add the manual PCR08 entry
   [
     {
       "name": "pcr08",
-      "expiration": "2027-12-12T00:00:00Z",
-      "hash-value": [
-        {
-          "alg": "sha256",
-          "value": $pcr8_val
-        }
-      ]
+      "expiration": "2028-12-12T00:00:00Z",
+      "value": $pcr8_val
     }
   ]
+  # 3. Sort everything numerically by the pcr number
   | sort_by(.name | ltrimstr("pcr") | tonumber)
 ' | sed 's/^/    /')
+
 
 # 4. Build the final ConfigMap
 cat > rvps-configmap.yaml <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: rvps-reference-values
+  name: trusteeconfig-rvps-reference-values
   namespace: trustee-operator-system
 data:
   reference-values.json: |
@@ -501,231 +561,11 @@ clear
 cat rvps-configmap.yaml
 ----
 
-Once the reference values have been added, apply the ConfigMap.
+Once the reference values have been added, update the ConfigMap.
 
 [source,sh,role=execute]
 ----
 oc apply -f rvps-configmap.yaml
-----
-
-[#trustee-ap]
-=== Attestation policy
-
-**Purpose of this resource**: An attestation policy defines which part of the attestation report sent by the client (CoCo) is important for the Attester (Trustee), and how to compare the report with the reference values.
-
-By default, Trustee has already an attestation policy. You can overwrite the default one by creating your own attestation policy.
-
-The attestation policy follows the https://www.openpolicyagent.org/docs/policy-language[Open Policy Agent, window=blank] specification.
-
-The policy below checks the Platform Configuration Register (PCR) values `03`, `08`, `09`, `11`, and `12` against the reference values to ensure that the Confidential Containers pod uses the specified restrictive Kata agent policy and that the Red Hat pod VM image has not been altered. The attestation process is successful only if all the values match. For details, see https://uapi-group.org/specifications/specs/linux_tpm_pcr_registry/[Linux TPM PCR Registry, window=blank] in the UAPI Group Specifications documentation.
-
-[source,sh,role=execute]
-----
-cat > attestation-policy.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: attestation-policy
-  namespace: trustee-operator-system
-data:
-  default.rego: |
-    package policy
-
-    import rego.v1
-    default executables := 33
-    default hardware := 97
-    default configuration := 36
-
-    ##### Azure vTPM SNP
-    executables := 3 if {
-      input.azsnpvtpm.tpm.pcr03 in data.reference.pcr03
-      input.azsnpvtpm.tpm.pcr08 in data.reference.pcr08
-      input.azsnpvtpm.tpm.pcr09 in data.reference.pcr09
-      input.azsnpvtpm.tpm.pcr11 in data.reference.pcr11
-      input.azsnpvtpm.tpm.pcr12 in data.reference.pcr12
-    }
-
-    hardware := 0 if {
-      input.azsnpvtpm
-    }
-
-    configuration := 0 if {
-      input.azsnpvtpm
-    }
-
-    ##### Azure vTPM TDX
-    executables := 3 if {
-      input.aztdxvtpm.tpm.pcr03 in data.reference.pcr03
-      input.aztdxvtpm.tpm.pcr08 in data.reference.pcr08
-      input.aztdxvtpm.tpm.pcr09 in data.reference.pcr09
-      input.aztdxvtpm.tpm.pcr11 in data.reference.pcr11
-      input.aztdxvtpm.tpm.pcr12 in data.reference.pcr12
-    }
-
-    hardware := 0 if {
-      input.aztdxvtpm
-    }
-
-    configuration := 0 if {
-      input.aztdxvtpm
-    }
-EOF
-
-clear
-cat attestation-policy.yaml
-----
-
-Once you defined your own policy, apply it.
-
-[source,sh,role=execute]
-----
-oc apply -f attestation-policy.yaml
-----
-
-[#trustee-tdx]
-==== **TDX ConfigMap**
-
-**Purpose of this resource**: If your TEE is **Intel Trust Domain Extensions (TDX)**, meaning the instance size you use or plan to use is Standard_DC**e***, you must create the following ConfigMap.
-
-Enabling such configmap does not prevent CoCo to use other TEEs.
-
-[source,sh,role=execute]
-----
-cat > tdx-config.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: tdx-config
-  namespace: trustee-operator-system
-data:
-  sgx_default_qcnl.conf: |
-    {
-      "collateral_service": "https://api.trustedservices.intel.com/sgx/certification/v4/"
-    }
-EOF
-
-clear
-cat tdx-config.yaml
-----
-
-Once `tdx-config.yaml` is ready, apply the ConfigMap.
-
-[source,sh,role=execute]
-----
-oc apply -f tdx-config.yaml
-----
-
-[#trustee-cisvp]
-=== Container image signature verification policy
-
-**Purpose of this resource**: Sets whether to enforce or not the container image signature verification feature. If enabled, all containers images not signed by the trusted certificate provided in the container image verification secret will not be run.
-
-The Trustee Operator returns this secret to the CoCo CVM components (which will run the CoCo pod) after attestation, to make sure they will perform the intended check. The CVM components will then compare the secret with the actual pod signature to determine whether to run it or not, ensuring that only trusted and authenticated container images are deployed in your environment.
-
-You must in any case create the container image signature verification policy because signature verification is always enabled. If this policy is missing, the pods will not start.
-
-. Create a `security-policy-config.json` that enables or disables signature verification.
-+
-In this example, we are going to create a policy that:
-+
-* Ensures that the container `quay.io/confidential-devhub/signed-hello-openshift` (regardless of the tag) is signed, otherwise it will not be run.
-* As a global policy, reject any other registry and non-signed image. This means only the above image is allowed to run, and only if it's signed. Such policy can be also relaxed, for example allowing any container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/*`), or to restrict the image signature to only such org/container pair while allowing all the others to be unsigned (change `reject` to `insecureAcceptAnything`).
-+
-Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
-+
-[source,sh,role=execute]
-----
-# Download the key
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/showroom/helpers/cosign.pub -o cosign.pub
-
-SIGNATURE_SECRET_NAME=cosign-key
-SIGNATURE_SECRET_FILE=hello-pub-key
-
-oc create secret generic $SIGNATURE_SECRET_NAME \
-    --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
-    -n trustee-operator-system
-----
-+
-If you want to sign your own container, refer to the https://developers.redhat.com/products/trusted-artifact-signer/overview[Red Hat Trusted Artifact Signer, window=blank] or other tools to sign container images. A simple guide on how to use upstream `cosign` is xref:04-sign-pod.adoc[here].
-+
-Note that `$SIGNATURE_SECRET_NAME` will be later used in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig]
-+
-Then, create `security-policy-config.json`.
-+
-Specify the image repository for `$SECURITY_POLICY_TRANSPORT`, in this case `docker`:. For more information, see https://github.com/containers/image/blob/main/docs/containers-transports.5.md[containers-transports 5, window=blank].
-+
-Create `security-policy-config.json`. Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`.
-+
-[source,sh,role=execute]
-----
-SECURITY_POLICY_TRANSPORT=docker
-SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
-
-cat > security-policy-config.json <<EOF
-{
-  "default": [
-      {
-      "type": "insecureAcceptAnything"
-      }
-  ],
-  "transports": {}
-}
-EOF
-
-clear
-cat security-policy-config.json
-----
-+
-For more information on security policy, see https://github.com/containers/image/blob/main/docs/containers-policy.json.5.md[containers-policy.json.5, window=blank] and in particular https://github.com/containers/image/blob/main/docs/containers-policy.json.5.md#a-reasonably-locked-down-system[this example,  window=blank].
-
-. After `security-policy-config.json` is created, upload it as a secret with the following command:
-+
-[source,sh,role=execute]
-----
-oc create secret generic security-policy \
-  --from-file=osc=./security-policy-config.json \
-  -n trustee-operator-system
-----
-+
-IMPORTANT: Do not alter the secret type, `security-policy`, or the key, `osc`.
-+
-Note that `security-policy` will be later used in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig]
-
-[#trustee-rap]
-==== **Resource access policy**
-
-**Purpose of this resource**: Resource policies control which secrets are released and are generally scoped to the workload. They allow the user define which attested workload has access to which resource, to avoid that the wrong client accesses data that it is not supposed to.
-
-In this example below we are creating a simple policy that accepts any request that comes from an attester (client) that does use a TEE. For more information about resource access policies, and how to create stronger ones, look https://confidentialcontainers.org/docs/attestation/policies/#resource-policies[here, window=blank]
-
-[source,sh,role=execute]
-----
-cat > resourcepolicy-configmap.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: resource-policy
-  namespace: trustee-operator-system
-data:
-  policy.rego: |
-    package policy
-    import rego.v1
-
-    default allow = false
-    allow if {
-      input["submods"]["cpu"]["ear.status"] == "affirming"
-    }
-EOF
-
-clear
-cat resourcepolicy-configmap.yaml
-----
-
-Once the policy has been implemented, apply the ConfigMap.
-
-[source,sh,role=execute]
-----
-oc apply -f resourcepolicy-configmap.yaml
 ----
 
 [#trustee-key]
@@ -735,7 +575,7 @@ Populate Trustee with secret(s) that are then managed by the above policies and 
 
 **Prerequisites:** You have created one or more custom keys. In this workshop, we will  create 2 keys.
 
-Define secret name and values. In this example, the `kbsres1` secret has two entries (`key1`, `key2`), which the clients retrieve. You can add additional secrets according to your requirements by using the same format.
+Define secret name and values. In this example, the `hellosecret` secret has two entries (`key1`, `key2`), which the clients retrieve. You can add additional secrets according to your requirements by using the same format.
 
 For the purpose of this workshop, we will show how to retrieve the key in two ways:
 
@@ -756,9 +596,9 @@ We will add `key1` as a simple string containing the text `Confidential_Secret!`
 
 [source,sh,role=execute]
 ----
-SECRET_NAME=kbsres1
+HELLO_SECRET_NAME=hellosecret
 
-oc create secret generic $SECRET_NAME \
+oc create secret generic $HELLO_SECRET_NAME \
   --from-literal key1=Confidential_Secret! \
   --from-file key2=key.bin \
   -n trustee-operator-system
@@ -766,13 +606,13 @@ oc create secret generic $SECRET_NAME \
 rm key.bin
 ----
 
-Note that `kbsres1` will be later used in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig]
+Note that `$HELLO_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig]
 
 Now, prepare the `key2` sealed secret. Note that this secret is uploaded in the namespace where the CoCo pod will run (`default`), **not** in the Trustee/OSC namespace, as it will be used directly by the CoCo pod:
 
 [source,sh,role=execute]
 ----
-SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${SECRET_NAME}/key2 --provider kbs | grep -v "Warning")
+SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${HELLO_SECRET_NAME}/key2 --provider kbs | grep -v "Warning")
 
 oc create secret generic sealed-secret --from-literal=key2=$SECRET -n default
 ----
@@ -791,48 +631,56 @@ rm -rf fd.bin
 ----
 
 [#trustee-kbsconfig]
-== Create the KbsConfig custom resource
+== Update the KbsConfig
 
-To complete Trustee setup, you must create a `KbsConfig`.
+The purpose of `KbsConfig` is to tell the operator which secret/configmap is used and for what, so it then attaches them automatically into the Trustee pod.
 
-[source,sh,role=execute]
-----
-cat > kbsconfig-cr.yaml <<EOF
-apiVersion: confidentialcontainers.org/v1alpha1
-kind: KbsConfig
-metadata:
-  labels:
-    app.kubernetes.io/name: kbsconfig
-    app.kubernetes.io/instance: kbsconfig
-    app.kubernetes.io/part-of: trustee-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: trustee-operator
-  name: kbsconfig
-  namespace: trustee-operator-system
-spec:
-  kbsConfigMapName: kbs-config-cm
-  kbsAuthSecretName: kbs-auth-public-key
-  kbsDeploymentType: AllInOneDeployment
-  kbsRvpsRefValuesConfigMapName: rvps-reference-values
-  kbsSecretResources: ["$SECRET_NAME", "$FD_SECRET_NAME", "security-policy", "attestation-token", "$SIGNATURE_SECRET_NAME"]
-  kbsResourcePolicyConfigMapName: resource-policy
-  kbsAttestationPolicyConfigMapName: attestation-policy
-  kbsHttpsKeySecretName: kbs-https-key
-  kbsHttpsCertSecretName: kbs-https-certificate
-  tdxConfigSpec:
-    kbsTdxConfigMapName: tdx-config
-EOF
+The KbsConfig is created by `Trusteeconfig` as `trusteeconfig-kbs-config` CRD, but we need to add the secrets we just created.
 
-clear
-cat kbsconfig-cr.yaml
-----
+The main fields of KbsConfig are:
 
+* xref:02-configure-trustee.adoc#trustee-tdx[tdxConfigSpec:kbsTdxConfigMapName]
+* xref:02-configure-trustee.adoc#trustee-#trustee-jwk[kbsAttestationKeySecretName and kbsAttestationCertSecretName]
+* xref:02-configure-trustee.adoc#trustee-rap[kbsResourcePolicyConfigMapName]
+* xref:02-configure-trustee.adoc#trustee-cm[kbsConfigMapName]
+* xref:02-configure-trustee.adoc#trustee-trusteeconfig[kbsHttpsKeySecretName, kbsHttpsCertSecretName and kbsAuthSecretName]
+* xref:02-configure-trustee.adoc#trustee-refval[kbsRvpsRefValuesConfigMapName]
+* `kbsSecretResources`: secrets added by the user
+* xref:02-configure-trustee.adoc#trustee-ap[kbsAttestationPolicyConfigMapName]
 
-Once the KbsConfig has been configured, apply it.
+Let's update `kbsSecretResources` with our secrets:
 
 [source,sh,role=execute]
 ----
-oc apply -f kbsconfig-cr.yaml
+echo "Default Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+
+echo ""
+
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$HELLO_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$FD_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
+  ]"
+
+echo ""
+
+echo "Updated Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+----
+
+
+Once the KbsConfig has been configured, restart the deployment to apply the changes.
+
+[source,sh,role=execute]
+----
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 ----
 
 === Verification
@@ -878,3 +726,61 @@ Expected output:
 [2025-08-25T12:56:21Z INFO actix_server::server] Actix runtime found; starting in Actix runtime
 [2025-08-25T12:56:21Z INFO actix_server::server] starting service: "actix-web-service-0.0.0.0:8080", workers: 64, listening on: 0.0.0.0:8080
 ----
+
+[#trustee-optionals]
+== Optional: Customize and Understand Trustee
+
+You can overwrite all the artifacts created by `Trusteeconfig` with custom settings. Below is an explanation of each of them.
+
+[#trustee-jwk]
+=== The attestation token key
+
+Secret retrieval works in a two-step authentication:
+
+* First, a confidential container sends the reference values to the Trustee
+* The Trustee checks the reference values and if they match, generates and signs an attestation token
+* The attestation token is then sent to the CoCo pod
+* The CoCo pod can now use this token without doing the attestation again to request a secret, and the same token can be reused multiple times until it expires.
+
+The attestation token has to therefore be signed by the Trustee, otherwise a malicious CoCo pod can sign its own fake attestation token and request secrets from the Trustee bypassing the whole reference values check.
+
+The attestation token key and certificate are loaded as secret, respectively `trusteeconfig-attestation-key-secret` and `trusteeconfig-attestation-cert-secret`, and are given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respectively in the `kbsAttestationKeySecretName` and `kbsAttestationCertSecretName` field.
+
+[#trustee-cm]
+=== The Trustee ConfigMap
+
+This config is to set the Trustee internal server: it basically configures which security settings are on/off (https, admin keys, auth token), and where to find the required keys and certificates **within the pod**.
+
+In this ConfigMap we will enable HTTPS, authenticated admin API and signed attestation token verification.
+
+We will then instruct the Trustee operator where to find these keys and certs (they are secrets in OCP) via the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+
+This configmap is loaded in Trustee namespace as `trusteeconfig-kbs-config`, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsConfigMapName` field.
+
+[#trustee-ap]
+=== Attestation policy
+
+An attestation policy defines which part of the attestation report sent by the client (CoCo) is important for the Attester (Trustee), and how to compare the report with the reference values.
+
+The policy checks the Platform Configuration Register (PCR) values `03`, `08`, `09`, `11`, and `12` against the reference values to ensure that the Confidential Containers pod uses the specified restrictive Kata agent policy and that the Red Hat pod VM image has not been altered. The attestation process is successful only if all the values match. For details, see https://uapi-group.org/specifications/specs/linux_tpm_pcr_registry/[Linux TPM PCR Registry, window=blank] in the UAPI Group Specifications documentation.
+
+The attestation policy follows the https://www.openpolicyagent.org/docs/policy-language[Open Policy Agent, window=blank] specification.
+
+The attestation policy is created by `Trusteeconfig` as `trusteeconfig-attestation-policy` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsAttestationPolicyConfigMapName` field.
+
+[#trustee-tdx]
+=== TDX ConfigMap
+
+If your TEE is **Intel Trust Domain Extensions (TDX)**, meaning the instance size you use or plan to use is Standard_DC**e***, you must create the following ConfigMap. Enabling such configmap does not prevent CoCo to use other TEEs.
+
+The TDX config is created by `Trusteeconfig` as `trusteeconfig-tdx-config` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `tdxConfigSpec:kbsTdxConfigMapName` field.
+
+[#trustee-rap]
+=== Resource access policy
+
+Resource policies control which secrets are released and are generally scoped to the workload. They allow the user define which attested workload has access to which resource, to avoid that the wrong client accesses data that it is not supposed to.
+
+The default policy accepts any request that comes from an attester (client) that does use a TEE. For more information about resource access policies, and how to create stronger ones, look https://confidentialcontainers.org/docs/attestation/policies/#resource-policies[here, window=blank]
+
+The resource access policy is created by `Trusteeconfig` as `trusteeconfig-resource-policy` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsResourcePolicyConfigMapName` field.
+

@@ -1,6 +1,6 @@
 = Install the Trustee operator
 
-Let's start with installing Trustee.
+Let's start with installing Trustee. In addition to the Trustee operator, we also need the cert-manager operator to automatically create keys needed by Trustee.
 
 [#tcmdline]
 == Install via command line
@@ -35,6 +35,32 @@ spec:
   source: redhat-operators
   sourceNamespace: openshift-marketplace
 EOF
+
+oc new-project cert-manager-operator
+
+oc apply -f-<<EOF
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+    name: openshift-cert-manager-operator
+    namespace: cert-manager-operator
+spec:
+    targetNamespaces:
+    - "cert-manager-operator"
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+    name: openshift-cert-manager-operator
+    namespace: cert-manager-operator
+spec:
+    channel: stable-v1
+    name: openshift-cert-manager-operator
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+EOF
 ----
 
 === Verification
@@ -48,6 +74,18 @@ watch oc get csv -n trustee-operator-system
 [source,texinfo,subs="attributes"]
 ----
 NAME                      DISPLAY                            VERSION   REPLACES   PHASE
-trustee-operator.v0.4.1   confidential compute attestation   0.4.1                Succeeded
+trustee-operator.v1.0.0   confidential compute attestation   1.0.0                Succeeded
 ----
 
+Same applies to the cert-manager operator:
+[source,sh,role=execute]
+----
+watch oc get csv -n oc get csv -n cert-manager-operator
+----
+
+**Example output**
+[source,texinfo,subs="attributes"]
+----
+NAME                            DISPLAY                                       VERSION   REPLACES   PHASE
+cert-manager-operator.v1.18.0   cert-manager Operator for Red Hat OpenShift   1.18.0               Succeeded
+----

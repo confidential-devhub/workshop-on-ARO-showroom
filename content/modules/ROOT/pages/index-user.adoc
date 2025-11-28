@@ -28,7 +28,7 @@ The following scripts sets everything just as in the xref:index-admin.adoc[admin
 * Container signature policy accepts any signed/unsigned image.
 ** Refer xref:02-configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
 
-* `INITDATA` allows logs, but disallows generic exec. The only command available in exec are `curl` for `kbsres1` keys, to run the `hello-openshift` example.
+* `INITDATA` allows logs, but disallows generic exec. The only command available in exec are `curl` for `hellosecret` keys, to run the `hello-openshift` example.
 ** Refer xref:02-configure-trustee.adoc#trustee-ip[here] if you want to change OSC `INITDATA`.
 ** Updating `INITDATA` in OSC means that we also need to update Trustee `PCR8` in the xref:02-configure-trustee.adoc#trustee-refval[reference values], otherwise attestation will fail, and then restart the Trustee deployment with `oc rollout restart deployment/trustee-deployment -n trustee-operator-system`
 

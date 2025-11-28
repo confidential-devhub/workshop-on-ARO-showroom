@@ -136,6 +136,33 @@ spec:
   sourceNamespace: openshift-marketplace
 EOF
 
+echo "############################ Install cert-manager ########################"
+oc new-project cert-manager-operator
+
+oc apply -f-<<EOF
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+    name: openshift-cert-manager-operator
+    namespace: cert-manager-operator
+spec:
+    targetNamespaces:
+    - "cert-manager-operator"
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+    name: openshift-cert-manager-operator
+    namespace: cert-manager-operator
+spec:
+    channel: stable-v1
+    name: openshift-cert-manager-operator
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+    installPlanApproval: Automatic
+EOF
+
 echo "############################ Install OSC ########################"
 oc apply -f-<<EOF
 ---
@@ -168,6 +195,7 @@ EOF
 
 echo "############################ Wait for Trustee ########################"
 wait_for_deployment trustee-operator-controller-manager trustee-operator-system || exit 1
+wait_for_deployment cert-manager-operator-controller-manager cert-manager-operator || exit 1
 
 echo "############################ Wait for OSC ########################"
 wait_for_deployment controller-manager openshift-sandboxed-containers-operator || exit 1
