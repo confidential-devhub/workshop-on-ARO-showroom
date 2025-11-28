@@ -214,8 +214,8 @@ This container signature check is optional. However, in this workshop we will en
 
 In this example, we are going to create a policy that:
 
-* Ensures that the container `quay.io/confidential-devhub/*` (regardless of the image or tag) is signed, otherwise it will not be run.
-* As a global policy, accept non-signed images from any other registry. This means only the `quay.io/confidential-devhub/*` need to be signed, the rest can also be unsigned. Such policy can be also restricted, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
+* Ensures that the container `quay.io/confidential-devhub` (regardless of the image or tag) is signed, otherwise it will not be run.
+* As a global policy, accept non-signed images from any other registry. This means only the images under `quay.io/confidential-devhub` need to be signed, the rest can also be unsigned. Such policy can be also restricted, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
 
 Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
 
@@ -244,7 +244,7 @@ Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`.
 
 [source,sh,role=execute]
 ----
-SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
+SECURITY_POLICY_IMAGE=quay.io/confidential-devhub
 
 cat > verification-policy.json <<EOF
 {
@@ -516,9 +516,20 @@ curl -L https://security.access.redhat.com/data/63405576.txt -o cosign-pub-key.p
 export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
 export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
 ./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
-
-# Feel free to inspect the cosign_verify.log log
 ----
+
+The expected output is:
+
+[source,texinfo,subs="attributes"]
+----
+Verification for registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image@sha256:e633bc27853f811d919e64461d0c917e659f5430458abe2304a4c85b0d871c80 --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The signatures were verified against the specified public key
+----
+
+Feel free to inspect the `cosign_verify.log` log
 
 Now that we are sure the image is the right one, let's download the measurements from Redhat to then convert them into a reference value configmap.
 
