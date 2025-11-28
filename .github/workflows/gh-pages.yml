@@ -3,7 +3,7 @@ name: github pages
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, showroom]
     paths-ignore:
       - "README.adoc"
       - ".gitignore"
@@ -20,8 +20,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: checkout main
         uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-branch
+      - name: checkout showroom
+        uses: actions/checkout@v4
+        with:
+          ref: showroom
+          path: showroom-branch
       - name: configure pages
         uses: actions/configure-pages@v5
       - name: setup node
@@ -30,8 +38,18 @@ jobs:
           node-version: 20.13.1
       - name: install antora
         run: npm install --global @antora/cli@3.1 @antora/site-generator@3.1
-      - name: antora generate
+      - name: build main branch
+        working-directory: main-branch
         run: antora generate default-site.yml --stacktrace
+      - name: build showroom branch
+        working-directory: showroom-branch
+        run: antora generate default-site.yml --stacktrace
+      - name: combine sites
+        run: |
+          mkdir -p www
+          cp -r main-branch/www/* www/
+          mkdir -p www/showroom
+          cp -r showroom-branch/www/* www/showroom/
       - name: upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
