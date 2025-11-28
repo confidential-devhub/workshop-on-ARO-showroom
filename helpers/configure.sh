@@ -206,53 +206,101 @@ echo "################################################"
 mkdir -p trustee
 cd trustee
 
-# Admin authentication keys
-openssl genpkey -algorithm ed25519 > privateKey
-openssl pkey -in privateKey -pubout -out publicKey
+oc completion bash > oc_bash_completion
+sudo cp oc_bash_completion /etc/bash_completion.d/
+source /etc/bash_completion
 
-# HTTPS keys
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
 ROUTE_NAME=kbs-service
+ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
 
 CN_NAME=kbs-trustee-operator-system
 ORG_NAME=my_org
 
-ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
-echo "ROUTE: $ROUTE"
-echo ""
+oc apply -f-<<EOF
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: kbs-issuer
+  namespace: trustee-operator-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kbs-https
+  namespace: trustee-operator-system
+spec:
+  commonName: ${CN_NAME}
+  subject:
+    organizations:
+      - ${ORG_NAME}
+  dnsNames:
+    - ${ROUTE}
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  duration: 8760h
+  renewBefore: 360h # Standard practice: renew 15 days before expiry
+  secretName: trustee-tls-cert
+  issuerRef:
+    name: kbs-issuer
+    kind: Issuer # or ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kbs-token
+  namespace: trustee-operator-system
+spec:
+  dnsNames:
+    - kbs-service
+  secretName: trustee-token-cert
+  issuerRef:
+    name: kbs-issuer
+  privateKey:
+    algorithm: ECDSA
+    encoding: PKCS8
+    size: 256
+EOF
 
-openssl req -x509 -nodes -days 365 \
-  -newkey rsa:2048 \
-  -keyout tls.key \
-  -out tls.crt \
-  -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
-  -addext "subjectAltName=DNS:${ROUTE}"
-
-# Attestation token
-openssl ecparam -name prime256v1 -genkey -noout -out token.key
-openssl req -new -x509 -key token.key -out token.crt -days 365 \
-	-subj "/CN=${CN_NAME}/O=${ORG_NAME}"
-
+oc get secrets -n trustee-operator-system | grep /tls
 ####################################################################
 echo "################################################"
 
-oc create secret generic kbs-https-certificate --from-file=tls.crt -n trustee-operator-system
+oc apply -f-<<EOF
+apiVersion: confidentialcontainers.org/v1alpha1
+kind: TrusteeConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: trusteeconfig
+    app.kubernetes.io/instance: trusteeconfig
+    app.kubernetes.io/part-of: trustee-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: trustee-operator
+  name: trusteeconfig
+  namespace: trustee-operator-system
+spec:
+  profileType: Restricted
+  kbsServiceType: ClusterIP
+  httpsSpec:
+    tlsSecretName: trustee-tls-cert
+  attestationTokenVerificationSpec:
+    tlsSecretName: trustee-token-cert
+EOF
 
-oc create secret generic kbs-https-key --from-file=tls.key -n trustee-operator-system
+oc get secrets -n trustee-operator-system | grep trusteeconfig
+oc get configmaps -n trustee-operator-system | grep trusteeconfig
 
-TRUSTEE_CERT=$(cat tls.crt)
-
-echo "$TRUSTEE_CERT"
-echo ""
-echo "ROUTE: $ROUTE"
-echo ""
-oc get secrets -n trustee-operator-system | grep kbs-https
-
-####################################################################
 echo "################################################"
 
-HTTP="https://"
+oc get secret trustee-tls-cert -n trustee-operator-system -o json | jq -r '.data."tls.crt"' | base64 --decode > https.crt
+
+TRUSTEE_CERT=$(cat https.crt)
+
 oc create route passthrough kbs-service \
   --service=kbs-service \
   --port=kbs-port \
@@ -261,80 +309,50 @@ oc create route passthrough kbs-service \
 TRUSTEE_ROUTE="$(oc get route -n trustee-operator-system kbs-service \
   -o jsonpath={.spec.host})"
 
-TRUSTEE_HOST=${HTTP}${TRUSTEE_ROUTE}
+TRUSTEE_HOST=https://${TRUSTEE_ROUTE}
 
 echo $TRUSTEE_HOST
 
 ####################################################################
 echo "################################################"
 
-oc create secret generic kbs-auth-public-key --from-file=./publicKey -n trustee-operator-system
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/showroom/helpers/cosign.pub -o cosign.pub
 
-####################################################################
-echo "################################################"
+SIGNATURE_SECRET_NAME=cosign-key
+SIGNATURE_SECRET_FILE=hello-pub-key
 
-oc create secret generic attestation-token --from-file=token.crt --from-file=token.key -n trustee-operator-system
+oc create secret generic $SIGNATURE_SECRET_NAME \
+    --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
+    -n trustee-operator-system
 
-####################################################################
-echo "################################################"
+SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
 
-cat > kbs-configmap.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kbs-config-cm
-  namespace: trustee-operator-system
-data:
-  kbs-config.toml: |
-    [http_server]
-    sockets = ["0.0.0.0:8080"]
-    insecure_http = false
-    private_key = "/etc/https-key/tls.key"
-    certificate = "/etc/https-cert/tls.crt"
-
-    [admin]
-    insecure_api = false
-    auth_public_key = "/etc/auth-secret/publicKey"
-
-    [attestation_token]
-    insecure_key = false
-    trusted_certs_paths = ["/opt/confidential-containers/kbs/repository/default/attestation-token/token.crt"]
-    attestation_token_type = "CoCo"
-
-    [attestation_service.attestation_token_broker.signer]
-    key_path = "/opt/confidential-containers/kbs/repository/default/attestation-token/token.key"
-    cert_path = "/opt/confidential-containers/kbs/repository/default/attestation-token/token.crt"
-
-    [attestation_service]
-    type = "coco_as_builtin"
-    work_dir = "/opt/confidential-containers/attestation-service"
-    policy_engine = "opa"
-
-    [attestation_service.attestation_token_broker]
-    type = "Ear"
-    policy_dir = "/opt/confidential-containers/attestation-service/policies"
-
-    [attestation_service.attestation_token_config]
-    duration_min = 5
-
-    [attestation_service.rvps_config]
-    type = "BuiltIn"
-
-    [attestation_service.rvps_config.storage]
-    type = "LocalJson"
-    file_path = "/opt/confidential-containers/rvps/reference-values/reference-values.json"
-
-    [[plugins]]
-    name = "resource"
-    type = "LocalFs"
-    dir_path = "/opt/confidential-containers/kbs/repository"
-
-    [policy_engine]
-    policy_path = "/opt/confidential-containers/opa/policy.rego"
+cat > verification-policy.json <<EOF
+{
+  "default": [
+      {
+      "type": "insecureAcceptAnything"
+      }
+  ],
+  "transports": {
+      "docker": {
+          "$SECURITY_POLICY_IMAGE":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE"
+              }
+          ]
+      }
+  }
+}
 EOF
 
-cat kbs-configmap.yaml
-oc apply -f kbs-configmap.yaml
+POLICY_SECRET_NAME=hello-image-policy
+
+oc create secret generic $POLICY_SECRET_NAME \
+  --from-file=osc=./verification-policy.json \
+  -n trustee-operator-system
 
 ####################################################################
 echo "################################################"
@@ -366,6 +384,9 @@ url = "${TRUSTEE_HOST}"
 kbs_cert = """
 ${TRUSTEE_CERT}
 """
+
+[image]
+image_security_policy_uri = 'kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE'
 '''
 
 "policy.rego" = '''
@@ -424,7 +445,7 @@ ExecProcessRequest if {
 # Add allowed commands for exec
 policy_data := {
   "allowed_commands": [
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/hellosecret/key1",
         "cat /sealed/secret-value/key2"
   ]
 }
@@ -432,11 +453,8 @@ policy_data := {
 '''
 EOF
 
-cat initdata.toml
-
 ####################################################################
 echo "################################################"
-
 
 INITDATA=$(cat initdata.toml | gzip | base64 -w0)
 echo ""
@@ -454,30 +472,42 @@ echo "PCR 8:" $PCR8_HASH
 ####################################################################
 echo "################################################"
 
-# 1. Prepare required files
+# Prepare required files
+sudo dnf install -y skopeo
+curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+mv cosign-linux-amd64 cosign
+chmod +x cosign
 
-# Pick the latest podvm image, as we freshly installed the cluster
-IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:latest"
-# alternatively, use the operator-version tag:
-# OSC_VERSION=1.10.3
-# IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:${OSC_VERSION}"
-
-# Download the pull secret from openshig
+# Download the pull secret from openshift
 oc get -n openshift-config secret/pull-secret -o json \
 | jq -r '.data.".dockerconfigjson"' \
 | base64 -d \
 | jq '.' > cluster-pull-secret.json
-# alternatively if you don't have access to the pull-secret:
-# podman login registry.redhat.io
-# Username: {REGISTRY-SERVICE-ACCOUNT-USERNAME}
-# Password: {REGISTRY-SERVICE-ACCOUNT-PASSWORD}
 
-# On the ARO workshop, we don't have enough space for podman.
-# Use a different folder.
+# Pick the latest podvm image, as we freshly installed the cluster
+OSC_VERSION=latest
+# alternatively, use the operator-version tag:
+# OSC_VERSION=1.11
+VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
+
+TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)
+
+IMAGE=${VERITY_IMAGE}@${TAG}
+
+# Fetch the rekor public key
+curl -L https://tuf-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com/targets/rekor.pub -o rekor.pub
+
+# Fetch RH cosign public key
+curl -L https://security.access.redhat.com/data/63405576.txt -o cosign-pub-key.pem
+
+# Verify the image
+export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
+./cosign verify --key cosign-pub-key --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
+
 sudo mkdir -p /podvm
 sudo chown azure:azure /podvm
 
-# 2. Download the measurements
+# Download the measurements
 podman pull --root /podvm --authfile cluster-pull-secret.json $IMAGE
 
 cid=$(podman create --root /podvm --entrypoint /bin/true $IMAGE)
@@ -491,41 +521,31 @@ podman unshare --root /podvm sh -c '
 podman rm --root /podvm $cid
 JSON_DATA=$(cat /podvm/measurements.json)
 
-# 3. Prepare reference-values.json
+# Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   --arg pcr8_val "$PCR8_HASH" '
-  .measurements.sha256 | to_entries | map({
+  (.measurements.sha256 | to_entries | map({
     "name": .key,
-    "expiration": "2026-12-12T00:00:00Z",
-    "hash-value": [
-      {
-        "alg": "sha256",
-        "value": (.value | ltrimstr("0x"))
-      }
-    ]
-  })
+    "expiration": "2027-12-12T00:00:00Z",
+    "value": (.value | ltrimstr("0x"))
+  }))
   +
   [
     {
       "name": "pcr08",
-      "expiration": "2026-12-12T00:00:00Z",
-      "hash-value": [
-        {
-          "alg": "sha256",
-          "value": $pcr8_val
-        }
-      ]
+      "expiration": "2028-12-12T00:00:00Z",
+      "value": $pcr8_val
     }
   ]
   | sort_by(.name | ltrimstr("pcr") | tonumber)
 ' | sed 's/^/    /')
 
-# 4. Build the final ConfigMap
+# Build the final ConfigMap
 cat > rvps-configmap.yaml <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: rvps-reference-values
+  name: trusteeconfig-rvps-reference-values
   namespace: trustee-operator-system
 data:
   reference-values.json: |
@@ -538,140 +558,13 @@ oc apply -f rvps-configmap.yaml
 ####################################################################
 echo "################################################"
 
-cat > attestation-policy.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: attestation-policy
-  namespace: trustee-operator-system
-data:
-  default.rego: |
-    package policy
-
-    import rego.v1
-    default executables := 33
-    default hardware := 97
-    default configuration := 36
-
-    ##### Azure vTPM SNP
-    executables := 3 if {
-      input.azsnpvtpm.tpm.pcr03 in data.reference.pcr03
-      input.azsnpvtpm.tpm.pcr08 in data.reference.pcr08
-      input.azsnpvtpm.tpm.pcr09 in data.reference.pcr09
-      input.azsnpvtpm.tpm.pcr11 in data.reference.pcr11
-      input.azsnpvtpm.tpm.pcr12 in data.reference.pcr12
-    }
-
-    hardware := 0 if {
-      input.azsnpvtpm
-    }
-
-    configuration := 0 if {
-      input.azsnpvtpm
-    }
-
-    ##### Azure vTPM TDX
-    executables := 3 if {
-      input.aztdxvtpm.tpm.pcr03 in data.reference.pcr03
-      input.aztdxvtpm.tpm.pcr08 in data.reference.pcr08
-      input.aztdxvtpm.tpm.pcr09 in data.reference.pcr09
-      input.aztdxvtpm.tpm.pcr11 in data.reference.pcr11
-      input.aztdxvtpm.tpm.pcr12 in data.reference.pcr12
-    }
-
-    hardware := 0 if {
-      input.aztdxvtpm
-    }
-
-    configuration := 0 if {
-      input.aztdxvtpm
-    }
-EOF
-
-cat attestation-policy.yaml
-oc apply -f attestation-policy.yaml
-
-####################################################################
-echo "################################################"
-
-cat > tdx-config.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: tdx-config
-  namespace: trustee-operator-system
-data:
-  sgx_default_qcnl.conf: |
-    {
-      "collateral_service": "https://api.trustedservices.intel.com/sgx/certification/v4/"
-    }
-EOF
-
-cat tdx-config.yaml
-oc apply -f tdx-config.yaml
-
-####################################################################
-echo "################################################"
-
-# Download the key
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/showroom/helpers/cosign.pub -o cosign.pub
-
-SIGNATURE_SECRET_NAME=cosign-key
-SIGNATURE_SECRET_FILE=hello-pub-key
-
-oc create secret generic $SIGNATURE_SECRET_NAME \
-    --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
-    -n trustee-operator-system
-
-SECURITY_POLICY_TRANSPORT=docker
-SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
-
-cat > security-policy-config.json <<EOF
-{
-  "default": [
-      {
-      "type": "insecureAcceptAnything"
-      }
-  ],
-  "transports": {}
-}
-EOF
-
-cat security-policy-config.json
-oc create secret generic security-policy \
-  --from-file=osc=./security-policy-config.json \
-  -n trustee-operator-system
-
-####################################################################
-echo "################################################"
-
-cat > resourcepolicy-configmap.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: resource-policy
-  namespace: trustee-operator-system
-data:
-  policy.rego: |
-    package policy
-    import rego.v1
-
-    default allow = false
-    allow if {
-      input["submods"]["cpu"]["ear.status"] == "affirming"
-    }
-EOF
-
-cat resourcepolicy-configmap.yaml
-oc apply -f resourcepolicy-configmap.yaml
-
 ####################################################################
 echo "################################################"
 
 echo "This is my super secret key!" > key.bin
 # Alternatively:
 # openssl rand 128 > key.bin
-SECRET_NAME=kbsres1
+SECRET_NAME=hellosecret
 
 oc create secret generic $SECRET_NAME \
   --from-literal key1=Confidential_Secret! \
@@ -694,34 +587,17 @@ oc create secret generic sealed-secret --from-literal=key2=$SECRET -n default
 ####################################################################
 echo "################################################"
 
-cat > kbsconfig-cr.yaml <<EOF
-apiVersion: confidentialcontainers.org/v1alpha1
-kind: KbsConfig
-metadata:
-  labels:
-    app.kubernetes.io/name: kbsconfig
-    app.kubernetes.io/instance: kbsconfig
-    app.kubernetes.io/part-of: trustee-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: trustee-operator
-  name: kbsconfig
-  namespace: trustee-operator-system
-spec:
-  kbsConfigMapName: kbs-config-cm
-  kbsAuthSecretName: kbs-auth-public-key
-  kbsDeploymentType: AllInOneDeployment
-  kbsRvpsRefValuesConfigMapName: rvps-reference-values
-  kbsSecretResources: ["$SECRET_NAME", "$FD_SECRET_NAME", "security-policy", "attestation-token", "$SIGNATURE_SECRET_NAME"]
-  kbsResourcePolicyConfigMapName: resource-policy
-  kbsAttestationPolicyConfigMapName: attestation-policy
-  kbsHttpsKeySecretName: kbs-https-key
-  kbsHttpsCertSecretName: kbs-https-certificate
-  tdxConfigSpec:
-    kbsTdxConfigMapName: tdx-config
-EOF
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$HELLO_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$FD_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
+  ]"
 
 cat kbsconfig-cr.yaml
-oc apply -f kbsconfig-cr.yaml
 
 oc get pods -n trustee-operator-system
 

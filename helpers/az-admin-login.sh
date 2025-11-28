@@ -15,10 +15,15 @@ az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
 
 echo "Login succeeded!"
 
-PODVM=$(az vm list -d --query "[].{Name:name}" -o table | grep podvm)
+set +e
+PODVMS=$(az vm list -d --query "[].name" -o tsv | grep podvm)
+set -e
 
-echo "podvm $PODVM"
+echo "VM LIST"
+echo $PODVMS
+echo "----"
 
-ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
-
-az vm delete --resource-group $ARO_RESOURCE_GROUP --name $PODVM --yes
+for VM in $PODVMS; do
+    echo "Deleting $VM ..."
+    az vm delete --resource-group "$ARO_RESOURCE_GROUP" --name "$VM" --yes
+done

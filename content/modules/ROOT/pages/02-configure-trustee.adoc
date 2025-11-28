@@ -60,6 +60,7 @@ metadata:
 spec:
   selfSigned: {}
 ---
+# https keys
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -68,22 +69,18 @@ metadata:
 spec:
   # 1. Matches /CN=${CN_NAME}
   commonName: ${CN_NAME}
-
   # 2. Matches /O=${ORG_NAME}
   subject:
     organizations:
       - ${ORG_NAME}
-
   # 3. Matches -addext "subjectAltName=DNS:${ROUTE}"
   dnsNames:
     - ${ROUTE}
-
   # 4. Matches -newkey rsa:2048
   privateKey:
     algorithm: RSA
     encoding: PKCS1
     size: 2048
-
   # 5. Matches -days 365 (8760 hours)
   duration: 8760h
   renewBefore: 360h # Standard practice: renew 15 days before expiry
@@ -218,7 +215,7 @@ This container signature check is optional. However, in this workshop we will en
 In this example, we are going to create a policy that:
 
 * Ensures that the container `quay.io/confidential-devhub/*` (regardless of the image or tag) is signed, otherwise it will not be run.
-* As a global policy, reject any other registry and non-signed image. This means only the above image is allowed to run, and only if it's signed. Such policy can be also relaxed, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to restrict the image signature to only such org/container pair while allowing all the others to be unsigned (change `reject` to `insecureAcceptAnything`).
+* As a global policy, accept non-signed images from any other registry. This means only the `quay.io/confidential-devhub/*` need to be signed, the rest can also be unsigned. Such policy can be also restricted, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
 
 Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
 
@@ -253,7 +250,7 @@ cat > verification-policy.json <<EOF
 {
   "default": [
       {
-      "type": "reject"
+      "type": "insecureAcceptAnything"
       }
   ],
   "transports": {
@@ -472,20 +469,17 @@ Red Hat currently ships an official CoCo podVM image (Confidential VM disk pre-i
 
 A dummy reference value config is created by `Trusteeconfig` as `trusteeconfig-rvps-reference-values` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsRvpsRefValuesConfigMapName` field.
 
-Let's download the measurements from Redhat and then convert them into a reference value configmap.
+Before downloading any reference value from Red Hat, we need to be sure that they are actually coming from there, and the artifacts are signed by RH.
 
-In order to download the right image, you will need to know:
-
-* The manifest list digest referencing to the podVM used in the installed OSC operator release. This has the format `registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:${OSC-VERSION}`.
-
-** The digest can also be found in the https://catalog.redhat.com/en/software/containers/openshift-sandboxed-containers/osc-dm-verity-image/68765ccc0e3026f2d73b2cfd#get-this-image[Red Hat Ecosystem Catalog, window=blank]
-
-* Authenticated access to `registry.redhat.io`. In this workshop we have access to the cluster therefore we can also use the `pull-secret` stored into `openshift-config` namespace instead of the traditional credentials.
+Let's first get the image we are going to download:
 
 [source,sh,role=execute]
 ----
-# 1. Prepare required files
+# Prepare required binaries
 sudo dnf install -y skopeo
+curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+mv cosign-linux-amd64 cosign
+chmod +x cosign
 
 # Download the pull secret from openshift
 oc get -n openshift-config secret/pull-secret -o json \
@@ -500,19 +494,41 @@ oc get -n openshift-config secret/pull-secret -o json \
 # Pick the latest podvm image, as we freshly installed the cluster
 OSC_VERSION=latest
 # alternatively, use the operator-version tag:
-# OSC_VERSION=1.10.3
+# OSC_VERSION=1.11
 VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
 
 TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)
 
 IMAGE=${VERITY_IMAGE}@${TAG}
+----
 
+Then, let's check if the image is signed by RH, by firstly getting the official keys, and then using `cosign` to verify:
+
+[source,sh,role=execute]
+----
+# Fetch the rekor public key
+curl -L https://tuf-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com/targets/rekor.pub -o rekor.pub
+
+# Fetch RH cosign public key
+curl -L https://security.access.redhat.com/data/63405576.txt -o cosign-pub-key.pem
+
+# Verify the image
+export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
+./cosign verify --key cosign-pub-key --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
+
+# Feel free to inspect the cosign_verify.log log
+----
+
+Now that we are sure the image is the right one, let's download the measurements from Redhat to then convert them into a reference value configmap.
+
+[source,sh,role=execute]
+----
 # On the ARO workshop, we don't have enough space for podman.
 # Use a different folder.
 sudo mkdir -p /podvm
 sudo chown azure:azure /podvm
 
-# 2. Download the measurements
+# Download the measurements
 podman pull --root /podvm --authfile cluster-pull-secret.json $IMAGE
 
 cid=$(podman create --root /podvm --entrypoint /bin/true $IMAGE)
@@ -526,17 +542,15 @@ podman unshare --root /podvm sh -c '
 podman rm --root /podvm $cid
 JSON_DATA=$(cat /podvm/measurements.json)
 
-# 3. Prepare reference-values.json
+# Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   --arg pcr8_val "$PCR8_HASH" '
-  # 1. Process the existing measurements from JSON_DATA
   (.measurements.sha256 | to_entries | map({
     "name": .key,
     "expiration": "2027-12-12T00:00:00Z",
     "value": (.value | ltrimstr("0x"))
   }))
   +
-  # 2. Add the manual PCR08 entry
   [
     {
       "name": "pcr08",
@@ -544,12 +558,11 @@ REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
       "value": $pcr8_val
     }
   ]
-  # 3. Sort everything numerically by the pcr number
   | sort_by(.name | ltrimstr("pcr") | tonumber)
 ' | sed 's/^/    /')
 
 
-# 4. Build the final ConfigMap
+# Build the final ConfigMap
 cat > rvps-configmap.yaml <<EOF
 apiVersion: v1
 kind: ConfigMap
