@@ -47,9 +47,9 @@ jobs:
       - name: combine sites
         run: |
           mkdir -p www
-          cp -r main-branch/www/* www/
-          mkdir -p www/showroom
-          cp -r showroom-branch/www/* www/showroom/
+          cp -r showroom-branch/www/* www/
+          mkdir -p www/next
+          cp -r main-branch/www/* www/next/
       - name: upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
