@@ -247,7 +247,7 @@ The output will be the actual content of the `key2`.
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/hello-openshift -- /sealed/secret-value/key2 && echo ""
+[azure@bastion ~]# oc exec -it pods/hello-openshift -- cat /sealed/secret-value/key2 && echo ""
 This is my super secret key!
 ----
 

@@ -2,7 +2,7 @@
 
 Now that the Trustee operator is installed, we need to set it up.
 
-Reminder: You can assume that **everything running in the trustee-operator-sysem namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+Reminder: You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
 
 [NOTE]
 ====
@@ -391,7 +391,7 @@ You can configure the following values, policies, and secrets for Trustee:
 * xref:02-configure-trustee.adoc#trustee-cisvp[Container image signature verification policy]
 * xref:02-configure-trustee.adoc#trustee-rap[Resource access policy]
 
-In the sections below, we will elencate how to set up all these options, but for the purpose of the workshop, we will not enforce the image signature verification.
+In the sections below, we will enumerate how to set up all these options, but for the purpose of the workshop, we will not enforce the image signature verification.
 
 [#trustee-refval]
 === Reference values for the Reference Value Provider Service
@@ -422,7 +422,7 @@ IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:lat
 # OSC_VERSION=1.10.3
 # IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:${OSC_VERSION}"
 
-# Download the pull secret from openshig
+# Download the pull secret from openshift
 oc get -n openshift-config secret/pull-secret -o json \
 | jq -r '.data.".dockerconfigjson"' \
 | base64 -d \

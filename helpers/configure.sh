@@ -434,7 +434,7 @@ IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:lat
 # OSC_VERSION=1.10.3
 # IMAGE="registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image:${OSC_VERSION}"
 
-# Download the pull secret from openshig
+# Download the pull secret from openshift
 oc get -n openshift-config secret/pull-secret -o json \
 | jq -r '.data.".dockerconfigjson"' \
 | base64 -d \
