@@ -212,16 +212,19 @@ Expected output (filtering the important logs only):
 [source,texinfo,subs="attributes"]
 ----
 ...
-[INFO  api_server::http::attest] Attest API called.
-[INFO  attestation_service] AzSnpVtpm Verifier/endorsement check passed.
-[INFO  attestation_service] Policy check passed.
+[2025-11-28T18:52:33Z INFO attestation_service] AzTdxVtpm Verifier/endorsement check passed.
 ...
-[INFO  api_server::http::resource] Get resource from kbs:///default/hellosecret/key1
-[INFO  api_server::http::resource] Resource access request passes policy check.
-[INFO  actix_web::middleware::logger] 10.131.0.9 "GET /kbs/v0/resource/default/hellosecret/key1 HTTP/1.1" 200 514 "-" "attestation-agent-kbs-client/0.1.0" 0.001004
+[2025-11-28T18:52:33Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-image-policy/policy HTTP/1.1" 200 850 "-" "attestation-agent-kbs-client/0.1.0" 0.001260
+
+[2025-11-28T18:52:35Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-signature/pub-key HTTP/1.1" 200 629 "-" "attestation-agent-kbs-client/0.1.0" 0.001174
+
+[2025-11-28T18:52:52Z INFO actix_web::middleware::logger] 10.128.2.73 "GET /kbs/v0/resource/default/hellosecret/key2 HTTP/1.1" 200 430 "-" "attestation-agent-kbs-client/0.1.0" 0.001094
+
+[2025-11-28T19:17:35Z INFO actix_web::middleware::logger] 10.128.2.73 "GET /kbs/v0/resource/default/hellosecret/key1 HTTP/1.1" 200 418 "-" "attestation-agent-kbs-client/0.1.0" 0.001017
+...
 ----
 +
-In this redacted log, we can see how the `AzSnpVtpm` Verifier check passed, how the policy and resource check passed, and eventually the key is sent to the CoCo pod.
+In this formatted log, we can see how the `AzSnpVtpm` Verifier check passed, how the `conf-devhub-image-policy/policy` policy for the image signature was requested and how subsequently the `conf-devhub-signature/pub-key` public key was fetched to ensure the signature is correct. Lastly, `default/hellosecret/key2` was automatically requested by the sealed secret, and `default/hellosecret/key2` by us manually in the previous step.
 
 [#destroy]
 == Destroy the example pods
