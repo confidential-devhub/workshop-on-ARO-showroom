@@ -16,4 +16,4 @@ This is the admin guide. In this setup, we will show how to install and configur
 ** *Username:* {aro_kube_username}
 ** *Password:* {aro_kube_password}
 
-If you are running this workshop from an Azure self managed OCP cluster, note that there are very small tweaks to follow, but they are too documented in this guide.
+If you are running this workshop from an Azure self managed OCP cluster, note that there are very small tweaks to follow, but they are also documented in this guide.
