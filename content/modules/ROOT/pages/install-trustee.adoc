@@ -9,7 +9,7 @@ You can assume that **everything running in the trustee-operator-system namespac
 This whole section can be automated with the following command:
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/install-trustee.sh -o install-trustee.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/install-trustee.sh -o install-trustee.sh
 
 chmod +x install-trustee.sh
 

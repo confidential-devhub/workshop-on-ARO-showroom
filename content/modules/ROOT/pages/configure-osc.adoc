@@ -12,7 +12,7 @@ RHDP workshop::
 +
 [source,sh,role="execute",subs=attributes+]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc.sh -o configure-osc.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-osc.sh -o configure-osc.sh
 
 chmod +x configure-osc.sh
 
@@ -25,7 +25,7 @@ You need to find out how you called your subnet, as the name can be freely named
 +
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc-az.sh -o configure-osc.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-osc-az.sh -o configure-osc.sh
 
 chmod +x configure-osc.sh
 
@@ -38,7 +38,7 @@ Azure self managed clusters only have a single resource group.
 +
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc-aro.sh -o configure-osc.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-osc-aro.sh -o configure-osc.sh
 
 chmod +x configure-osc.sh
 
