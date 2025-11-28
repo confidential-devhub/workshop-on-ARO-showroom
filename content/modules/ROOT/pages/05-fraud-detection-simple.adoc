@@ -49,7 +49,7 @@ Note that the podspec below deploys a bigger `Standard_DC8es_v5` CVM. If `Standa
 
 [source,sh,role=execute]
 ----
-oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
+oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/fraud-encrypted-datasets/notebook.yaml
 ----
 
 Switch to the newly created `fraud-detection` namespace
