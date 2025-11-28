@@ -11,7 +11,7 @@ Openshift sandboxed containers support for Red Hat Openshift provides you with b
 
 Please refer to https://docs.redhat.com/en/documentation/openshift_sandboxed_containers[Openshift sandboxed containers official documentation, window=blank] for more information.
 
-When runnig on Openshift cluster deployed on cloud, OSC is capable of deploying containers using the **peer-pods** technology.
+When running on Openshift cluster deployed on cloud, OSC is capable of deploying containers using the **peer-pods** technology.
 
 The peer-pods solution extends Red Hat Openshift sandboxed containers (OSC) to run on any environment without requiring bare-metal servers or nested virtualization support. It does this by extending Kata containers runtime (which OSC is built on) to handle VM lifecycle management using cloud provider APIs (AWS, Azure, etc...) or third-party hypervisors APIs (such as VMware vSphere). More info on the peer pods solution is available https://www.redhat.com/en/blog/red-hat-openshift-sandboxed-containers-peer-pods-solution-overview[here, window=blank].
 

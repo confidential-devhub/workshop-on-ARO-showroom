@@ -2,7 +2,7 @@
 
 This is the user guide. In this setup, we will automatically install and configure the operators. After that, we will run an example.
 
-Reminder: You can assume that **everything running in the trustee-operator-sysem namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+Reminder: You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
 
 [#user-credentials]
 == Setting up the environment

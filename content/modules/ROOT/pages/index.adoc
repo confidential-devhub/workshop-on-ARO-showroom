@@ -1,12 +1,12 @@
 = {lab_name}
 
-Red Hat https://docs.redhat.com/en/documentation/openshift_sandboxed_containers[Openshift sandboxed containers, window=blank] provides the capability to run https://www.redhat.com/en/blog/learn-about-confidential-containers[**Confidential Containers (CoCo)**, window=blank]. Confidential Containers are containers deployed within an isolated hardware enclave protecting data and code from privileged users such as cloud or cluster administrators. The https://confidentialcontainers.org/[CNCF Confidential Containers project, window=blank] is the foundation for the OpenShift CoCo solution.Note that CoCo is an additional feature provided by OpenShift sandboxed containers, and consequently, it's available through the OpenShift sandboxed containers operator.
+Red Hat https://docs.redhat.com/en/documentation/openshift_sandboxed_containers[Openshift sandboxed containers, window=blank] provides the capability to run https://www.redhat.com/en/blog/learn-about-confidential-containers[**Confidential Containers (CoCo)**, window=blank]. Confidential Containers are containers deployed within an isolated hardware enclave protecting data and code from privileged users such as cloud or cluster administrators. The https://confidentialcontainers.org/[CNCF Confidential Containers project, window=blank] is the foundation for the OpenShift CoCo solution. Note that CoCo is an additional feature provided by OpenShift sandboxed containers, and consequently, it's available through the OpenShift sandboxed containers operator.
 
 Please refer to the https://www.redhat.com/en/blog/exploring-openshift-confidential-containers-solution[Exploring the OpenShift Confidential Containers solution, window=blank] blogpost for more information.
 
 In this workshop, we are also showing another operator, the **confidential compute attestation operator** (also known as `Trustee`), which can verify the trustworthiness of TEEs remotely. For more information, please refer to https://www.redhat.com/en/blog/introducing-confidential-containers-trustee-attestation-services-solution-overview-and-use-cases[this blogpost, window=blank].
 
-We will show how to set up the Trustee and OSC operator and run a simple hello-openshift **Confidential Container** running with the *kata-remote* runtime class (peer pods solution). This effectively means that the hello-openshift container runs in a **separate**, **confidential**, **independent** virtual machine, and not in the worker node. In a another example, we will also show how **attestation** and **secure key retrieval** worflow happens between a CoCo pod and Trustee.
+We will show how to set up the Trustee and OSC operator and run a simple hello-openshift **Confidential Container** running with the *kata-remote* runtime class (peer pods solution). This effectively means that the hello-openshift container runs in a **separate**, **confidential**, **independent** virtual machine, and not in the worker node. In another example, we will also show how **attestation** and **secure key retrieval** workflow happens between a CoCo pod and Trustee.
 
 The goal of this workshop is to provide the user not only an environment and documentation to test CoCo, but also provide additional explanations on the design choices behind some options and the benefit they bring to the overall user experience. CoCo is designed to bring **confidential computing** at kubernetes level, making it **as simple as possible** while preserving all security benefits that confidential computing brings.
 
@@ -20,15 +20,15 @@ Before starting this workshop, we suggest to read the following blogposts to get
 All blogposts are under this https://www.redhat.com/en/blog/learn-about-confidential-containers[blog series, window=blank].
 
 [#guide]
-== Chose your guide
+== Choose your guide
 
 There are three guides:
 
-* The xref:index-theory.adoc[theory], to get an high level overview of what confidential computing is and what are the two operators we are going to use.
+* The xref:index-theory.adoc[theory], to get a high level overview of what confidential computing is and what are the two operators we are going to use.
 
 * The xref:index-admin.adoc[Admin guide], to learn how to install and configure the operators, which configs to set up and why we need such things. This is useful for admins that need to set up the cluster environment.
 
 * The xref:index-user.adoc[User guide], where both OSC and Trustee will be automatically installed and configured, and what is left to do is just run the confidential container. This is useful for end users that want to experiment CoCo without going into the installation steps.
 
 IMPORTANT: In this workshop, we will install Trustee in the **same cluster** that hosts OSC and therefore Confidential Containers. **This is not a suitable solution for production environments.**
-Because the Trustee operator contains the reference values and secrets that are necessary to enstablish the if a Confidential Container is running in a truly safe environment, it should be installed in a separate cluster running in a trusted environment (on prem, for example). Because of the limitations of this ARO workshop, it is not possible to set up two clusters. You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
+Because the Trustee operator contains the reference values and secrets that are necessary to establish if a Confidential Container is running in a truly safe environment, it should be installed in a separate cluster running in a trusted environment (on prem, for example). Because of the limitations of this ARO workshop, it is not possible to set up two clusters. You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
