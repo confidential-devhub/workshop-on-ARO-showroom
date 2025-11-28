@@ -1,5 +1,5 @@
 name: modules
-title: Understanding Confidential Containers - Workshop on ARO
+title: Understanding Confidential Containers - Next
 version: master
 start_page: ROOT:index.adoc
 nav:
@@ -7,7 +7,7 @@ nav:
 
 asciidoc:
   attributes:
-    lab_name: "Understanding Confidential Containers - Workshop on ARO"
+    lab_name: "Understanding Confidential Containers - Next"
     release-version: master
     page-pagination: true
     aro_console: https://placehoder_openshift_web_console
