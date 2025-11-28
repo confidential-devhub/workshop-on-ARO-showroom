@@ -640,13 +640,13 @@ The KbsConfig is created by `Trusteeconfig` as `trusteeconfig-kbs-config` CRD, b
 The main fields of KbsConfig are:
 
 * xref:02-configure-trustee.adoc#trustee-tdx[tdxConfigSpec:kbsTdxConfigMapName]
-* xref:02-configure-trustee.adoc#trustee-#trustee-jwk[kbsAttestationKeySecretName and kbsAttestationCertSecretName]
+* xref:02-configure-trustee.adoc#trustee-jwk[kbsAttestationKeySecretName and kbsAttestationCertSecretName]
 * xref:02-configure-trustee.adoc#trustee-rap[kbsResourcePolicyConfigMapName]
 * xref:02-configure-trustee.adoc#trustee-cm[kbsConfigMapName]
-* xref:02-configure-trustee.adoc#trustee-trusteeconfig[kbsHttpsKeySecretName, kbsHttpsCertSecretName and kbsAuthSecretName]
+* xref:02-configure-trustee.adoc#trusteeconfig[kbsHttpsKeySecretName, kbsHttpsCertSecretName and kbsAuthSecretName]
 * xref:02-configure-trustee.adoc#trustee-refval[kbsRvpsRefValuesConfigMapName]
-* `kbsSecretResources`: secrets added by the user
 * xref:02-configure-trustee.adoc#trustee-ap[kbsAttestationPolicyConfigMapName]
+* `kbsSecretResources`: secrets added by the user, see below
 
 Let's update `kbsSecretResources` with our secrets:
 
@@ -730,9 +730,7 @@ Expected output:
 [#trustee-optionals]
 == Optional: Customize and Understand Trustee
 
-You can overwrite all the artifacts created by `Trusteeconfig` with custom settings. Below is an explanation of each of them.
-
-[#trustee-jwk]
+You can overwrite all the artifacts created by `Trusteeconfig` with custom settings. Below is an explanation of each of ]
 === The attestation token key
 
 Secret retrieval works in a two-step authentication:
