@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Prevent direct pushes to showroom branch
+# Only allow pushes through GitHub Actions sync workflow
+
+protected_branches=('showroom')
+
+while read local_ref local_sha remote_ref remote_sha
+do
+    branch_name=$(echo "$remote_ref" | sed 's|refs/heads/||')
+    
+    for protected in "${protected_branches[@]}"; do
+        if [ "$branch_name" = "$protected" ]; then
+            echo "❌ Error: Direct pushes to '$protected' branch are not allowed."
+            echo "   Please push to 'main' instead. The sync workflow will update '$protected' automatically."
+            exit 1
+        fi
+    done
+done
+
+exit 0
+
