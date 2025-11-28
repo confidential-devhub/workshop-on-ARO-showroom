@@ -501,8 +501,9 @@ curl -L https://tuf-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com/targe
 curl -L https://security.access.redhat.com/data/63405576.txt -o cosign-pub-key.pem
 
 # Verify the image
+export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
 export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
-./cosign verify --key cosign-pub-key --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
+./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
 
 sudo mkdir -p /podvm
 sudo chown azure:azure /podvm
@@ -524,20 +525,69 @@ JSON_DATA=$(cat /podvm/measurements.json)
 # Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   --arg pcr8_val "$PCR8_HASH" '
-  (.measurements.sha256 | to_entries | map({
-    "name": .key,
-    "expiration": "2027-12-12T00:00:00Z",
-    "value": (.value | ltrimstr("0x"))
-  }))
-  +
   [
     {
-      "name": "pcr08",
-      "expiration": "2028-12-12T00:00:00Z",
-      "value": $pcr8_val
+      "name": "mr_seam",
+      "expiration": "2027-12-12T00:00:00Z",
+      "value": ["9790d89a10210ec6968a773cee2ca05b5aa97309f36727a968527be4606fc19e6f73acce350946c9d46a9bf7a63f8430"]
+    },
+    {
+      "name": "tcb_svn",
+      "expiration": "2027-12-12T00:00:00Z",
+      "value": ["04010700000000000000000000000000"]
+    },
+    {
+      "name": "mr_td",
+      "expiration": "2027-12-12T00:00:00Z",
+      "value": ["fe27b2aa3a05ec56864c308aff03dd13c189a6112d21e417ec1afe626a8cb9d91482d1379ec02fe6308972950a930d0a"]
+    },
+    {
+      "name": "xfam",
+      "expiration": "2027-12-12T00:00:00Z",
+      "value": ["e718060000000000"]
     }
   ]
-  | sort_by(.name | ltrimstr("pcr") | tonumber)
+  +
+  (
+    (.measurements.sha256 | to_entries)
+    +
+    [{"key": "pcr08", "value": $pcr8_val}]
+    | map(
+      if .key == "pcr11" then
+        [
+          {
+            "name": "snp_pcr11",
+            "expiration": "2027-12-12T00:00:00Z",
+            "value": [ (.value | ltrimstr("0x")) ],
+            "sort_idx": 11
+          },
+          {
+            "name": "tdx_pcr11",
+            "expiration": "2027-12-12T00:00:00Z",
+            "value": [ (.value | ltrimstr("0x")) ],
+            "sort_idx": 11
+          }
+        ]
+      elif .key == "pcr08" then
+        [{
+          "name": "pcr08",
+          "expiration": "2028-12-12T00:00:00Z",
+          "value": [ (.value | ltrimstr("0x")) ],
+          "sort_idx": 8
+        }]
+      else
+        [{
+          "name": .key,
+          "expiration": "2027-12-12T00:00:00Z",
+          "value": [ (.value | ltrimstr("0x")) ],
+          "sort_idx": (.key | ltrimstr("pcr") | tonumber)
+        }]
+      end
+    )
+    | flatten
+    | sort_by(.sort_idx, .name)
+    | map(del(.sort_idx))
+  )
 ' | sed 's/^/    /')
 
 # Build the final ConfigMap
