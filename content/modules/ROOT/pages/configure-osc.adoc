@@ -8,7 +8,7 @@ This whole section can be automated with the following command:
 
 [source,sh,role="execute"]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc.sh -o configure-osc.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-osc.sh -o configure-osc.sh
 
 chmod +x configure-osc.sh
 
