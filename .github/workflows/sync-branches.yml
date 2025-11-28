@@ -1,0 +1,43 @@
+name: Bi-Directional Branch Sync
+
+on:
+  push:
+    branches:
+      - main
+      - showroom
+
+permissions:
+  contents: write
+
+jobs:
+  sync-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # We need full history to merge
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+      - name: Determine Sync Direction
+        id: direction
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "SOURCE_BRANCH=main" >> $GITHUB_ENV
+            echo "TARGET_BRANCH=showroom" >> $GITHUB_ENV
+            echo "Direction: Main -> Showroom"
+          else
+            echo "SOURCE_BRANCH=showroom" >> $GITHUB_ENV
+            echo "TARGET_BRANCH=main" >> $GITHUB_ENV
+            echo "Direction: Showroom -> Main"
+          fi
+
+      - name: Sync Branches
+        run: |
+          git checkout $TARGET_BRANCH
+          git reset --hard $SOURCE_BRANCH
+          git push -f origin $TARGET_BRANCH
