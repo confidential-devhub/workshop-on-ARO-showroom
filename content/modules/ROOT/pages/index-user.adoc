@@ -40,7 +40,7 @@ The following scripts sets everything just as in the xref:index-admin.adoc[admin
 
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure.sh -o configure.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure.sh -o configure.sh
 
 chmod +x configure.sh
 
