@@ -163,6 +163,8 @@ spec:
     installPlanApproval: Automatic
 EOF
 
+oc project default
+
 echo "############################ Install OSC ########################"
 oc apply -f-<<EOF
 ---
@@ -267,6 +269,7 @@ spec:
     size: 256
 EOF
 
+sleep 2
 oc get secrets -n trustee-operator-system | grep /tls
 ####################################################################
 echo "################################################"
@@ -292,6 +295,7 @@ spec:
     tlsSecretName: trustee-token-cert
 EOF
 
+sleep 2
 oc get secrets -n trustee-operator-system | grep trusteeconfig
 oc get configmaps -n trustee-operator-system | grep trusteeconfig
 

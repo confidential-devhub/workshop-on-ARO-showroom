@@ -25,7 +25,7 @@ All you need to do is download this script, and let it run till it finishes.
 
 The following scripts sets everything just as in the xref:index-admin.adoc[admin guide], with the following:
 
-* Container signature policy accepts any signed/unsigned image.
+* Container signature policy accepts any signed/unsigned image except from the one coming from `quay.io/confidential-devhub`.
 ** Refer xref:02-configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
 
 * `INITDATA` allows logs, but disallows generic exec.
