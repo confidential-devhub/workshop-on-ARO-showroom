@@ -28,15 +28,16 @@ The following scripts sets everything just as in the xref:index-admin.adoc[admin
 * Container signature policy accepts any signed/unsigned image.
 ** Refer xref:02-configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
 
-* `INITDATA` allows logs, but disallows generic exec. The only command available in exec are `curl` for `hellosecret` keys, to run the `hello-openshift` example.
+* `INITDATA` allows logs, but disallows generic exec.
 ** Refer xref:02-configure-trustee.adoc#trustee-ip[here] if you want to change OSC `INITDATA`.
-** Updating `INITDATA` in OSC means that we also need to update Trustee `PCR8` in the xref:02-configure-trustee.adoc#trustee-refval[reference values], otherwise attestation will fail, and then restart the Trustee deployment with `oc rollout restart deployment/trustee-deployment -n trustee-operator-system`
+** For the OSC operator, updating initdata means updating xref:02-configure-osc.adoc#pp-cm[peer-pods-cm] and then xref:02-configure-osc.adoc#pp-restart[restart the daemonset].
+** For the Trustee operator, updating initdata means updating Trustee `PCR8` in the xref:02-configure-trustee.adoc#trustee-refval[reference values], otherwise attestation will fail, and then xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment].
 
 * Trustee already has the necessary keys to run all the next examples.
-** Refer xref:02-configure-trustee.adoc#trustee-key[here] if you want to change Trustee secrets or add new ones. Remember that after the change you need to restart the Trustee deployment with `oc rollout restart deployment/trustee-deployment -n trustee-operator-system`.
+** Refer xref:02-configure-trustee.adoc#trustee-key[here] if you want to change Trustee secrets or add new ones. Remember that after the change you need to xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment].
 
 * CoCo CVM root disk size is `10`.
-** Refer xref:02-configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to restart the `osc-caa-ds` Daemonset  with `oc set env ds/osc-caa-ds -n openshift-sandboxed-containers-operator REBOOT="$(date)"`.
+** Refer xref:02-configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:02-configure-osc.adoc#pp-restart[restart the OSC daemonset].
 
 [source,sh,role=execute]
 ----

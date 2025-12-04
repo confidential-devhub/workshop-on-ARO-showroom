@@ -157,6 +157,7 @@ Because of the quota limitations of this workshop, it is unlikely that it will b
 oc apply -f pp-cm.yaml
 ----
 
+[#pp-restart]
 [NOTE]
 ====
 If you later update the peer pods config map, you must also restart the `osc-caa-ds` daemonset to apply the changes:

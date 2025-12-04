@@ -4,6 +4,7 @@ Now that the Trustee operator is installed, we need to set it up.
 
 Reminder: You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
 
+[#trustee-restart]
 [NOTE]
 ====
 If you later update any of the Trustee secrets/configmaps/KbsConfig, you must restart the `trustee-deployment` deployment to apply the changes.
