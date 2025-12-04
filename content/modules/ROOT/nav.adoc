@@ -6,9 +6,8 @@
 
 * xref:index-admin.adoc[Admin guide]
 ** xref:01-install-trustee.adoc[1. Install the Trustee operator]
-*** xref:01-install-trustee.adoc#tcmdline[Command line]
 ** xref:02-configure-trustee.adoc[2. Configure the Trustee operator]
-*** xref:02-configure-trustee.adoc#trustee-keys[Create the required keys]
+*** xref:02-configure-trustee.adoc#trustee-keys[Create the keys]
 *** xref:02-configure-trustee.adoc#trusteeconfig[Create the Trusteeconfig]
 *** xref:02-configure-trustee.adoc#trustee-route[Create the route]
 *** xref:02-configure-trustee.adoc#trustee-cisvp[Container image signature verification policy]
@@ -18,7 +17,6 @@
 *** xref:02-configure-trustee.adoc#trustee-kbsconfig[Update the KbsConfig]
 *** xref:02-configure-trustee.adoc#trustee-optionals[Optional: Customize and Understand Trustee]
 ** xref:01-install-osc.adoc[3. Install the OSC operator]
-*** xref:01-install-osc.adoc#cmdline[Command line]
 ** xref:02-configure-osc.adoc[4. Configure the OSC operator]
 *** xref:02-configure-osc.adoc#feature-gate[Create the feature gate]
 *** xref:02-configure-osc.adoc#pp-cm[Create the peer-pods configmap]
