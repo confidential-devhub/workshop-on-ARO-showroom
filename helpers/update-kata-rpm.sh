@@ -9,8 +9,8 @@ if ! oc get node "$NODE_NAME" &> /dev/null; then
 fi
 
 TEMP_PATH_IN_POD="/host/tmp/$FILENAME"
-FILE_TO_COPY=kata-containers-3.17.0-3.rhaos4.16.el9.x86_64.rpm
-curl -L https://people.redhat.com/eesposit/kata-containers-3.17.0-3.rhaos4.16.el9.x86_64.rpm -o $FILE_TO_COPY
+FILE_TO_COPY=kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
+curl -L https://people.redhat.com/eesposit/kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm  -o $FILE_TO_COPY
 
 echo "###### Start debug pod ######"
 oc debug node/"$NODE_NAME" -n $DEBUG_POD_NAMESPACE -- sleep infinity &> /dev/null &
@@ -45,13 +45,15 @@ echo "###### Copying rpm in debug pod ######"
 oc cp "$FILE_TO_COPY" "${DEBUG_POD_NAMESPACE}/${DEBUG_POD_NAME}:${TEMP_PATH_IN_POD}"
 
 echo "###### Installing the rpm... ######"
-oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host mount -o remount,rw /usr
-# oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host mount ostree admin unlock --hotfix
+# oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host mount -o remount,rw /usr
+oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host ostree admin unlock --hotfix
 oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -Uvh "/tmp/$FILE_TO_COPY"
 echo ""
 
 echo "Kata containers rpm version installed:"
 oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -q kata-containers
+
+oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host systemctl restart crio
 echo "###### Install succesful ######"
 
 oc delete pod "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" --ignore-not-found=true
