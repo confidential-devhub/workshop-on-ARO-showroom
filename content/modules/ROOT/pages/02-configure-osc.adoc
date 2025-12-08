@@ -293,17 +293,15 @@ osc-caa-ds-vkfm5                               1/1     Running     0          2m
 
 This is it! Now the cluster is ready to run workloads with `kata-remote` `RuntimeClass`!
 
-== Temporary hack (ARO workhop only)
+== OCP dependency upgrade
 
-Unfortunately when it comes to OCP `4.18`, CoCo ships the necessary components for OSC `1.11` only in version `4.18.30`. ARO however only ships `4.18.26`.
+In order to enable CoCo and OSC `1.11` on ARO, specific components introduced in OpenShift `4.18.30` are required, as the current ARO default is `4.18.26`.
 
-This means that:
+If you are following this guide in an Azure/ARO environment deployed outside the RH demo environment, you are expected to upgrade to `4.18.30+` **before** installing OSC.
 
-* In this workshop, we have a "temporary hack" that updates the components installed by `KataConfig`. This is a hack not fit anywhere else outside from the workshop.
+Upgrading a cluster might take some time, therefore **for this workshop**, we will use a targeted update script to expedite the process and only update the required dependency.
 
-* For ARO clusters deployed outside this demo platform, the user is expected to **first** upgrade the cluster to a more recent version, and **then** install OSC.
-
-Let's fix the workshop:
+Run the following to update the workshop environment:
 
 [source,sh,role=execute]
 ----
