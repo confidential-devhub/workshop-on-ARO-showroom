@@ -1,7 +1,12 @@
 #! /bin/bash
 
-NODE_NAME=$(oc get nodes -l node-role.kubernetes.io/kata-oc -o jsonpath='{.items[0].metadata.name}')
+NODE_NAME=$(oc get nodes -l workerType=kataWorker -o jsonpath='{.items[0].metadata.name}')
 DEBUG_POD_NAMESPACE=default
+
+if ! oc get runtimeclass kata-remote &> /dev/null; then
+    echo -e "ERROR: RuntimeClass 'kata-remote' not found. Did you install the KataConfig CR?" >&2
+    exit 1
+fi
 
 if ! oc get node "$NODE_NAME" &> /dev/null; then
     echo -e "ERROR: No node labeled kata-oc found in the cluster." >&2

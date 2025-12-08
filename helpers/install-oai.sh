@@ -165,6 +165,7 @@ echo "############################ Wait for OAI DSC ########################"
 wait_for_phase rhods DataScienceCluster Ready || exit 1
 
 echo "############################ Increase Kata worker node size #############"
+ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
 
 AZ_CS=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_secret | base64 -d)
@@ -194,7 +195,7 @@ az vm start --resource-group $ARO_RESOURCE_GROUP --name $W1
 
 echo "###############################################################"
 
-oc adm policy add-cluster-role-to-user cluster-admin admin
+# oc adm policy add-cluster-role-to-user cluster-admin admin
 oc adm policy add-cluster-role-to-user cluster-admin "kube:admin"
 
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
