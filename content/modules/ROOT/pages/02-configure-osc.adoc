@@ -288,17 +288,29 @@ operator-metrics-server-857fb654c4-z24f4       1/1     Running     0          20
 osc-podvm-image-creation-fltm8                 0/1     Completed   0          17m
 peer-pods-webhook-65cffdd499-2nh9q             1/1     Running     0          2m59s
 peer-pods-webhook-65cffdd499-8x684             1/1     Running     0          2m59s
-osc-caa-ds-vkfm5            1/1     Running     0          2m59s
+osc-caa-ds-vkfm5                               1/1     Running     0          2m59s
 ----
 
 This is it! Now the cluster is ready to run workloads with `kata-remote` `RuntimeClass`!
 
-== Temporary hack pre-OSC 1.11
+== Temporary hack (ARO workhop only)
 
-Until OSC 1.11 is released (end november 2025), there is a temporary fix required for CoCo on Azure/ARO:
+Unfortunately when it comes to OCP `4.18`, CoCo ships the necessary components for OSC `1.11` only in version `4.18.30`. ARO however only ships `4.18.26`.
+
+This means that:
+
+* In this workshop, we have a "temporary hack" that updates the components installed by `KataConfig`. This is a hack not fit anywhere else outside from the workshop.
+
+* For ARO clusters deployed outside this demo platform, the user is expected to **first** upgrade the cluster to a more recent version, and **then** install OSC.
+
+Let's fix the workshop:
 
 [source,sh,role=execute]
 ----
-oc set image daemonset.apps/osc-caa-ds -n openshift-sandboxed-containers-operator caa-pod=quay.io/snir/cloud-api-adaptor:hddtossd-0.14.0
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+
+chmod +x update-kata-rpm.sh
+
+./update-kata-rpm.sh
 ----
 
