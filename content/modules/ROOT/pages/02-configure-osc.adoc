@@ -8,6 +8,8 @@ To complete this section, it is mandatory to have all ARO credentials at hand de
 
 In order to create the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap], it is necessary to have Trustee xref:01-install-trustee.adoc#twebui[installed] and xref:02-configure-trustee.adoc#trustee-route[configured].
 
+If you are following this guide in an Azure/ARO environment deployed **outside** the RH demo environment, and your cluster version is older than `4.18.30`, you are expected to upgrade to `4.18.30+` **before** installing OSC. More info xref:02-configure-osc.adoc#upgrade[here].
+
 [#feature-gate]
 == Enable Confidential Containers feature gate
 
@@ -293,13 +295,12 @@ osc-caa-ds-vkfm5                               1/1     Running     0          2m
 
 This is it! Now the cluster is ready to run workloads with `kata-remote` `RuntimeClass`!
 
-== OCP dependency upgrade
+[#upgrade]
+== Minor OCP upgrade
 
-In order to enable CoCo and OSC `1.11` on ARO, specific components introduced in OpenShift `4.18.30` are required, as the current ARO default is `4.18.26`.
+CoCo and OSC `1.11` on ARO require OpenShift `4.18.30`. However, the default OpenShift version for ARO is `4.18.26`. As a result, you must upgrade to `4.18.30` **before** you install OSC.
 
-If you are following this guide in an Azure/ARO environment deployed outside the RH demo environment, you are expected to upgrade to `4.18.30+` **before** installing OSC.
-
-Upgrading a cluster might take some time, therefore **for this workshop**, we will use a targeted update script to expedite the process and only update the required dependency.
+Upgrading a cluster is time-consuming. For the purposes of **this workshop**, we provide a script that updates only the required dependency.
 
 Run the following to update the workshop environment:
 
