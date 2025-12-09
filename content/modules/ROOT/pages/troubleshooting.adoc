@@ -1,0 +1,214 @@
+= Troubleshooting
+
+Here you can find the solution to most of the common errors.
+
+== Follow the order
+
+Order is very important. If you install OSC and insert an empty/incomplete INITDATA in it (for example empty trustee URL), the CoCo pod will not start because it will try to connect to a non-existing service, getting 404 and therefore preventing the pod from creating.
+
+In general, the order is:
+
+. Install & Configure Trustee. This allows us to know the Trustee route to provide to OSC, but also prepare the secrets needed by the CoCo pods (image signature, sealed secrets, and so on).
+. Install & Configure OSC. Now that we know the Trustee route, we have all pieces necessary to start a CoCo pod.
+
+It is possible to follow alternative orders, but you need to then remember to go back to the various configs and update them and refresh the respective deployments.
+
+== CoCo pod doesn't start
+
+In this section, we cover the cases where the pod doesn't start at all.
+
+=== Check the Pod Events
+
+Most of the time, errors will be propragated to the pod events. Make sure to check that first.
+
+=== Wrong Azure instance size
+
+Not all region support all the available confidential instance sizes. For example `eastus` only supports Standard_DC***as**_v5, and not Standard_DC***es**_v5.
+
+If you use the wrong instance size, you will see the following error in the Events:
+
+[source,texinfo,subs="attributes"]
+----
+failed to create pod sandbox: rpc error: code = Unknown desc = CreateContainer failed:
+remote hypervisor call failed: rpc error: code = Unknown desc = creating an instance :
+Creating instance (<nil>): beginning VM creation or update:
+PUT https://management.azure.com/subscriptions/.../
+--------------------------------------------------------------------------------
+RESPONSE 400: 400 Bad Request ERROR CODE: InvalidParameter
+--------------------------------------------------------------------------------
+{ "error": { "code": "InvalidParameter", "message": "The requested VM size Standard_DC4es_v5
+ is not available in the current region. The sizes available in the current region are: ...
+----
+
+The key message here is `The requested VM size Standard_DC4es_v5 is not available in the current region`.
+
+== CoCo pod stuck
+
+In this section, we cover the cases where the pod or at least the VM has started, but the container fails to start.
+
+=== Peer-pods gateway not working/set correctly
+
+This is usually happening because the CoCo internal components are not able to connect back to the worker node.
+
+Upon inspection of the OSC operator `osc-caa-ds` deployment, you should see it is stuck printing the following logs:
+
+[source,sh,role=execute]
+----
+POD_NAME=$(oc get pods -l name=osc-caa-ds -o jsonpath='{.items[0].metadata.name}' -n openshift-sandboxed-containers-operator)
+clear
+oc logs -n openshift-sandboxed-containers-operator $POD_NAME
+----
+
+[source,texinfo,subs="attributes"]
+----
+2025/12/05 16:47:39 [adaptor/proxy] Retrying failed agent proxy connection: dial tcp 10.0.128.4:15150: connect: connection refused
+2025/12/05 16:47:39 [adaptor/proxy] Retrying failed agent proxy connection: dial tcp 10.0.128.4:15150: connect: connection refused
+2025/12/05 16:47:39 [adaptor/proxy] Retrying failed agent proxy connection: dial tcp 10.0.128.4:15150: connect: connection refused
+2025/12/05 16:47:39 [adaptor/proxy] Retrying failed agent proxy connection: dial tcp 10.0.128.4:15150: connect: connection refused
+2025/12/05 16:47:39 [adaptor/proxy] Retrying failed agent proxy connection: dial tcp 10.0.128.4:15150: connect: connection refused
+2025/12/05 16:47:39 [adaptor/proxy] Retrying failed agent proxy connection: dial tcp 10.0.128.4:15150: connect: connection refused
+----
+
+In order to fix this, make sure you have:
+
+. Logged in with the right Azure SP.
++
+[source,sh,role=execute]
+----
+AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
+
+AZ_CS=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_secret | base64 -d)
+
+AZ_TID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_tenant_id | base64 -d)
+
+echo azure_client_id $AZ_CID
+echo azure_client_secret $AZ_CS
+echo azure_tenant_id $AZ_TID
+
+az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
+----
+
+. Created and configured the xref:02-configure-osc.adoc#pp-cm[Azure public IP address and NAT Gateway].
++
+Remember to run `export AZURE_RESOURCE_GROUP={azure_resource_group}` first.
++
+[source,sh,role=execute]
+----
+# If the cluster is Azure self managed, run
+# AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
+
+# Get the ARO region
+ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
+
+# Get VNET name used by ARO. This exists in the admin created RG.
+# In this ARO infrastructure, there are 2 VNETs: pick the one starting with "aro-".
+# The other is used internally by this workshop
+# If the cluster is Azure self managed, change
+# contains(Name, 'aro')
+# with
+# contains(Name, '')
+ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
+
+# Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
+ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
+
+# Necessary otherwise the CoCo pods won't be able to connect with the OCP cluster (OSC and Trustee)
+PEERPOD_NAT_GW=peerpod-nat-gw
+PEERPOD_NAT_GW_IP=peerpod-nat-gw-ip
+
+az network public-ip create -g "${AZURE_RESOURCE_GROUP}" \
+    -n "${PEERPOD_NAT_GW_IP}" -l "${ARO_REGION}" --sku Standard
+
+az network nat gateway create -g "${AZURE_RESOURCE_GROUP}" \
+    -l "${ARO_REGION}" --public-ip-addresses "${PEERPOD_NAT_GW_IP}" \
+    -n "${PEERPOD_NAT_GW}"
+
+az network vnet subnet update --nat-gateway "${PEERPOD_NAT_GW}" \
+    --ids "${ARO_WORKER_SUBNET_ID}"
+
+ARO_NAT_ID=$(az network vnet subnet show --ids "${ARO_WORKER_SUBNET_ID}" \
+    --query "natGateway.id" -o tsv)
+
+echo "ARO_REGION: \"$ARO_REGION\""
+echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
+echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
+echo "ARO_NAT_ID: \"$ARO_NAT_ID\""
+----
+
+=== INITDATA wrongly set
+
+Ispect the INITDATA. Inspect the INITDATA field in the  xref:02-configure-osc.adoc#pp-cm[peer-pods-cm] configmap in OSC namespace, or alternatively if you are providing manually in as xref:03-deployment-settings.adoc#initdata-ann[annotation].
+
+[source,sh,role=execute]
+----
+echo "H4sIAAAAAAAAA+1YW3PiuBJ+969wsQ/ZLYaLuTNV8yCMIYTYgG0gZCqVErZsZBvLSDLGnDr//cghk8qZ..." \
+	| base64 -d -w0 | gunzip
+----
+
+* Make sure all `url=` point to the right Trustee route
+* Make sure `cert=` and `kbs_cert=` are not empty if using https
+* Make sure `image_security_policy_uri` points at an existing policy, and the policy points to an existing secret
+* Make sure the formatting and syntax is correct. Refer to xref:02-configure-trustee.adoc#trustee-ip[this initdata] for an example with correct syntax.
+
+If you update the INITDATA, remember to update the xref:02-configure-trustee.adoc#pcr8[PCR8] in the xref:02-configure-trustee.adoc#trustee-refval[reference values] and xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
+
+=== Image signature policy too strict
+
+If you put an image signature too strict and you forget about it, the CVM will start but the pod will not run, because it isn't allowed to.
+
+For example, the policy used xref:02-configure-trustee.adoc#trustee-cisvp[in this example] is pretty permissive, as it has `"default": [ { "type": "insecureAcceptAnything" } ]`. However, if you change the type to `reject`, then you drastically reduce the amounts of CoCo pod images you can run.
+
+If you update the signature policy, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]!
+
+== CoCo pod attestation failed
+
+In this section, we cover the cases where the pod has fully started, but it can't manage to get any secret from the Trustee.
+
+Do you see any request coming in the `trustee-deployment` logs?
+
+[source,sh,role=execute]
+----
+POD_NAME=$(oc get pods -l app=kbs -o jsonpath='{.items[0].metadata.name}' -n trustee-operator-system)
+clear
+oc logs -n trustee-operator-system $POD_NAME
+----
+
+=== HTTPS certificates
+
+If not, then it's a routing issue. If you are using passthrough, are you using the right xref:02-configure-trustee.adoc#trustee-keys[https certificates]?
+
+A common error is not pointing `dnsNames` to the Trustee route, or if creating the certs manually, not using `subjectAltName=DNS:${ROUTE}`.
+
+If you update the https certificates, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]!
+
+=== Connectivity between Azure and Trustee
+
+If you are deploying Trustee outside the workshop in a separate cluster, make sure the connectivity between the Trustee and Azure OCP cluster is working.
+
+=== Policy Deny
+
+If you do see the request coming into the Trustee pod, check what it says. Usually it's something like `PolicyDeny`.
+
+If you see that error, make sure the following is correct:
+
+* The xref:02-configure-trustee.adoc#trustee-ap[attestation policy] is formatted correctly. Sometimes wrong formatting or syntax errors prevent it from being loaded.
+* Same applies to the xref:02-configure-trustee.adoc#trustee-refval[reference values].
+** If you changed the podvm image to be used, the reference values also change!
+** If you changed the INITDATA, the reference values (xref:02-configure-trustee.adoc#pcr8[PCR8]) also change!
+* Lastly check also the xref:02-configure-trustee.adoc#trustee-rap[resource access policy].
+
+After ANY change to any config/secret of the Trustee operator, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the deployment]!
+
+== CoCo pod inaccessible
+
+=== INITDATA too strict
+
+If your pod is running, and service/route are working, but you cannot see logs nor exec, remember that this is controlled by INITDATA. If no INITDATA is provided in the CoCo pod via  xref:03-deployment-settings.adoc#initdata-ann[annotation], the global default one in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm] will be used. If no global is set, default permissive settings will be used (no signature image verification, no Trustee connection, exec and logs allowed).
+
+Check the `policy.rego` section.
+
+* If `default ExecProcessRequest := false`, exec will be forbidden.
+** It is possible to allow only specific exec commands. Refer to the xref:02-configure-trustee.adoc#trustee-ip[initdata example].
+* If `default ReadStreamRequest := false`, logs are not shown.
+
+If you update the INITDATA, remember to update the xref:02-configure-trustee.adoc#pcr8[PCR8] in the xref:02-configure-trustee.adoc#trustee-refval[reference values] and xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
