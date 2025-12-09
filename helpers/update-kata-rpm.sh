@@ -9,7 +9,7 @@ if ! oc get runtimeclass kata-remote &> /dev/null; then
 fi
 
 if ! oc get node "$NODE_NAME" &> /dev/null; then
-    echo -e "ERROR: No node labeled kata-oc found in the cluster." >&2
+    echo -e "ERROR: No node labeled 'workerType=kataWorker' found in the cluster." >&2
     exit 1
 fi
 
