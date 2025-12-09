@@ -1,6 +1,30 @@
 = Troubleshooting
 
-Here you can find the solution to most of the common errors.
+Here you can find the solution to most of the common errors.#
+
+== Which environment are you using?
+
+If you are using the RHDP demo workshop, then all the instructions should work if run in the provided interface.
+
+If you are running a normal deployed ARO instance, remember:
+
+. You need to upgrade the cluster to a newer version, at least `4.18.30`.
+. The `ARO_VNET_NAME` command xref:02-configure-osc.adoc#pp-cm[here] might not work, if your vnet does not contain `aro` in the name. As the user is free to give the ARO vnet any name, keep in mind that could not match.
+. The xref:02-configure-trustee.adoc#refval-fetch[reference values script] has some steps very specific to the RHDP environment.
+.. No need to use `sudo`
+.. You can create `./podvm`, no need of `/podvm`.
+.. You probably don't need `chown azure:azure /podvm`
+.. Delete all the `--root /podvm` references later, no need.
+
+If you are running an Azure self managed cluster, remember:
+
+. For SNO, you won't get `kata-oc` label into the worker node (since it's a SNO).
+. Check the commented commands in tje xref:02-configure-osc.adoc#pp-cm[peer-pod-cm script]. You need to uncomment `AZURE_RESOURCE_GROUP` and replace `contains(Name, 'aro')` with `contains(Name, '')`.
+. The xref:02-configure-trustee.adoc#refval-fetch[reference values script] has some steps very specific to the RHDP environment.
+.. No need to use `sudo`
+.. You can create `./podvm`, no need of `/podvm`.
+.. You probably don't need `chown azure:azure /podvm`
+.. Delete all the `--root /podvm` references later, no need.
 
 == Follow the order
 
@@ -40,7 +64,9 @@ RESPONSE 400: 400 Bad Request ERROR CODE: InvalidParameter
  is not available in the current region. The sizes available in the current region are: ...
 ----
 
-The key message here is `The requested VM size Standard_DC4es_v5 is not available in the current region`.
+The key message here is `The requested VM size Standard_DC4es_v5 is not available in the current region`. Make sure you are using a VM size that is supported.
+
+If you update `AZURE_INSTANCE_SIZE` in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm], make sure you xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment].
 
 == CoCo pod stuck
 
@@ -212,3 +238,7 @@ Check the `policy.rego` section.
 * If `default ReadStreamRequest := false`, logs are not shown.
 
 If you update the INITDATA, remember to update the xref:02-configure-trustee.adoc#pcr8[PCR8] in the xref:02-configure-trustee.adoc#trustee-refval[reference values] and xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
+
+== Facing an error that is not listed here?
+
+If you have access to the Red Hat workspace on Slack, feel free to post the error on `#forum-sandboxed-containers`! If you don't, contact a Red Hat representative and forward your question to him/her.

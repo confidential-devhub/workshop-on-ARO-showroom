@@ -539,6 +539,7 @@ Feel free to inspect the `cosign_verify.log` log
 
 Now that we are sure the image is the right one, let's download the measurements from Redhat to then convert them into a reference value configmap.
 
+[#refval-fetch]
 [source,sh,role=execute]
 ----
 # On the ARO workshop, we don't have enough space for podman.
