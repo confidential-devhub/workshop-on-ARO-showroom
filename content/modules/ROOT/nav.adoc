@@ -32,4 +32,6 @@
 
 * xref:05-fraud-detection-simple.adoc[Fraud-detection notebook]
 
+* xref:troubleshooting.adoc[Troubleshooting]
+
 * xref:conclusion.adoc[Conclusion and what's next]

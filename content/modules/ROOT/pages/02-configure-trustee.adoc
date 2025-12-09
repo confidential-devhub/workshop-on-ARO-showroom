@@ -452,6 +452,7 @@ echo ""
 echo $INITDATA
 ----
 
+[#pcr8]
 Now, let's calculate the expected value of PCR8, which will be given in the reference values to make sure that every CoCo pod actually uses this initdata config.
 
 [source,sh,role=execute]
