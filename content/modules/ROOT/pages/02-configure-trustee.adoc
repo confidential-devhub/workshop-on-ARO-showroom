@@ -1,31 +1,9 @@
-= Configure the Trustee operator
-
-Now that the Trustee operator is installed, we need to set it up.
-
-Reminder: You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
-
-[#trustee-restart]
-[NOTE]
-====
-If you later update any of the Trustee secrets/configmaps/KbsConfig, you must restart the `trustee-deployment` deployment to apply the changes.
-[source,sh,role=execute]
-----
-oc rollout restart deployment/trustee-deployment -n trustee-operator-system
-----
-====
-
-[#trustee-keys]
-== Create the required keys
-
-In order to simplify the flow, we will ask the cert-manager operator to create  all the keys necessary to securely run Trustee. Such keys and certs will be uploaded into the Trustee namespace as secrets.
-
-More specifically, these keys are:
-
 * Https keys, to ensure a secure connection between the CoCo pod and Trustee
 * Attestation token key (see xref:02-configure-trustee.adoc#keys[here])
 
 Of course the user can also bring his own existing keys, especially the `https` one.
 
+Preparation:
 [source,sh,role=execute]
 ----
 mkdir -p trustee
@@ -42,15 +20,15 @@ ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
 
 CN_NAME=kbs-trustee-operator-system
 ORG_NAME=my_org
+----
 
-# Alternative to create https certs manually:
-# openssl req -x509 -nodes -days 365 \
-#  -newkey rsa:2048 \
-#  -keyout tls.key \
-#  -out tls.crt \
-#  -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
-#  -addext "subjectAltName=DNS:${ROUTE}"
-
+Choose which method you want to create the certs:
+[tabs]
+====
+Cert manager operator::
++
+[source,sh,role=execute]
+----
 oc apply -f-<<EOF
 # issuer-and-certificates.yaml
 apiVersion: cert-manager.io/v1
@@ -109,6 +87,21 @@ spec:
     size: 256
 EOF
 ----
+
+Manually::
++
+[source,sh,role=execute]
+----
+openssl req -x509 -nodes -days 365 \
+ -newkey rsa:2048 \
+ -keyout tls.key \
+ -out tls.crt \
+ -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
+ -addext "subjectAltName=DNS:${ROUTE}"
+----
+====
+
+
 
 Let's see what it created:
 
@@ -539,7 +532,12 @@ Feel free to inspect the `cosign_verify.log` log
 
 Now that we are sure the image is the right one, let's download the measurements from Redhat to then convert them into a reference value configmap.
 
+Pull the measurements from the RH image:
 [#refval-fetch]
+[tabs]
+====
+RHDP Workshop::
++
 [source,sh,role=execute]
 ----
 # On the ARO workshop, we don't have enough space for podman.
@@ -560,7 +558,33 @@ podman unshare --root /podvm sh -c '
 '
 podman rm --root /podvm $cid
 JSON_DATA=$(cat /podvm/measurements.json)
+----
 
+ARO/Azure standard deployments::
++
+[source,sh,role=execute]
+----
+mkdir -p podvm
+
+# Download the measurements
+podman pull --authfile cluster-pull-secret.json $IMAGE
+
+cid=$(podman create --entrypoint /bin/true $IMAGE)
+echo "CID ${cid}"
+podman unshare sh -c '
+  mnt=$(podman mount '"$cid"')
+  echo "MNT ${mnt}"
+  cp $mnt/image/measurements.json podvm
+  podman umount '"$cid"'
+'
+podman rm $cid
+JSON_DATA=$(cat podvm/measurements.json)
+----
+====
+
+Now, let's format the reference values correctly:
+[source,sh,role=execute]
+----
 # Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   --arg pcr8_val "$PCR8_HASH" '
