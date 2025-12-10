@@ -25,6 +25,8 @@ More specifically, these keys are:
 * Attestation token key (see xref:02-configure-trustee.adoc#keys[here])
 
 Of course the user can also bring his own existing keys, especially the `https` one.
+
+Preparation:
 [source,sh,role=execute]
 ----
 mkdir -p trustee
@@ -43,6 +45,7 @@ CN_NAME=kbs-trustee-operator-system
 ORG_NAME=my_org
 ----
 
+Choose which method you want to create the certs:
 [tabs]
 ====
 Cert manager operator::
@@ -552,7 +555,12 @@ Feel free to inspect the `cosign_verify.log` log
 
 Now that we are sure the image is the right one, let's download the measurements from Redhat to then convert them into a reference value configmap.
 
+Pull the measurements from the RH image:
 [#refval-fetch]
+[tabs]
+====
+RHDP Workshop::
++
 [source,sh,role=execute]
 ----
 # On the ARO workshop, we don't have enough space for podman.
@@ -573,7 +581,33 @@ podman unshare --root /podvm sh -c '
 '
 podman rm --root /podvm $cid
 JSON_DATA=$(cat /podvm/measurements.json)
+----
 
+ARO/Azure standard deployments::
++
+[source,sh,role=execute]
+----
+mkdir -p podvm
+
+# Download the measurements
+podman pull --authfile cluster-pull-secret.json $IMAGE
+
+cid=$(podman create --entrypoint /bin/true $IMAGE)
+echo "CID ${cid}"
+podman unshare sh -c '
+  mnt=$(podman mount '"$cid"')
+  echo "MNT ${mnt}"
+  cp $mnt/image/measurements.json ./podvm
+  podman umount '"$cid"'
+'
+podman rm $cid
+JSON_DATA=$(cat ./podvm/measurements.json)
+----
+====
+
+Now, let's format the reference values correctly:
+[source,sh,role=execute]
+----
 # Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
   --arg pcr8_val "$PCR8_HASH" '
