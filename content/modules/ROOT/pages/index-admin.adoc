@@ -5,6 +5,21 @@ This is the admin guide. In this setup, we will show how to install and configur
 [#credentials]
 == Setting up the environment
 
+[tabs]
+====
+OpenShift on Azure::
++
+. Go into the terminal on the right and run the following commands:
+* Log into azure CLI: `az login --service-principal --username={azure_service_principal_id} --password={azure_service_principal_password} --tenant={azure_tenant_id}`
+* Export the `AZURE_RESOURCE_GROUP` variable. It will needed when setting up the operator:
+`export AZURE_RESOURCE_GROUP={azure_resource_group}`
+
+. If you need to use the web UI (not necessary in this workshop):
+* Navigate to your OpenShift Console URL
+* Login as administrator with your credentials
+
+ARO::
++
 . Go into the terminal on the right and run the following commands:
 * Log into azure CLI: `az login --service-principal --username={azure_service_principal_id} --password={azure_service_principal_password} --tenant={azure_tenant_id}`
 * Export the `AZURE_RESOURCE_GROUP` variable. It will needed when setting up the operator:
@@ -15,5 +30,6 @@ This is the admin guide. In this setup, we will show how to install and configur
 * Login as administrator:
 ** *Username:* {aro_kube_username}
 ** *Password:* {aro_kube_password}
+====
 
 If you are running this workshop from an Azure self managed OCP cluster, note that there are very small tweaks to follow, but they are also documented in this guide.
