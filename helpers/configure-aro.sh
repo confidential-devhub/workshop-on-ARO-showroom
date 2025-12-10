@@ -231,9 +231,9 @@ echo "################################################"
 mkdir -p trustee
 cd trustee
 
-oc completion bash > oc_bash_completion
-sudo cp oc_bash_completion /etc/bash_completion.d/
-source /etc/bash_completion.d/oc_bash_completion
+# oc completion bash > oc_bash_completion
+# sudo cp oc_bash_completion /etc/bash_completion.d/
+# source /etc/bash_completion.d/oc_bash_completion
 
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
