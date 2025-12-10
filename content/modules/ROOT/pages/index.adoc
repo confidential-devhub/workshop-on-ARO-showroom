@@ -22,6 +22,17 @@ All blogposts are under this https://www.redhat.com/en/blog/learn-about-confiden
 [#guide]
 == Choose your guide
 
+[tabs]
+====
+Tab A::
++
+This is the content for Tab A.
+
+Tab B::
++
+This is the content for Tab B.
+====
+
 There are three guides:
 
 * The xref:index-theory.adoc[theory], to get a high level overview of what confidential computing is and what are the two operators we are going to use.
