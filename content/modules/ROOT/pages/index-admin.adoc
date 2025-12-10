@@ -5,6 +5,8 @@ This is the admin guide. In this setup, we will show how to install and configur
 [#credentials]
 == Setting up the environment
 
+Choose which platform you are using:
+
 [tabs]
 ====
 OpenShift on Azure::
