@@ -6,6 +6,8 @@ nav:
   - modules/ROOT/nav.adoc
 
 asciidoc:
+  extensions:
+    - '@asciidoctor/tabs'
   attributes:
     lab_name: "Understanding Confidential Containers - Next"
     release-version: master
