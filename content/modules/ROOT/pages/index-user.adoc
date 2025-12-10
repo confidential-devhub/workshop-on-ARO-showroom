@@ -45,7 +45,7 @@ RHDP workshop::
 +
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure.sh -o configure.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure.sh -o configure.sh
 
 chmod +x configure.sh
 
@@ -56,7 +56,7 @@ ARO standard deployment::
 +
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure.sh -o configure-aro.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure.sh -o configure-aro.sh
 
 chmod +x configure-aro.sh
 
@@ -67,7 +67,7 @@ Azure self managed deployment::
 +
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure.sh -o configure-az.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure.sh -o configure-az.sh
 
 chmod +x configure-az.sh
 
