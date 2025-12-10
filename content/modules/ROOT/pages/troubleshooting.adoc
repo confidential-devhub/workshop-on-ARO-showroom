@@ -203,7 +203,7 @@ oc logs -n trustee-operator-system $POD_NAME
 
 If not, then it's a routing issue. If you are using passthrough, are you using the right xref:02-configure-trustee.adoc#trustee-keys[https certificates]?
 
-A common error is not pointing `dnsNames` to the Trustee route, or if creating the certs manually, not using `subjectAltName=DNS:${ROUTE}`.
+A common error is not pointing `dnsNames` to the Trustee route, or if creating the certs manually, not using `subjectAltName=DNS:$ROUTE`.
 
 If you update the https certificates, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]!
 

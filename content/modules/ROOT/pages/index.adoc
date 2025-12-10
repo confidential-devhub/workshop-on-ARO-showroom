@@ -33,6 +33,30 @@ Tab B::
 This is the content for Tab B.
 ====
 
+[%tabs]
+====
+Java::
++
+[source,java]
+----
+System.out.println("Hello Java");
+----
+
+Python::
++
+[source,python]
+----
+print("Hello Python")
+----
+
+Node.js::
++
+[source,javascript]
+----
+console.log("Hello Node");
+----
+====
+
 There are three guides:
 
 * The xref:index-theory.adoc[theory], to get a high level overview of what confidential computing is and what are the two operators we are going to use.
