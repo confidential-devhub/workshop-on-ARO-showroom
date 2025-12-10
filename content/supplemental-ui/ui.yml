@@ -1,0 +1,6 @@
+head:
+  scripts:
+    - path: js/tabs.js
+  stylesheets:
+    - path: css/tabs.css
+
