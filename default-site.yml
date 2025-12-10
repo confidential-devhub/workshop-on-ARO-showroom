@@ -33,6 +33,6 @@ antora:
       enabled: false
     - require: ./content/lib/asam-asciidoctor_extensions-registered.js
       enabled: true
-
+=======
 output:
   dir: ./www

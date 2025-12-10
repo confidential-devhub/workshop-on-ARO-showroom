@@ -93,6 +93,29 @@ else
   exit 1
 fi
 
+echo "Checking for ARO_WORKER_SUBNET_ID..."
+if [[ -n "$ARO_WORKER_SUBNET_ID" ]]; then
+  echo "ARO_WORKER_SUBNET_ID is set to: '$ARO_WORKER_SUBNET_ID'"
+else
+  echo "The ARO_WORKER_SUBNET_ID environment variable is not set."
+  echo "   Please set it, for example: export ARO_WORKER_SUBNET_ID=\"my-subnet-name\""
+  exit 1
+fi
+
+REQUIRED="4.18.30"
+# Extract version number (e.g., 4.18.30)
+CURRENT=$(oc version 2>/dev/null | grep "Server Version" | awk '{print $3}')
+
+echo "Current: $CURRENT"
+echo "Required: $REQUIRED"
+
+# Use sort -V to compare versions correctly
+# If the lowest version in the list is NOT the required one, then Current < Required.
+if [ "$(printf '%s\n' "$REQUIRED" "$CURRENT" | sort -V | head -n1)" != "$REQUIRED" ]; then
+  echo "Exiting: Cluster version is below $REQUIRED"
+  exit 1
+fi
+
 echo ""
 
 echo "################################################"
@@ -208,9 +231,9 @@ echo "################################################"
 mkdir -p trustee
 cd trustee
 
-oc completion bash > oc_bash_completion
-sudo cp oc_bash_completion /etc/bash_completion.d/
-source /etc/bash_completion.d/oc_bash_completion
+# oc completion bash > oc_bash_completion
+# sudo cp oc_bash_completion /etc/bash_completion.d/
+# source /etc/bash_completion.d/oc_bash_completion
 
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
@@ -510,22 +533,21 @@ export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
 export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
 ./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
 
-sudo mkdir -p /podvm
-sudo chown azure:azure /podvm
+mkdir -p podvm
 
 # Download the measurements
-podman pull --root /podvm --authfile cluster-pull-secret.json $IMAGE
+podman pull --authfile cluster-pull-secret.json $IMAGE
 
-cid=$(podman create --root /podvm --entrypoint /bin/true $IMAGE)
+cid=$(podman create --entrypoint /bin/true $IMAGE)
 echo "CID ${cid}"
-podman unshare --root /podvm sh -c '
-  mnt=$(podman mount --root /podvm '"$cid"')
+podman unshare sh -c '
+  mnt=$(podman mount '"$cid"')
   echo "MNT ${mnt}"
-  cp $mnt/image/measurements.json /podvm
-  podman umount --root /podvm '"$cid"'
+  cp $mnt/image/measurements.json podvm
+  podman umount '"$cid"'
 '
-podman rm --root /podvm $cid
-JSON_DATA=$(cat /podvm/measurements.json)
+podman rm $cid
+JSON_DATA=$(cat podvm/measurements.json)
 
 # Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
@@ -646,23 +668,13 @@ echo "################################################"
 # Get the ARO created RG
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 
-# If the cluster is Azure self managed, run
-# AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
-
 # Get the ARO region
 ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
 
-# Get VNET name used by ARO. This exists in the admin created RG.
-# In this ARO infrastructure, there are 2 VNETs: pick the one starting with "aro-".
-# The other is used internally by this workshop
-# If the cluster is Azure self managed, change
-# contains(Name, 'aro')
-# with
-# contains(Name, '')
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
+ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
 
 # Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
-ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
+# ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
 
 ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
 
@@ -749,10 +761,10 @@ echo "############################ Wait for kata-remote + job ##################
 # Wait for runtimeclass kata-remote to be ready
 wait_for_runtimeclass kata-remote || exit 1
 
-echo "############################ Update kata rpm ########################"
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
-chmod +x update-kata-rpm.sh
-./update-kata-rpm.sh
+# echo "############################ Update kata rpm ########################"
+# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+# chmod +x update-kata-rpm.sh
+# ./update-kata-rpm.sh
 
 # curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/runtime-req-timetout.yaml -o kubelet-timeout.yaml
 # oc apply -f kubelet-timeout.yaml
