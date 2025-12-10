@@ -597,11 +597,11 @@ echo "CID ${cid}"
 podman unshare sh -c '
   mnt=$(podman mount '"$cid"')
   echo "MNT ${mnt}"
-  cp $mnt/image/measurements.json ./podvm
+  cp $mnt/image/measurements.json podvm
   podman umount '"$cid"'
 '
 podman rm $cid
-JSON_DATA=$(cat ./podvm/measurements.json)
+JSON_DATA=$(cat podvm/measurements.json)
 ----
 ====
 

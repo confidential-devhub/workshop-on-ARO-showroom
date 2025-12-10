@@ -39,6 +39,10 @@ The following scripts sets everything just as in the xref:index-admin.adoc[admin
 * CoCo CVM root disk size is `10`.
 ** Refer xref:02-configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:02-configure-osc.adoc#pp-restart[restart the OSC daemonset].
 
+[tabs]
+====
+RHDP workshop::
++
 [source,sh,role=execute]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure.sh -o configure.sh
@@ -47,6 +51,29 @@ chmod +x configure.sh
 
 ./configure.sh
 ----
+
+ARO standard deployment::
++
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure.sh -o configure-aro.sh
+
+chmod +x configure-aro.sh
+
+./configure-aro.sh
+----
+
+Azure self managed deployment::
++
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure.sh -o configure-az.sh
+
+chmod +x configure-az.sh
+
+./configure-az.sh
+----
+====
 
 
 Now that the configuration is complete, let's run some example!
