@@ -73,7 +73,7 @@ echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
 echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
 ----
 
-ARO standard deployment::
+ARO::
 +
 You need to find out how you called your subnet, as the name can be freely named during the install steps. Search it with `az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id}" --output tsv`, and then export it as `ARO_WORKER_SUBNET_ID=your-aro-subnet`.
 +
@@ -99,7 +99,7 @@ echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
 echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
 ----
 
-Azure self managed deployment::
+Azure self managed::
 +
 Azure self managed clusters only have a single resource group.
 +

@@ -52,7 +52,7 @@ chmod +x configure.sh
 ./configure.sh
 ----
 
-ARO standard deployment::
+ARO::
 +
 [source,sh,role=execute]
 ----
@@ -63,7 +63,7 @@ chmod +x configure-aro.sh
 ./configure-aro.sh
 ----
 
-Azure self managed deployment::
+Azure self managed::
 +
 [source,sh,role=execute]
 ----
