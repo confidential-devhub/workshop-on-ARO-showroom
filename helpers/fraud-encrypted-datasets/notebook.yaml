@@ -10,6 +10,8 @@ metadata:
   namespace: fraud-detection
   labels:
     app: fraud-encrypted-datasets
+  annotations:
+    io.katacontainers.config.hypervisor.machine_type: Standard_DC8es_v5
 spec:
   runtimeClassName: kata-remote
   securityContext:

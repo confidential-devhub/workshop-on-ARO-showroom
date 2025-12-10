@@ -45,6 +45,8 @@ This notebook specifically uses python sdk to download the encrypted data from A
 * Closely align with regular interactive AI workflows which uses python SDKs to download data from s3, azure, minio etc.
 * Provides an example of programmatic storage access for AI workloads when using the peer-pods approach.
 
+Note that the podspec below deploys a bigger `Standard_DC8es_v5` CVM. If `Standard_DC8es_v5` is not supported in the cluster region, try with `Standard_DC8as_v5`.
+
 [source,sh,role=execute]
 ----
 oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
@@ -76,9 +78,8 @@ echo "https://${FD_ROUTE}"
 
 == Run the notebook
 
-Starting from `fraud-detection/0_intro.ipynb`, go through the various notebooks. Specifically:
+Starting from `fraud-detection/1_download_data.ipynb`, go through the various notebooks. Specifically:
 
-* `fraud-detection/0_intro.ipynb`: show that the confidential hardware is present
 * `fraud-detection/1_download_data.ipynb`: download encrypted datasets
 * `fraud-detection/2_decrypt_data.ipynb`: fetch key through attestation and decrypt the datasets
 * `fraud-detection/3_run_model.ipynb`: run the model
