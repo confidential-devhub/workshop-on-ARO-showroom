@@ -6,6 +6,8 @@ nav:
   - modules/ROOT/nav.adoc
 
 asciidoc:
+  extensions:
+  - './lib/asam-asciidoctor_extensions-registered.js'
   attributes:
     lab_name: "Understanding Confidential Containers - Workshop on ARO"
     release-version: master

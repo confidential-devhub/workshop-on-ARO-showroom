@@ -23,10 +23,15 @@ ui:
 runtime:
   cache_dir: ./.cache/antora
 
+asciidoc:
+  extensions:
+  - './content/lib/asam-asciidoctor_extensions-registered.js'
+
 antora:
   extensions:
     - require: ./content/lib/dev-mode.js
       enabled: false
-
+    - require: ./content/lib/asam-asciidoctor_extensions-registered.js
+      enabled: true
 output:
   dir: ./www
