@@ -25,7 +25,6 @@ More specifically, these keys are:
 * Attestation token key (see xref:02-configure-trustee.adoc#keys[here])
 
 Of course the user can also bring his own existing keys, especially the `https` one.
-
 [source,sh,role=execute]
 ----
 mkdir -p trustee
@@ -42,15 +41,14 @@ ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
 
 CN_NAME=kbs-trustee-operator-system
 ORG_NAME=my_org
+----
 
-# Alternative to create https certs manually:
-# openssl req -x509 -nodes -days 365 \
-#  -newkey rsa:2048 \
-#  -keyout tls.key \
-#  -out tls.crt \
-#  -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
-#  -addext "subjectAltName=DNS:${ROUTE}"
-
+[tabs]
+====
+Cert manager operator::
++
+[source,sh,role=execute]
+----
 oc apply -f-<<EOF
 # issuer-and-certificates.yaml
 apiVersion: cert-manager.io/v1
@@ -109,6 +107,21 @@ spec:
     size: 256
 EOF
 ----
+
+Manually::
++
+[source,sh,role=execute]
+----
+openssl req -x509 -nodes -days 365 \
+ -newkey rsa:2048 \
+ -keyout tls.key \
+ -out tls.crt \
+ -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
+ -addext "subjectAltName=DNS:${ROUTE}"
+----
+====
+
+
 
 Let's see what it created:
 
