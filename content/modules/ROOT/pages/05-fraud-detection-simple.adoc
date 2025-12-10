@@ -47,7 +47,7 @@ This notebook specifically uses python sdk to download the encrypted data from A
 
 [source,sh,role=execute]
 ----
-oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
+oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/fraud-encrypted-datasets/notebook.yaml
 ----
 
 Switch to the newly created `fraud-detection` namespace

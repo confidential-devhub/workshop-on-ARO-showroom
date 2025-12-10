@@ -4,27 +4,7 @@ Here you can find the solution to most of the common errors.#
 
 == Which environment are you using?
 
-If you are reading this guide rendered in the **RHDP demo workshop**, then all the instructions should work if run in the provided interface.
-
-If you are testing on a standard **ARO deployment** outside RHDP, remember:
-
-. You need to upgrade the cluster to a newer version, at least `4.18.30`.
-. The `ARO_VNET_NAME` command xref:02-configure-osc.adoc#pp-cm[here] might not work, if your vnet does not contain `aro` in the name. As the user is free to give the ARO vnet any name, keep in mind that could not match.
-. The xref:02-configure-trustee.adoc#refval-fetch[reference values script] has some steps very specific to the RHDP environment.
-.. No need to use `sudo`
-.. You can create `./podvm`, no need of `/podvm`.
-.. You probably don't need `chown azure:azure /podvm`
-.. Delete all the `--root /podvm` references later, no need.
-
-If you are testing on an **Azure self managed cluster**, remember:
-
-. For SNO, you won't get `kata-oc` label into the worker node (since it's a SNO).
-. Check the commented commands in tje xref:02-configure-osc.adoc#pp-cm[peer-pod-cm script]. You need to uncomment `AZURE_RESOURCE_GROUP` and replace `contains(Name, 'aro')` with `contains(Name, '')`.
-. The xref:02-configure-trustee.adoc#refval-fetch[reference values script] has some steps very specific to the RHDP environment.
-.. No need to use `sudo`
-.. You can create `./podvm`, no need of `/podvm`.
-.. You probably don't need `chown azure:azure /podvm`
-.. Delete all the `--root /podvm` references later, no need.
+Some of the steps differ if you are using the **RHDP demo workshop**, a standard **ARO deployment** or **Azure self managed cluster**. Check the various tabs in the steps.
 
 == Follow the order
 
@@ -114,52 +94,8 @@ echo azure_tenant_id $AZ_TID
 az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
 ----
 
-. Created and configured the xref:02-configure-osc.adoc#pp-cm[Azure public IP address and NAT Gateway].
-+
-Remember to run `export AZURE_RESOURCE_GROUP={azure_resource_group}` first.
-+
-[source,sh,role=execute]
-----
-# If the cluster is Azure self managed, run
-# AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
+. Created and configured the xref:02-configure-osc.adoc#gateway[Azure public IP address and NAT Gateway].
 
-# Get the ARO region
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
-
-# Get VNET name used by ARO. This exists in the admin created RG.
-# In this ARO infrastructure, there are 2 VNETs: pick the one starting with "aro-".
-# The other is used internally by this workshop
-# If the cluster is Azure self managed, change
-# contains(Name, 'aro')
-# with
-# contains(Name, '')
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
-
-# Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
-ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
-
-# Necessary otherwise the CoCo pods won't be able to connect with the OCP cluster (OSC and Trustee)
-PEERPOD_NAT_GW=peerpod-nat-gw
-PEERPOD_NAT_GW_IP=peerpod-nat-gw-ip
-
-az network public-ip create -g "${AZURE_RESOURCE_GROUP}" \
-    -n "${PEERPOD_NAT_GW_IP}" -l "${ARO_REGION}" --sku Standard
-
-az network nat gateway create -g "${AZURE_RESOURCE_GROUP}" \
-    -l "${ARO_REGION}" --public-ip-addresses "${PEERPOD_NAT_GW_IP}" \
-    -n "${PEERPOD_NAT_GW}"
-
-az network vnet subnet update --nat-gateway "${PEERPOD_NAT_GW}" \
-    --ids "${ARO_WORKER_SUBNET_ID}"
-
-ARO_NAT_ID=$(az network vnet subnet show --ids "${ARO_WORKER_SUBNET_ID}" \
-    --query "natGateway.id" -o tsv)
-
-echo "ARO_REGION: \"$ARO_REGION\""
-echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NAT_ID: \"$ARO_NAT_ID\""
-----
 
 === INITDATA wrongly set
 

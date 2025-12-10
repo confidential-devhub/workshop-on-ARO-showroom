@@ -5,6 +5,7 @@ Let's start with installing Trustee. In addition to the Trustee operator, we als
 [#tcmdline]
 == Install via command line
 
+Trustee:
 [source,sh,role=execute]
 ----
 oc apply -f-<<EOF
@@ -35,7 +36,11 @@ spec:
   source: redhat-operators
   sourceNamespace: openshift-marketplace
 EOF
+----
 
+Cert-manager operator:
+[source,sh,role=execute]
+----
 oc new-project cert-manager-operator
 
 oc apply -f-<<EOF
@@ -74,13 +79,13 @@ watch oc get csv -n trustee-operator-system
 [source,texinfo,subs="attributes"]
 ----
 NAME                      DISPLAY                            VERSION   REPLACES   PHASE
-trustee-operator.v1.0.0   confidential compute attestation   1.0.0                Succeeded
+trustee-operator.v1.0.0   Red Hat build of Trustee           1.0.0                Succeeded
 ----
 
 Same applies to the cert-manager operator:
 [source,sh,role=execute]
 ----
-watch oc get csv -n oc get csv -n cert-manager-operator
+watch oc get csv -n cert-manager-operator
 ----
 
 **Example output**

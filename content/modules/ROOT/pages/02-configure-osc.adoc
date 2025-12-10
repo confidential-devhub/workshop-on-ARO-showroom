@@ -30,49 +30,104 @@ data:
   confidential: "true"
 EOF
 
-clear
 cat cc-fg.yaml
-----
 
-[source,sh,role=execute]
-----
 oc apply -f cc-fg.yaml
 ----
 
 [#pp-cm]
 == Create the peer-pods configmap
 
-. Get the necessary credentials. In case you didn't do it at the beginning, run
-`export AZURE_RESOURCE_GROUP={azure_resource_group}`.
+. Get the necessary credentials.
 +
-Follow the comments in the code if this workshop is being run in an Azure self managed cluster.
+[tabs]
+====
+RHDP workshop::
++
+In case you didn't do it at the beginning, run `export AZURE_RESOURCE_GROUP={azure_resource_group}`.
 +
 [source,sh,role=execute]
 ----
 # Get the ARO created RG
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 
-# If the cluster is Azure self managed, run
-# AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
-
 # Get the ARO region
 ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
 
 # Get VNET name used by ARO. This exists in the admin created RG.
-# In this ARO infrastructure, there are 2 VNETs: pick the one starting with "aro-".
-# The other is used internally by this workshop
-# If the cluster is Azure self managed, change
-# contains(Name, 'aro')
-# with
-# contains(Name, '')
 ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
 
-# Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
+# Get the Openshift worker subnet ip address id.
+# This exists in the admin created RG, and contains 'worker'
 ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
 
 ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
 
-# Necessary otherwise the CoCo pods won't be able to connect with the OCP cluster (OSC and Trustee)
+echo "ARO_REGION: \"$ARO_REGION\""
+echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
+echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
+echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
+----
+
+ARO::
++
+You need to find out how you called your subnet, as the name can be freely named during the install steps. Search it with `az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id}" --output tsv`, and then export it as `ARO_WORKER_SUBNET_ID=your-aro-subnet`.
++
+[source,sh,role=execute]
+----
+# Get the ARO created RG
+ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
+
+# Get the ARO region
+ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
+
+# Get VNET name used by ARO. We assume there is only one.
+ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
+
+# Define here your subnet!
+# ARO_WORKER_SUBNET_ID=your-aro-subnet
+
+ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
+
+echo "ARO_REGION: \"$ARO_REGION\""
+echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
+echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
+echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
+----
+
+Azure self managed::
++
+Azure self managed clusters only have a single resource group.
++
+[source,sh,role=execute]
+----
+# Get the Azure created RG
+AZURE_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
+
+# Get the Azure region
+ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
+
+# Get VNET name used by Azure. openshift-install only creates one.
+ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
+
+# Get the Openshift worker subnet ip address id.
+# This usually contains 'worker'
+ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
+
+ARO_NSG_ID=$(az network nsg list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
+
+echo "ARO_REGION: \"$ARO_REGION\""
+echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
+echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
+echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
+----
+====
+
+[#gateway]
+. Create the necessary ip and gateway to enable connection between CoCo and the worker node.
++
+[source,sh,role=execute]
+----
 PEERPOD_NAT_GW=peerpod-nat-gw
 PEERPOD_NAT_GW_IP=peerpod-nat-gw-ip
 
@@ -89,11 +144,6 @@ az network vnet subnet update --nat-gateway "${PEERPOD_NAT_GW}" \
 ARO_NAT_ID=$(az network vnet subnet show --ids "${ARO_WORKER_SUBNET_ID}" \
     --query "natGateway.id" -o tsv)
 
-clear
-echo "ARO_REGION: \"$ARO_REGION\""
-echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
 echo "ARO_NAT_ID: \"$ARO_NAT_ID\""
 ----
 
@@ -127,6 +177,8 @@ EOF
 
 clear
 cat pp-cm.yaml
+
+oc apply -f pp-cm.yaml
 ----
 +
 IMPORTANT: Settings that accept multiple, comma separated parameters like `AZURE_IMAGE_SIZES` and `TAGS` should **not** have spaces between the parameters. For example, use `TAGS: "key1=value1,key2=value2"` and not `TAGS: "key1=value1, key2=value2"`.
@@ -154,11 +206,6 @@ Because of the quota limitations of this workshop, it is unlikely that it will b
 +
 * Sealed secrets support: A sealed secret is an encapsulated secret available only within a TEE after verifying the integrity of the TEE environment.
 
-[source,sh,role=execute]
-----
-oc apply -f pp-cm.yaml
-----
-
 [#pp-restart]
 [NOTE]
 ====
@@ -180,7 +227,7 @@ Openshift sandboxed containers installs `kata-remote` as a _secondary, optional_
 
 [IMPORTANT]
 ====
-Creating the KataConfig CR automatically reboots the worker nodes. **In this ARO workshop, it should take around 15 minutes to install everything (job included)**.
+Creating the KataConfig CR automatically reboots the worker nodes. **In the ARO workshop, it should take around 15 minutes to install everything (job included)**.
 ====
 
 . Create a KataConfig CDR and apply it. By default all worker nodes will be configured to run CoCo workloads. If you want to restrict it to specific worker nodes, then add any specific label to those worker does and update the `kataconfigPoolSelector`. For this workshop, we will apply a label `workerType=kataWorker` to a single worker node and install kata binaries only in there.
@@ -202,16 +249,12 @@ spec:
       workerType: 'kataWorker'
 EOF
 
-clear
 cat kataconfig.yaml
-----
-+
-[source,sh,role=execute]
-----
+
 oc apply -f kataconfig.yaml
 ----
 
-. Wait for kata-oc `MachineConfigPool` (MCP) to be in `UPDATED` state (once `UPDATEDMACHINECOUNT` equals `MACHINECOUNT`). In this ARO setup with 3 worker nodes, it should take around 15 minutes.
+. [Skip this step on Azure SNO deployments] Wait for kata-oc `MachineConfigPool` (MCP) to be in `UPDATED` state (once `UPDATEDMACHINECOUNT` equals `MACHINECOUNT`). In this ARO setup with 3 worker nodes, it should take around 15 minutes.
 +
 [source,sh,role=execute]
 ----
@@ -234,7 +277,7 @@ kata-oc   rendered-kata-oc-894630a1c9cdf3ebef8bd98c72e26608   True      False   
 oc get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o yaml | grep -m 1 AZURE_IMAGE_ID
 ----
 +
-If `data: AZURE_IMAGE_ID:` is still empty, check the job:
+If `AZURE_IMAGE_ID:` is still empty, check the job:
 +
 [source,sh,role=execute]
 ----
@@ -275,12 +318,12 @@ kata             kata             152m
 kata-remote      kata-remote      152m
 ----
 
-This is the expected output when looking at the OSC pods (note the random character ending will change):
+. This is the expected output when looking at the OSC pods (note the random character ending will change):
 [source,sh,role=execute]
 ----
 oc get pods -n openshift-sandboxed-containers-operator
 ----
-
++
 [source,texinfo,subs="attributes"]
 ----
 NAME                                           READY   STATUS      RESTARTS   AGE
@@ -302,8 +345,11 @@ CoCo and OSC `1.11` on ARO require OpenShift `4.18.30`. However, the default Ope
 
 Upgrading a cluster is time-consuming. For the purposes of **this workshop**, we provide a script that updates only the required dependency.
 
-Run the following to update the workshop environment:
-
+Run the following to update your environment:
+[tabs]
+====
+RHDP workshop::
++
 [source,sh,role=execute]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
@@ -312,4 +358,18 @@ chmod +x update-kata-rpm.sh
 
 ./update-kata-rpm.sh
 ----
+
+ARO/Azure standard deployment::
++
+[source,sh,role=execute]
+----
+ARO_NEW_CLUSTER_VERSION='4.18.30'
+
+oc adm upgrade --allow-explicit-upgrade --force=true --to-image=quay.io/openshift-release-dev/ocp-release:$ARO_NEW_CLUSTER_VERSION-x86_64
+
+oc wait --for=condition=Progressing=false clusterversion/version --timeout=-1s
+----
+====
+
+
 
