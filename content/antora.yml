@@ -10,6 +10,7 @@ asciidoc:
     lab_name: "Understanding Confidential Containers - Next"
     release-version: master
     page-pagination: true
+    tabs: tabs
     aro_console: https://placehoder_openshift_web_console
     azure_resource_group: insert_your_rg_here
     aro_kube_username: kubeadmin
