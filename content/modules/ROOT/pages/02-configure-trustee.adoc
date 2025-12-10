@@ -22,7 +22,7 @@ In order to simplify the flow, we will ask the cert-manager operator to create  
 More specifically, these keys are:
 
 * Https keys, to ensure a secure connection between the CoCo pod and Trustee
-* Attestation token key (see xref:02-configure-trustee.adoc#keys[here])
+* Attestation token key (for more info see xref:02-configure-trustee.adoc#att-token-key[here])
 
 Of course the user can also bring his own existing keys, especially the `https` one.
 
@@ -601,7 +601,9 @@ podman unshare sh -c '
   podman umount '"$cid"'
 '
 podman rm $cid
-JSON_DATA=$(cat podvm/measurements.json)
+JSON_DATA=$(cat
+
+podvm/measurements.json)
 ----
 ====
 
@@ -657,7 +659,6 @@ data:
 $REFERENCE_VALUES_JSON
 EOF
 
-clear
 cat rvps-configmap.yaml
 ----
 
@@ -828,7 +829,9 @@ Expected output:
 [#trustee-optionals]
 == Optional: Customize and Understand Trustee
 
-You can overwrite all the artifacts created by `Trusteeconfig` with custom settings. Below is an explanation of each of ]
+This section explains the purpose of some of the settings required by Trustee. All of these are automatically generated, but if you want to customize the deployment, you need to know what they are for.
+
+[#att-token-key]
 === The attestation token key
 
 Secret retrieval works in a two-step authentication:

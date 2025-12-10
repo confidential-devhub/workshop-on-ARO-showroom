@@ -93,6 +93,20 @@ else
   exit 1
 fi
 
+REQUIRED="4.18.30"
+# Extract version number (e.g., 4.18.30)
+CURRENT=$(oc version 2>/dev/null | grep "Server Version" | awk '{print $3}')
+
+echo "Current: $CURRENT"
+echo "Required: $REQUIRED"
+
+# Use sort -V to compare versions correctly
+# If the lowest version in the list is NOT the required one, then Current < Required.
+if [ "$(printf '%s\n' "$REQUIRED" "$CURRENT" | sort -V | head -n1)" != "$REQUIRED" ]; then
+  echo "Exiting: Cluster version is below $REQUIRED"
+  exit 1
+fi
+
 echo ""
 
 echo "################################################"
@@ -618,8 +632,6 @@ oc patch kbsconfig trusteeconfig-kbs-config \
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
   ]"
-
-cat kbsconfig-cr.yaml
 
 oc get pods -n trustee-operator-system
 

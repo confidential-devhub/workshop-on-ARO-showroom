@@ -5,15 +5,70 @@ This is the admin guide. In this setup, we will show how to install and configur
 [#credentials]
 == Setting up the environment
 
+[tabs]
+====
+RHDP workshop::
++
 . Go into the terminal on the right and run the following commands:
++
 * Log into azure CLI: `az login --service-principal --username={azure_service_principal_id} --password={azure_service_principal_password} --tenant={azure_tenant_id}`
 * Export the `AZURE_RESOURCE_GROUP` variable. It will needed when setting up the operator:
 `export AZURE_RESOURCE_GROUP={azure_resource_group}`
-
++
 . If you need to use the web UI (not necessary in this workshop):
++
 * Navigate to the {aro_console}[Openshift Console, window=blank]
++
 * Login as administrator:
++
 ** *Username:* {aro_kube_username}
++
 ** *Password:* {aro_kube_password}
 
-If you are running this workshop from an Azure self managed OCP cluster, note that there are very small tweaks to follow, but they are also documented in this guide.
+ARO::
++
+. Make sure you log into the right service principal:
++
+[source,sh,role=execute]
+----
+AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
+
+AZ_CS=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_secret | base64 -d)
+
+AZ_TID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_tenant_id | base64 -d)
+
+echo azure_client_id $AZ_CID
+echo azure_client_secret $AZ_CS
+echo azure_tenant_id $AZ_TID
+
+az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
+----
++
+. Export the resource group `export AZURE_RESOURCE_GROUP=your-resource-group` where ARO is deployed. This is **not** the resource group created with the OCP ARO cluster.
+
+Azure::
++
+. Make sure you log into the right service principal:
++
+[source,sh,role=execute]
+----
+AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
+
+AZ_CS=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_secret | base64 -d)
+
+AZ_TID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_tenant_id | base64 -d)
+
+echo azure_client_id $AZ_CID
+echo azure_client_secret $AZ_CS
+echo azure_tenant_id $AZ_TID
+
+az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
+----
++
+. Export the resource group.
++
+[source,sh,role=execute]
+----
+export AZURE_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
+----
+====

@@ -620,8 +620,6 @@ oc patch kbsconfig trusteeconfig-kbs-config \
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
   ]"
 
-cat kbsconfig-cr.yaml
-
 oc get pods -n trustee-operator-system
 
 ####################################################################

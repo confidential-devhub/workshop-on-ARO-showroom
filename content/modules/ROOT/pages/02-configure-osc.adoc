@@ -30,12 +30,8 @@ data:
   confidential: "true"
 EOF
 
-clear
 cat cc-fg.yaml
-----
 
-[source,sh,role=execute]
-----
 oc apply -f cc-fg.yaml
 ----
 
@@ -181,6 +177,8 @@ EOF
 
 clear
 cat pp-cm.yaml
+
+oc apply -f pp-cm.yaml
 ----
 +
 IMPORTANT: Settings that accept multiple, comma separated parameters like `AZURE_IMAGE_SIZES` and `TAGS` should **not** have spaces between the parameters. For example, use `TAGS: "key1=value1,key2=value2"` and not `TAGS: "key1=value1, key2=value2"`.
@@ -207,11 +205,6 @@ Because of the quota limitations of this workshop, it is unlikely that it will b
 * Data volume encryption: all data stored by the CoCo workload is stored in a separate, encrypted container.
 +
 * Sealed secrets support: A sealed secret is an encapsulated secret available only within a TEE after verifying the integrity of the TEE environment.
-
-[source,sh,role=execute]
-----
-oc apply -f pp-cm.yaml
-----
 
 [#pp-restart]
 [NOTE]
@@ -256,16 +249,12 @@ spec:
       workerType: 'kataWorker'
 EOF
 
-clear
 cat kataconfig.yaml
-----
-+
-[source,sh,role=execute]
-----
+
 oc apply -f kataconfig.yaml
 ----
 
-. Wait for kata-oc `MachineConfigPool` (MCP) to be in `UPDATED` state (once `UPDATEDMACHINECOUNT` equals `MACHINECOUNT`). In this ARO setup with 3 worker nodes, it should take around 15 minutes.
+. [Skip this step on Azure SNO deployments] Wait for kata-oc `MachineConfigPool` (MCP) to be in `UPDATED` state (once `UPDATEDMACHINECOUNT` equals `MACHINECOUNT`). In this ARO setup with 3 worker nodes, it should take around 15 minutes.
 +
 [source,sh,role=execute]
 ----
@@ -288,7 +277,7 @@ kata-oc   rendered-kata-oc-894630a1c9cdf3ebef8bd98c72e26608   True      False   
 oc get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o yaml | grep -m 1 AZURE_IMAGE_ID
 ----
 +
-If `data: AZURE_IMAGE_ID:` is still empty, check the job:
+If `AZURE_IMAGE_ID:` is still empty, check the job:
 +
 [source,sh,role=execute]
 ----
@@ -329,12 +318,12 @@ kata             kata             152m
 kata-remote      kata-remote      152m
 ----
 
-This is the expected output when looking at the OSC pods (note the random character ending will change):
+. This is the expected output when looking at the OSC pods (note the random character ending will change):
 [source,sh,role=execute]
 ----
 oc get pods -n openshift-sandboxed-containers-operator
 ----
-
++
 [source,texinfo,subs="attributes"]
 ----
 NAME                                           READY   STATUS      RESTARTS   AGE
