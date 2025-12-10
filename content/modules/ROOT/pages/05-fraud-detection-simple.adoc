@@ -38,14 +38,14 @@ The entire process relies on remote attestation to securely release the decrypti
 
 == Start the Jupyter notebook
 
-Let's create a notebook and run it as CoCo. If you open the yaml link, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
+Let's create a notebook and run it as CoCo. If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank], you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
 
 This notebook specifically uses python sdk to download the encrypted data from Azure for two reasons:
 
 * Closely align with regular interactive AI workflows which uses python SDKs to download data from s3, azure, minio etc.
 * Provides an example of programmatic storage access for AI workloads when using the peer-pods approach.
 
-Note that the podspec below deploys a bigger `Standard_DC8es_v5` CVM. If `Standard_DC8es_v5` is not supported in the cluster region, try with `Standard_DC8as_v5`.
+Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap] is set at least to `20` GB, as the steps in the guide will install a lot of python packages. If you modify that value, remember as always to to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
 
 [source,sh,role=execute]
 ----
