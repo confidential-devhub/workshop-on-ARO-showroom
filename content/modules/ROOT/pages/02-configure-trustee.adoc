@@ -121,6 +121,10 @@ openssl req -x509 -nodes -days 365 \
  -out tls.crt \
  -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
  -addext "subjectAltName=DNS:${ROUTE}"
+
+ oc create secret generic trustee-tls-cert --from-file=tls.crt -n trustee-operator-system
+
+oc create secret generic trustee-token-cert --from-file=tls.key -n trustee-operator-system
 ----
 ====
 
