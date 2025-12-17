@@ -605,9 +605,7 @@ podman unshare sh -c '
   podman umount '"$cid"'
 '
 podman rm $cid
-JSON_DATA=$(cat
-
-podvm/measurements.json)
+JSON_DATA=$(cat podvm/measurements.json)
 ----
 ====
 
