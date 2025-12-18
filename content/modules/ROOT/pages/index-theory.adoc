@@ -4,3 +4,15 @@ In this section, we will focus on explaining the high level workflow and theory 
 
 * The xref:osc.adoc[Openshift sandboxed containers operator], which provides confidential containers. This operator is installed in the **untrusted cluster**, and is in charge of providing the necessary software stack to deploy confidential containers
 * The xref:trustee.adoc[Trustee operator], which acts as remote attester. This operator is installed in a **trusted environment**, and is in charge of attesting that the deployed confidential container is actually running in a confidential environment.
+
+Want to see a preview of what is coming? Check out our interactive Arcade demo:
+
+++++
+<iframe
+  src="https://interact.redhat.com/share/wjZnZb2avHnp8k0hwjFe"
+  width="100%"
+  height="600px"
+  frameborder="0"
+  allowfullscreen>
+</iframe>
+++++
