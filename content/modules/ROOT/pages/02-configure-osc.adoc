@@ -319,6 +319,7 @@ kata-remote      kata-remote      152m
 ----
 
 . This is the expected output when looking at the OSC pods (note the random character ending will change):
++
 [source,sh,role=execute]
 ----
 oc get pods -n openshift-sandboxed-containers-operator
