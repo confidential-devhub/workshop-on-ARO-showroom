@@ -15,9 +15,17 @@ RHDP workshop::
 +
 . Go into the terminal on the right and run the following commands:
 +
-* Log into azure CLI: `az login --service-principal --username={azure_service_principal_id} --password={azure_service_principal_password} --tenant={azure_tenant_id}`
-* Export the `AZURE_RESOURCE_GROUP` variable. It will needed when setting up the operator:
-`export AZURE_RESOURCE_GROUP={azure_resource_group}`
+[source,sh,role="execute",subs=attributes+]
+----
+# Log into azure CLI:
+az login --service-principal \
+--username={azure_service_principal_id} \
+--password={azure_service_principal_password} \
+--tenant={azure_tenant_id}
+
+# Export AZURE_RESOURCE_GROUP
+export AZURE_RESOURCE_GROUP={azure_resource_group}
+----
 +
 . If you need to use the web UI (not necessary in this workshop):
 +
@@ -103,8 +111,10 @@ The following scripts sets everything just as in the xref:index-admin.adoc[admin
 ====
 RHDP workshop::
 +
-[source,sh,role=execute]
+[source,sh,role="execute",subs=attributes+]
 ----
+export AZURE_RESOURCE_GROUP={azure_resource_group}
+
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure.sh -o configure.sh
 
 chmod +x configure.sh

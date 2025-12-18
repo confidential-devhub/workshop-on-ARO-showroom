@@ -44,10 +44,10 @@ oc apply -f cc-fg.yaml
 ====
 RHDP workshop::
 +
-In case you didn't do it at the beginning, run `export AZURE_RESOURCE_GROUP={azure_resource_group}`.
-+
-[source,sh,role=execute]
+[source,sh,role="execute",subs=attributes+]
 ----
+AZURE_RESOURCE_GROUP={azure_resource_group}
+
 # Get the ARO created RG
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 
