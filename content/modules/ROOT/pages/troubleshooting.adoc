@@ -19,7 +19,7 @@ It is possible to follow alternative orders, but you need to then remember to go
 
 == CoCo pod doesn't start
 
-In this section, we cover the cases where the pod doesn't start at all.
+In this section, we cover the cases where the pod doesn't start at all. No CVM is created in Azure, and no container is started.
 
 === Check the Pod Events
 
@@ -161,7 +161,33 @@ If you see that error, make sure the following is correct:
 
 After ANY change to any config/secret of the Trustee operator, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the deployment]!
 
+[#trouble-refvals]
+=== Wrong reference values
+
+In this workshop, the xref:02-configure-trustee.adoc#trustee-refval[reference values] are taken from the `latest` OSC available image, as we assume the operator is freshly installed. However, if OSC is not the latest version, or has not been updated, it might happen that `latest` won't match with the OSC deployed image.
+
+If this happens, then the reference values will not match, as the images are different, and therefore some PCRs will differ.
+
+The easiest way to be sure the image is correct is to use the tag matching the operator version. For example, if you installed OSC `1.11.1`, look for the same tag in the `osc-dm-verity-image` container repo.
+
+You can see all available tags with the following command:
+[source,sh,role=execute]
+----
+podman search --list-tags registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image --authfile ./cluster-pull-secret.json
+----
+
+Once you found the right tag, replace `OSC_VERSION` with the right tag and repeat the reference values creation step.
+
+[NOTE]
+====
+It could be very easy to think that a quick way to get the right image is to directly ask the OSC operator, as it is stored in the CSV under `RELATED_IMAGE_PODVM_OCI`.
+
+However, this is highly unsafe, especially in production environments! The OSC operator runs in the **untrusted** cluster, therefore queying anything from it is against the CoCo Threath model. The CSV could be easily compromised and point to a malicious image, leading to Trustee downloading and using reference values that successfully attest it, causing a compromised image to access Trustee secrets.
+====
+
 == CoCo pod inaccessible
+
+All is working apparently, but you cannot see any log or access the pod.
 
 === INITDATA too strict
 

@@ -182,6 +182,7 @@ Let's now apply `Trusteeconfig` and see if the secrets and configs are created:
 oc apply -f trusteeconfig-restricted.yaml
 
 oc get secrets -n trustee-operator-system | grep trusteeconfig
+echo ""
 oc get configmaps -n trustee-operator-system | grep trusteeconfig
 ----
 
@@ -499,6 +500,12 @@ Before downloading any reference value from Red Hat, we need to be sure that the
 
 Let's first get the image we are going to download:
 
+[IMPORTANT]
+====
+Note that if the downloaded reference values do not match with the actual image being deployed by OSC, attestation will fail.
+If you are not using the latest OSC release, or are unsure which version to use, please refer xref:troubleshooting.adoc#trouble-refvals[here].
+====
+
 [source,sh,role=execute]
 ----
 # Prepare required binaries
@@ -518,8 +525,6 @@ oc get -n openshift-config secret/pull-secret -o json \
 # Pick the latest podvm image, as we freshly installed the cluster
 OSC_VERSION=latest
 # alternatively, use the operator-version tag.
-# find the operator-version matching tag with this command:
-# podman search --list-tags registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image --authfile ./cluster-pull-secret.json
 # OSC_VERSION=1.11.1
 VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
 
