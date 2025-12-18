@@ -1,6 +1,8 @@
 = User guide
 
-This is the user guide. In this setup, we will automatically install and configure the operators. After that, we will run an example.
+This is the user guide. In this setup, we will automatically install and configure the operators.
+
+If you already went through the xref:index-admin.adoc[admin guide], you can xref:03-deployment-settings.adoc[skip ahead].
 
 Reminder: You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
 
