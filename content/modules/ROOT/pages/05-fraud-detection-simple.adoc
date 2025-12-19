@@ -28,11 +28,17 @@ These two steps above are already prepared for you, no need to do anything at th
 
 The entire process relies on remote attestation to securely release the decryption key to the running container. In this demo, we will run the whole workflow.
 
-. The fraud-detection container starts, pulling the public model and the encrypted datasets.
-. The decryption key is not present in the container; it is held remotely by Trustee, our key-release service.
+. The fraud-detection container starts.
+. One of the attached volumes in this pod is a sealed secret.
+. CoCo internal components read which secret it is actually referring to, and begin attestation to get its content.
+.. Attestation starts by first having the confidential container to generate a report that shows it is a genuine CoCo running on a secure, trusted platform.
+.. The CoCo then sends this report to Trustee. Only after Trustee verifies that this report is genuine and correct, it can confirm that the container is secure by releasing the requested secret.
+. The container downloads the public model.
+. Then, it tries to pull the encrypted dataset.
+.. The Azure SAS (connection string in a real example) required to access the blob has been loaded as sealed secret in the CoCo pod. If everything went well, it should be available in a volume defined in the podspec.
+. Once the blob is accessed, the decryption key is not present in the container; it is held remotely by Trustee too.
 .. The key was already added in Trustee xref:02-configure-trustee.adoc#trustee-key[when adding the secrets], or was done automatically by the install script. For this demo, Trustee runs in the same cluster, but in production, it would be in a separate, secure domain.
-. The container performs remote attestation, generating a cryptographic proof that it is a genuine Confidential Container running on a secure, trusted platform.
-. It sends this proof to Trustee. Only after Trustee verifies that the container is secure does it release the decryption key.
+.. To get the decryption key, the same attestation process done by the sealed secret is performed. This time is just triggered manually by the application.
 . The container uses the received key to decrypt the credit card datasets in memory.
 . The (now-decrypted) private data is fed into the public model for processing, all within the protected container.
 
@@ -85,3 +91,8 @@ Starting from `fraud-detection/1_download_data.ipynb`, go through the various no
 * `fraud-detection/3_run_model.ipynb`: run the model
 * `fraud-detection/4_cleanup.ipynb`: clean everything to restart the demo
 
+== Considerations
+
+Note for a second how a secret like `/sealed/azure-value/azure-sas` can be read and used in the jupyter notebook, but if you try to `oc exec` and read it, it won't work.
+
+The difference is that the notebook is running **within** the container, whereas `oc exec` is executed from outside. This shows exactly the CoCo threat model: an application/developer *inside* the CoCo pod is obviously allowed to read the secrets granted. However, a cluster/infra/platform admin is not trusted, therefore there is no way for him/her to access this data.
