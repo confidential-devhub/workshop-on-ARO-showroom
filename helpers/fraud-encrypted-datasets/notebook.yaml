@@ -24,7 +24,7 @@ spec:
       image: docker.io/alpine/git:latest
       env:
       - name: BRANCH_NAME
-        value: "coco_workshop"
+        value: "coco_workshop_aro"
       workingDir: /home/jovyan
       command: ["/bin/sh", "-c"]
       args:
@@ -48,11 +48,11 @@ spec:
       env:
         - name: JUPYTER_ENABLE_LAB
           value: "yes"
-        - name: AZURE_ACCOUNT_SAS
-          value: "?sp=r&st=2025-10-27T15:42:27Z&se=2028-10-27T22:57:27Z&spr=https&sv=2024-11-04&sr=b&sig=vjaRotd7de%2B3QwlzHVaHF2GVyehw1xb3fFiXe9E7YOI%3D"
       volumeMounts:
         - name: repo-storage
           mountPath: /home/jovyan
+        - name: azure-secret
+            mountPath: "/sealed/azure-value"
       ports:
         - containerPort: 8888
           name: http
@@ -83,6 +83,9 @@ spec:
   volumes:
     - name: repo-storage
       emptyDir: {}
+    - name: azure-secret
+      secret:
+        secretName: sealed-azure-sas
 ---
 apiVersion: v1
 kind: Service
