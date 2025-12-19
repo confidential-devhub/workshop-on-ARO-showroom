@@ -688,7 +688,7 @@ Define secret name and values. In this example, the `hellosecret` secret has two
 For the purpose of this workshop, in the xref:hello-openshift.adoc[hello-world example] we will show how to retrieve the key in two ways:
 
 1. `key1` will be retrieved via lazy attestation, meaning the application has to retrieve it itself by connecting with the **internal** guest components (the container does not need to know the Trustee address!)
-2. `key2` will be retireved via a sealed secret, meaning which allows to load confidential information in the untrusted OCP environment. What this means is that the OCP sealed secret will simply be a pointer to the desired `key2` stored in Trustee, and once the container starts, the CoCo guest components will automatically perform attestation with the Trustee, retrieve the key and load it into a specified volume.
+2. `key2` will be retireved via a sealed secret, which automatically loads the defined secret into the container as a volume available for the application to be used.
 
 Create what will be uploaded as `key2`:
 [source,sh,role=execute]
