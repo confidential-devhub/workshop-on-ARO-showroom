@@ -99,7 +99,7 @@ clear
 cat unsigned-confidential-devhub.yaml
 ----
 
-This is very similar to xref:03-deploy-workload.adoc[hello openshift], but the image changes: it's `quay.io/confidential-devhub/http-echo:latest`. This image is not signed.
+This is very similar to xref:hello-openshift.adoc[hello openshift], but the image changes: it's `quay.io/confidential-devhub/http-echo:latest`. This image is not signed.
 
 Let's run it and see what happens:
 
@@ -130,7 +130,7 @@ ize: 0 } } }...
 
 And the explanation is very clear: `error: Image policy rejected: Denied by policy: rejected by sigstoreSigned rule"`, meaning the signature policy detected the image is coming from `quay.io/confidential-devhub`, but since it is not signed, it does not allow it to run.
 
-Just like in xref:03-deploy-workload.adoc[hello openshift], we can inspect Trustee and see in the logs how the CoCo pod fetched the image policy and the public key assigned to `quay.io/confidential-devhub`, but because the internal signature check did not pass, the pod didn't ask for any secret.
+Just like in xref:hello-openshift.adoc[hello openshift], we can inspect Trustee and see in the logs how the CoCo pod fetched the image policy and the public key assigned to `quay.io/confidential-devhub`, but because the internal signature check did not pass, the pod didn't ask for any secret.
 
 [source,sh,role=execute]
 ----

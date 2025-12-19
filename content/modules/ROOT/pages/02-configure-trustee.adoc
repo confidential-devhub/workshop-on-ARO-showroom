@@ -685,7 +685,7 @@ Populate Trustee with secret(s) that are then managed by the above policies and 
 
 Define secret name and values. In this example, the `hellosecret` secret has two entries (`key1`, `key2`), which the clients retrieve. You can add additional secrets according to your requirements by using the same format.
 
-For the purpose of this workshop, in the xref:03-deploy-workload.adoc[hello-world example] we will show how to retrieve the key in two ways:
+For the purpose of this workshop, in the xref:hello-openshift.adoc[hello-world example] we will show how to retrieve the key in two ways:
 
 1. `key1` will be retrieved via lazy attestation, meaning the application has to retrieve it itself by connecting with the **internal** guest components (the container does not need to know the Trustee address!)
 2. `key2` will be retireved via a sealed secret, meaning which allows to load confidential information in the untrusted OCP environment. What this means is that the OCP sealed secret will simply be a pointer to the desired `key2` stored in Trustee, and once the container starts, the CoCo guest components will automatically perform attestation with the Trustee, retrieve the key and load it into a specified volume.
@@ -714,14 +714,19 @@ rm key.bin
 
 Note that `$HELLO_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig]
 
-Now, prepare the `key2` sealed secret. Note that this secret is uploaded in the namespace where the CoCo pod will run (`default`), **not** in the Trustee/OSC namespace, as it will be used directly by the CoCo pod:
+Now, we need to prepare the `key2` sealed secret. Above we added the secret into Trustee, so the remote attester is fine. However, in order to automatically mount it when a confidential container starts, we need to also instruct it to do so.
+
+Therefore for sealed secrets we need to create an additional secret in the `default` namespace, meaning in the **untrusted** cluster. Such secret does not really contain anything precious, as we don't trust the environment and whoever can access it, but instead it is just a reference so that CoCo knows where exactly is the real secret in Trustee. In other words, see this additional secret as a string that says "the actual content of this secret is stored in trustee under <what you specify in `--resource-uri` below>. When the container starts and volume is mounted, ask Trustee (URL is defined in INITDATA) for this resource, and if received successfully mount it here".
 
 [source,sh,role=execute]
 ----
 SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${HELLO_SECRET_NAME}/key2 --provider kbs | grep -v "Warning")
 
+# Note that the namespace here is "default"!
 oc create secret generic sealed-secret --from-literal=key2=$SECRET -n default
 ----
+
+=== Secrets needed in the next steps
 
 To simplify the examples coming after setup, let's also automatically add some other keys:
 [source,sh,role=execute]
