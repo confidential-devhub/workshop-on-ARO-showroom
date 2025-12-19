@@ -52,7 +52,7 @@ spec:
         - name: repo-storage
           mountPath: /home/jovyan
         - name: azure-secret
-            mountPath: "/sealed/azure-value"
+          mountPath: "/sealed/azure-value"
       ports:
         - containerPort: 8888
           name: http
