@@ -714,16 +714,30 @@ rm key.bin
 
 Note that `$HELLO_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig]
 
-Now, we need to prepare the `key2` sealed secret. Above we added the secret into Trustee, so the remote attester is fine. However, in order to automatically mount it when a confidential container starts, we need to also instruct it to do so.
-
-Therefore for sealed secrets we need to create an additional secret in the `default` namespace, meaning in the **untrusted** cluster. Such secret does not really contain anything precious, as we don't trust the environment and whoever can access it, but instead it is just a reference so that CoCo knows where exactly is the real secret in Trustee. In other words, see this additional secret as a string that says "the actual content of this secret is stored in trustee under <what you specify in `--resource-uri` below>. When the container starts and volume is mounted, ask Trustee (URL is defined in INITDATA) for this resource, and if received successfully mount it here".
+Now, we need to prepare the `key2` sealed secret. Above we added the secret into Trustee, so the remote attester is fine. However, in order to automatically mount it when a confidential container starts, we need to also instruct CoCo to do so.
 
 [source,sh,role=execute]
 ----
 SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${HELLO_SECRET_NAME}/key2 --provider kbs | grep -v "Warning")
 
+echo $SECRET
+----
+
+This is the string that we need to provide to the CoCo container. Such secret does **not** contain anything precious, as we don't trust the environment and whoever can access it, but instead it is just a reference so that CoCo knows where exactly is the real secret in Trustee. In other words, see this additional secret as a string that says "the actual content of this secret is stored in trustee under <what you specify in `--resource-uri` below>. When the container starts and volume is mounted, ask Trustee (URL is defined in INITDATA) for this resource, and if received successfully mount it here".
+
+We can add this string to the CoCo container in multiple ways, either as secret/configmap, or as env variable. Therefore let's add it as a secret to the `default` namespace, meaning in the **untrusted** cluster.
+
+[source,sh,role=execute]
+----
 # Note that the namespace here is "default"!
 oc create secret generic sealed-secret --from-literal=key2=$SECRET -n default
+
+# Alternatively:
+# In the podspec of the CoCo pod, add
+# env:
+#   - name: MY_VARIABLE
+#   - value: $SECRET
+# and $MY_VARIABLE will contain the content of `key2`!
 ----
 
 === Secrets needed in the next steps
