@@ -160,7 +160,7 @@ spec:
 EOF
 
 echo "############################ Install cert-manager ########################"
-oc new-project cert-manager-operator
+oc new-project cert-manager-operator || oc project cert-manager-operator
 
 oc apply -f-<<EOF
 ---
@@ -292,6 +292,11 @@ spec:
     size: 256
 EOF
 
+oc wait deployment cert-manager-webhook -n cert-manager --for=condition=Available=True --timeout=300s
+while [[ $(oc get endpoints cert-manager-webhook -n cert-manager -o jsonpath='{.subsets[*].addresses[*].ip}') == "" ]]; do
+  echo "Waiting for cert-manager-webhook endpoints..."
+  sleep 5
+done
 oc wait certificate kbs-https -n trustee-operator-system --for=condition=Ready --timeout=60s
 oc wait certificate kbs-token -n trustee-operator-system --for=condition=Ready --timeout=60s
 oc get secrets -n trustee-operator-system | grep /tls
