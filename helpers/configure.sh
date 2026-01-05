@@ -269,7 +269,8 @@ spec:
     size: 256
 EOF
 
-sleep 2
+oc wait certificate kbs-https -n trustee-operator-system --for=condition=Ready --timeout=60s
+oc wait certificate kbs-token -n trustee-operator-system --for=condition=Ready --timeout=60s
 oc get secrets -n trustee-operator-system | grep /tls
 ####################################################################
 echo "################################################"
@@ -517,13 +518,8 @@ sudo chown azure:azure /podvm
 podman pull --root /podvm --authfile cluster-pull-secret.json $IMAGE
 
 cid=$(podman create --root /podvm --entrypoint /bin/true $IMAGE)
-echo "CID ${cid}"
-podman unshare --root /podvm sh -c '
-  mnt=$(podman mount --root /podvm '"$cid"')
-  echo "MNT ${mnt}"
-  cp $mnt/image/measurements.json /podvm
-  podman umount --root /podvm '"$cid"'
-'
+echo "CID: ${cid}"
+podman cp --root /podvm $cid:/image/measurements.json ~/test
 podman rm --root /podvm $cid
 JSON_DATA=$(cat /podvm/measurements.json)
 

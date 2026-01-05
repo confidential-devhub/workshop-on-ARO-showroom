@@ -26,9 +26,9 @@ There are three guides:
 
 * The xref:index-theory.adoc[theory], to get a high level overview of what confidential computing is and what are the two operators we are going to use.
 
-* The xref:index-admin.adoc[Admin guide], to learn how to install and configure the operators, which configs to set up and why we need such things. This is useful for admins that need to set up the cluster environment.
+* The xref:index-admin.adoc[admin guide], to learn how to install and configure the operators, which configs to set up and why we need such things. This is useful for admins (operational security persona) that need to set up the cluster environment.
 
-* The xref:index-user.adoc[User guide], where both OSC and Trustee will be automatically installed and configured, and what is left to do is just run the confidential container. This is useful for end users that want to experiment CoCo without going into the installation steps.
+* The xref:index-user.adoc[user guide], where both OSC and Trustee will be automatically installed and configured, and what is left to do is just run the confidential container. This is useful for end users (developers) that want to experiment CoCo without going into the installation steps or knowing how all internals work.
 
 IMPORTANT: In this workshop, we will install Trustee in the **same cluster** that hosts OSC and therefore Confidential Containers. **This is not a suitable solution for production environments.**
 Because the Trustee operator contains the reference values and secrets that are necessary to establish if a Confidential Container is running in a truly safe environment, it should be installed in a separate cluster running in a trusted environment (on prem, for example). Because of the limitations of this ARO workshop, it is not possible to set up two clusters. You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.

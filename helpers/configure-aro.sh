@@ -292,7 +292,8 @@ spec:
     size: 256
 EOF
 
-sleep 2
+oc wait certificate kbs-https -n trustee-operator-system --for=condition=Ready --timeout=60s
+oc wait certificate kbs-token -n trustee-operator-system --for=condition=Ready --timeout=60s
 oc get secrets -n trustee-operator-system | grep /tls
 ####################################################################
 echo "################################################"
@@ -539,13 +540,8 @@ mkdir -p podvm
 podman pull --authfile cluster-pull-secret.json $IMAGE
 
 cid=$(podman create --entrypoint /bin/true $IMAGE)
-echo "CID ${cid}"
-podman unshare sh -c '
-  mnt=$(podman mount '"$cid"')
-  echo "MNT ${mnt}"
-  cp $mnt/image/measurements.json podvm
-  podman umount '"$cid"'
-'
+echo "CID: ${cid}"
+podman cp $cid:/image/measurements.json ~/test
 podman rm $cid
 JSON_DATA=$(cat podvm/measurements.json)
 

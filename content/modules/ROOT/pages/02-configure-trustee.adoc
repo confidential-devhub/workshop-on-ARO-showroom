@@ -581,13 +581,8 @@ sudo chown azure:azure /podvm
 podman pull --root /podvm --authfile cluster-pull-secret.json $IMAGE
 
 cid=$(podman create --root /podvm --entrypoint /bin/true $IMAGE)
-echo "CID ${cid}"
-podman unshare --root /podvm sh -c '
-  mnt=$(podman mount --root /podvm '"$cid"')
-  echo "MNT ${mnt}"
-  cp $mnt/image/measurements.json /podvm
-  podman umount --root /podvm '"$cid"'
-'
+echo "CID: ${cid}"
+podman cp --root /podvm $cid:/image/measurements.json ~/test
 podman rm --root /podvm $cid
 JSON_DATA=$(cat /podvm/measurements.json)
 ----
@@ -602,13 +597,8 @@ mkdir -p podvm
 podman pull --authfile cluster-pull-secret.json $IMAGE
 
 cid=$(podman create --entrypoint /bin/true $IMAGE)
-echo "CID ${cid}"
-podman unshare sh -c '
-  mnt=$(podman mount '"$cid"')
-  echo "MNT ${mnt}"
-  cp $mnt/image/measurements.json podvm
-  podman umount '"$cid"'
-'
+echo "CID: ${cid}"
+podman cp $cid:/image/measurements.json ~/test
 podman rm $cid
 JSON_DATA=$(cat podvm/measurements.json)
 ----
