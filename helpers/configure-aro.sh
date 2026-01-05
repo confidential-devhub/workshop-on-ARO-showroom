@@ -546,7 +546,7 @@ podman pull --authfile cluster-pull-secret.json $IMAGE
 
 cid=$(podman create --entrypoint /bin/true $IMAGE)
 echo "CID: ${cid}"
-podman cp $cid:/image/measurements.json ~/test
+podman cp $cid:/image/measurements.json /podvm
 podman rm $cid
 JSON_DATA=$(cat podvm/measurements.json)
 
