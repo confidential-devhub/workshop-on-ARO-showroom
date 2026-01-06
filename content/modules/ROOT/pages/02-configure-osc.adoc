@@ -8,7 +8,7 @@ To complete this section, it is mandatory to have all ARO credentials at hand de
 
 In order to create the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap], it is necessary to have Trustee xref:01-install-trustee.adoc#twebui[installed] and xref:02-configure-trustee.adoc#trustee-route[configured].
 
-If you are following this guide in an Azure/ARO environment deployed **outside** the RH demo environment, and your cluster version is older than `4.18.30`, you are expected to upgrade to `4.18.30+` **before** installing OSC. More info xref:02-configure-osc.adoc#upgrade[here].
+If you are following this guide in an Azure/ARO environment deployed **outside** the RH demo environment, and your cluster version is older than `4.18.30`, you are expected to upgrade to `4.18.30+` **before** installing OSC.
 
 [#feature-gate]
 == Enable Confidential Containers feature gate
@@ -338,39 +338,3 @@ osc-caa-ds-vkfm5                               1/1     Running     0          2m
 ----
 
 This is it! Now the cluster is ready to run workloads with `kata-remote` `RuntimeClass`!
-
-[#upgrade]
-== Minor OCP upgrade
-
-CoCo and OSC `1.11` on ARO require OpenShift `4.18.30`. However, the default OpenShift version for ARO is `4.18.26`. As a result, you must upgrade to `4.18.30` **before** you install OSC.
-
-Upgrading a cluster is time-consuming. For the purposes of **this workshop**, we provide a script that updates only the required dependency.
-
-Run the following to update your environment:
-[tabs]
-====
-RHDP workshop::
-+
-[source,sh,role=execute]
-----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
-
-chmod +x update-kata-rpm.sh
-
-./update-kata-rpm.sh
-----
-
-ARO/Azure standard deployment::
-+
-[source,sh,role=execute]
-----
-ARO_NEW_CLUSTER_VERSION='4.18.30'
-
-oc adm upgrade --allow-explicit-upgrade --force=true --to-image=quay.io/openshift-release-dev/ocp-release:$ARO_NEW_CLUSTER_VERSION-x86_64
-
-oc wait --for=condition=Progressing=false clusterversion/version --timeout=-1s
-----
-====
-
-
-

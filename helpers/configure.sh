@@ -768,10 +768,10 @@ echo "############################ Wait for kata-remote + job ##################
 # Wait for runtimeclass kata-remote to be ready
 wait_for_runtimeclass kata-remote || exit 1
 
-echo "############################ Update kata rpm ########################"
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
-chmod +x update-kata-rpm.sh
-./update-kata-rpm.sh
+# echo "############################ Update kata rpm ########################"
+# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+# chmod +x update-kata-rpm.sh
+# ./update-kata-rpm.sh
 
 # curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/runtime-req-timetout.yaml -o kubelet-timeout.yaml
 # oc apply -f kubelet-timeout.yaml
