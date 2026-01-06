@@ -24,43 +24,44 @@ chmod +x cosign
 ./cosign generate-key-pair
 ----
 
-4. Pull an existing pod or create it yourself. Here we will pull it
+4. Pull an existing image or create it yourself. Here we will pull it
 +
 [source,sh,role=execute]
 ----
-podman pull quay.io/confidential-devhub/signed-hello-openshift
+SOURCE_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
+podman pull $SOURCE_IMAGE
 ----
 
-5. Optional: Make a copy for your own repo, push it. This is needed because cosign pushes the signature into the repo. If you don’t have access to that repo (like in this example) you won’t be able to push the signature in ghcr.io/confidential-containers/test-container-image-rs.
+1. Optional: If you don't have access to the source image repository, make a copy into your own repo by pushing it. This is needed because cosign pushes the signature into the repo. If you don’t have access to that repo (like in this example) you won’t be able to push the signature.
 +
 [source,sh,role=execute]
 ----
-YOUR_REPO=write/your/repo:here
+DEST_IMAGE=write/your/repo:here
 
-podman tag quay.io/confidential-devhub/signed-hello-openshift $YOUR_REPO
+podman tag $SOURCE_IMAGE $DEST_IMAGE
 
-podman push $YOUR_REPO
+podman push $DEST_IMAGE
 ----
 
 6. Delete existing signature, if there is
 +
 [source,sh,role=execute]
 ----
-./cosign clean $YOUR_REPO
+./cosign clean $DEST_IMAGE
 ----
 
 7. Sign the new image
 +
 [source,sh,role=execute]
 ----
-./cosign sign --key cosign.key quay.io/eesposit/cosigned-img:latest
+./cosign sign --key cosign.key $DEST_IMAGE
 ----
 
 8. Verify the signature is there
 +
 [source,sh,role=execute]
 ----
-./cosign verify --key cosign.pub quay.io/eesposit/cosigned-img:latest
+./cosign verify --key cosign.pub $DEST_IMAGE
 ----
 
 xref:02-configure-trustee.adoc#trustee-cisvp[Back to signature verification policy]
