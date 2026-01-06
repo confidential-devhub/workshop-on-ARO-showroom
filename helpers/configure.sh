@@ -335,7 +335,7 @@ oc create secret generic $SIGNATURE_SECRET_NAME \
     --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
     -n trustee-operator-system
 
-SECURITY_POLICY_IMAGE=quay.io/confidential-devhub
+SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed
 
 cat > verification-policy.json <<EOF
 {

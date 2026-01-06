@@ -237,8 +237,8 @@ This container signature check is optional. If not added, CoCo will run any imag
 
 In this example, we are going to create a policy that:
 
-* Ensures that the images under `quay.io/confidential-devhub` (regardless of the image or tag) are signed, otherwise they will not be run.
-* As a global policy, accept non-signed images from any other registry. This means only the images under `quay.io/confidential-devhub` need to be signed, the rest can also be unsigned. Such policy can be also more restrictive, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
+* Ensures that the images under `quay.io/confidential-devhub/signed` (regardless of the image or tag) are signed, otherwise they will not be run.
+* As a global policy, accept non-signed images from any other registry. This means only the images under `quay.io/confidential-devhub/signed` need to be signed, the rest can also be unsigned. Such policy can be also more restrictive, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or to reject any unsigned image and only accept specific registries (change `insecureAcceptAnything` to `reject`).
 
 The reason for this wider policy is to allow the user of the workshop to also run unsigned container images, as the majority of them are currently like this. In production this is of course not safe.
 
@@ -269,7 +269,7 @@ Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`. Here is wher
 
 [source,sh,role=execute]
 ----
-SECURITY_POLICY_IMAGE=quay.io/confidential-devhub
+SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed
 
 cat > verification-policy.json <<EOF
 {

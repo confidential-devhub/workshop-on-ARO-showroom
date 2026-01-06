@@ -32,7 +32,7 @@ SOURCE_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
 podman pull $SOURCE_IMAGE
 ----
 
-1. Optional: If you don't have access to the source image repository, make a copy into your own repo by pushing it. This is needed because cosign pushes the signature into the repo. If you don’t have access to that repo (like in this example) you won’t be able to push the signature.
+5. Optional: If you don't have access to the source image repository, make a copy into your own repo by pushing it. This is needed because cosign pushes the signature into the repo. If you don’t have access to that repo (like in this example) you won’t be able to push the signature.
 +
 [source,sh,role=execute]
 ----
