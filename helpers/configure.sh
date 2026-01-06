@@ -595,6 +595,10 @@ oc create secret generic $HELLO_SECRET_NAME \
   --from-file key2=key.bin \
   -n trustee-operator-system
 
+oc create secret generic attestation-status \
+  --from-literal status=success \
+  -n trustee-operator-system
+
 curl -L https://people.redhat.com/eesposit/fd-workshop-key.bin -o fd.bin
 FD_SECRET_NAME=fraud-detection
 
@@ -627,6 +631,7 @@ oc patch kbsconfig trusteeconfig-kbs-config \
   -n trustee-operator-system \
   --type=json \
   -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"attestation-status\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$HELLO_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$FD_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$AZURE_SAS_SECRET_NAME\"},
