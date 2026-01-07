@@ -167,3 +167,6 @@ Starting from `fraud-detection/1_download_data.ipynb`, go through the various no
 Note for a second how a secret like `/sealed/azure-value/azure-sas` can be read and used in the jupyter notebook, but if you try to `oc exec` and read it, it won't work.
 
 The difference is that the notebook is running **within** the container, whereas `oc exec` is executed from outside. This shows exactly the CoCo threat model: an application/developer *inside* the CoCo pod is obviously allowed to read the secrets granted. However, a cluster/infra/platform admin is not trusted, therefore there is no way for him/her to access this data.
+
+== Delete the notebook
+The pod created in this example section are no different from any other pod, therefore it can be destroyed just as the others (via command line, web ui, OAI etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
