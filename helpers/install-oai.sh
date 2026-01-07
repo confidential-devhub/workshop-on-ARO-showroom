@@ -28,7 +28,7 @@ function wait_for_phase() {
     local objtype=$2
     local status=$3
     local timeout=900
-    local interval=5
+    local interval=30
     local elapsed=0
     while [ $elapsed -lt $timeout ]; do
         sleep $interval
@@ -45,6 +45,110 @@ function wait_for_phase() {
     return 1
 }
 
+echo "############################ Check root disk size #############"
+NAMESPACE="openshift-sandboxed-containers-operator"
+CONFIGMAP="peer-pods"
+
+# Get current value (empty if not set)
+CURRENT_VALUE=$(oc get cm "${CONFIGMAP}" -n "${NAMESPACE}" \
+  -o jsonpath='{.data.ROOT_VOLUME_SIZE}' 2>/dev/null || true)
+
+# Default to 0 if empty or non-numeric
+if [[ -z "${CURRENT_VALUE}" || ! "${CURRENT_VALUE}" =~ ^[0-9]+$ ]]; then
+  CURRENT_VALUE=0
+fi
+
+echo "Current ROOT_VOLUME_SIZE=${CURRENT_VALUE}"
+
+if (( CURRENT_VALUE > 19 )); then
+  echo "ROOT_VOLUME_SIZE is already >= 20. Good."
+  exit 0
+fi
+
+echo "You need to update ROOT_VOLUME_SIZE in peer-pods-cm to at least 20"
+echo "Remember to restart the OSC caa daemonset after this change:"
+echo '# oc set env ds/osc-caa-ds -n openshift-sandboxed-containers-operator REBOOT="$(date)"'
+exit 1
+
+# oc patch cm "${CONFIGMAP}" -n "${NAMESPACE}" \
+#   --type merge \
+#   -p '{"data":{"ROOT_VOLUME_SIZE":"20"}}'
+
+# echo "Update complete."
+echo "###############################################################"
+echo "############################ Increase Kata worker node size #############"
+ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
+AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
+
+AZ_CS=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_secret | base64 -d)
+
+AZ_TID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_tenant_id | base64 -d)
+
+echo azure_client_id $AZ_CID
+echo azure_client_secret $AZ_CS
+echo azure_tenant_id $AZ_TID
+
+az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
+
+W1=$(oc get nodes -l node-role.kubernetes.io/worker -o jsonpath='{.items[0].metadata.name}')
+TARGET_SIZE="Standard_D16s_v5"
+MIN_TOTAL_CPU=24
+
+echo "Calculating total CPUs across all workers..."
+
+# 1. Get list of all worker VM sizes
+# This returns a list like: Standard_D4s_v3 Standard_D8s_v3
+WORKER_SIZES=$(oc get nodes -l node-role.kubernetes.io/worker -o jsonpath='{.items[*].metadata.labels.node\.kubernetes\.io/instance-type}')
+
+TOTAL_CPU=0
+
+# 2. Loop through sizes and parse the number
+for SIZE in $WORKER_SIZES; do
+    # Regex to extract the number immediately following 'D', 'E', 'F', etc.
+    # Standard_D4s_v3 -> 4
+    # Standard_D16s_v5 -> 16
+    # This works for most standard Azure naming conventions (D, E, F, L series)
+    CORES=$(echo $SIZE | grep -oP '(?<=_D|E|F|L)[0-9]+' | head -n1)
+
+    # Fallback/Safety: If regex fails (e.g., unexpected naming), treat as 0 or handle error
+    if [[ -z "$CORES" ]]; then
+        echo "⚠️  Could not parse cores from $SIZE. Skipping."
+        CORES=0
+    fi
+
+    TOTAL_CPU=$((TOTAL_CPU + CORES))
+done
+
+echo "Total Worker CPUs: $TOTAL_CPU (Threshold: $MIN_TOTAL_CPU)"
+
+# 3. Check Condition and Upgrade
+if [ "$TOTAL_CPU" -eq "0" ]; then
+    echo "Total CPU calculation failed. Exiting."
+    exit 1
+fi
+
+if [ "$TOTAL_CPU" -lt "$MIN_TOTAL_CPU" ]; then
+    echo "Total CPU ($TOTAL_CPU) is less than $MIN_TOTAL_CPU. Upgrading $W1..."
+
+    # Deallocate
+    az vm deallocate --resource-group $ARO_RESOURCE_GROUP --name $W1
+
+    # Resize
+    az vm resize \
+      --resource-group $ARO_RESOURCE_GROUP \
+      --name $W1 \
+      --size $TARGET_SIZE
+
+    # Start the VM again
+    az vm start --resource-group $ARO_RESOURCE_GROUP --name $W1
+
+    echo "Upgrade complete. $W1 is now $TARGET_SIZE."
+else
+    echo "Total CPU ($TOTAL_CPU) is sufficient (>= $MIN_TOTAL_CPU). No action required."
+fi
+
+echo "###############################################################"
+echo "############################ Install OAI ########################"
 oc apply -f-<<EOF
 ---
 apiVersion: v1
@@ -128,72 +232,69 @@ oc apply -f-<<EOF
 apiVersion: datasciencecluster.opendatahub.io/v1
 kind: DataScienceCluster
 metadata:
-  name: rhods
+  name: default-dsc
   labels:
-    app.kubernetes.io/name: datasciencecluster
-    app.kubernetes.io/instance: rhods
-    app.kubernetes.io/part-of: rhods-operator
-    app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: rhods-operator
+    app.kubernetes.io/instance: default-dsc
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: datasciencecluster
+    app.kubernetes.io/part-of: rhods-operator
 spec:
   components:
     codeflare:
-      managementState: Removed
-    dashboard:
-      managementState: Managed
-    datasciencepipelines:
       managementState: Managed
     kserve:
-      managementState: Managed
-      serving:
+      nim:
         managementState: Managed
-        name: knative-serving
+      rawDeploymentServiceConfig: Headless
+      serving:
         ingressGateway:
           certificate:
-            type: SelfSigned
-    modelmeshserving:
-      managementState: Removed
-    ray:
+            type: OpenshiftDefaultIngress
+        managementState: Managed
+        name: knative-serving
+      managementState: Managed
+    modelregistry:
+      registriesNamespace: rhoai-model-registries
+      managementState: Managed
+    feastoperator:
       managementState: Removed
     trustyai:
-      managementState: Removed
+      eval:
+        lmeval:
+          permitCodeExecution: deny
+          permitOnline: deny
+      managementState: Managed
+    ray:
+      managementState: Managed
+    kueue:
+      defaultClusterQueueName: default
+      defaultLocalQueueName: default
+      managementState: Managed
     workbenches:
+      workbenchNamespace: rhods-notebooks
+      managementState: Managed
+    dashboard:
+      managementState: Managed
+    modelmeshserving:
+      managementState: Managed
+    llamastackoperator:
+      managementState: Removed
+    datasciencepipelines:
+      argoWorkflowsControllers:
+        managementState: Managed
+      managementState: Managed
+    trainingoperator:
       managementState: Managed
 EOF
 
 echo "############################ Wait for OAI DSC ########################"
 wait_for_phase rhods DataScienceCluster Ready || exit 1
 
-echo "############################ Increase Kata worker node size #############"
-ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
-AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
-
-AZ_CS=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_secret | base64 -d)
-
-AZ_TID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_tenant_id | base64 -d)
-
-echo azure_client_id $AZ_CID
-echo azure_client_secret $AZ_CS
-echo azure_tenant_id $AZ_TID
-
-az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
-
-W1=$(oc get nodes -l node-role.kubernetes.io/worker -o jsonpath='{.items[0].metadata.name}')
-
-az vm deallocate --resource-group $ARO_RESOURCE_GROUP --name $W1
-
-#TODO: automatically fetch the size type, cpu number and check if it's already big enough
-
-# Resize to the new size
-az vm resize \
-  --resource-group $ARO_RESOURCE_GROUP \
-  --name $W1 \
-  --size Standard_D16s_v5
-
-# Start the VM again
-az vm start --resource-group $ARO_RESOURCE_GROUP --name $W1
-
-echo "###############################################################"
+# Disable local registry
+oc patch configs.imageregistry.operator.openshift.io cluster \
+  --type=merge \
+  -p '{"spec":{"managementState":"Removed"}}'
 
 # oc adm policy add-cluster-role-to-user cluster-admin admin
 oc adm policy add-cluster-role-to-user cluster-admin "kube:admin"
@@ -203,7 +304,7 @@ CLUSTER_ID=${ARO_RESOURCE_GROUP#aro-}
 ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
 OAI_NS=coco-oai
 OAI_NAME=fraud-detection
-BRANCH_NAME=main
+BRANCH_NAME=coco_workshop_aro
 
 oc apply -f-<<EOF
 ---
@@ -219,6 +320,14 @@ spec:
   kserve:
     enabled: true
 EOF
+
+AZURE_SAS_SECRET_NAME=fraud-azure-sas
+
+oc get secret "$AZURE_SAS_SECRET_NAME" -n trustee-operator-system >/dev/null 2>&1 || \
+oc create secret generic "$AZURE_SAS_SECRET_NAME"  --from-literal azure-sas="sp=r&st=2025-10-27T15:42:27Z&se=2028-10-27T22:57:27Z&spr=https&sv=2024-11-04&sr=b&sig=vjaRotd7de%2B3QwlzHVaHF2GVyehw1xb3fFiXe9E7YOI%3D" -n trustee-operator-system
+
+SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
+oc create secret generic sealed-azure-sas --from-literal=azure-sas=$SECRET -n ${OAI_NS}
 
 oc get secret pull-secret -n openshift-config -o yaml \
   | sed "s/namespace: openshift-config/namespace: ${OAI_NS}/" \
@@ -255,13 +364,14 @@ kind: Notebook
 metadata:
   annotations:
     notebooks.opendatahub.io/inject-oauth: "true"
-    notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2023.2
-    notebooks.opendatahub.io/last-size-selection: Small
+    opendatahub.io/image-display-name: "CoCo | Jupyter | Data Science | CPU | Python 3.12"
     notebooks.opendatahub.io/oauth-logout-url: https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}?notebookLogout=${OAI_NAME}
-    opendatahub.io/accelerator-name: ""
-    opendatahub.io/image-display-name: Standard Data Science
+    opendatahub.io/accelerator-name: ''
     openshift.io/description: ${OAI_NAME}
-    openshift.io/display-name: ${OAI_NAME}
+    openshift.io/display-name: fraud-detection-coco-notebook
+    notebooks.opendatahub.io/last-image-selection: s2i-generic-data-science-notebook:2025.2
+    notebooks.opendatahub.io/last-image-version-git-commit-selection: d3137ca
+    notebooks.opendatahub.io/last-size-selection: Small
     backstage.io/kubernetes-id: ${OAI_NAME}
   generation: 1
   labels:
@@ -282,11 +392,11 @@ spec:
         - name: NOTEBOOK_ARGS
           value: |-
             --ServerApp.port=8888
-                              --ServerApp.token=''
-                              --ServerApp.password=''
-                              --ServerApp.base_url=/notebook/${OAI_NS}/${OAI_NAME}
-                              --ServerApp.quit_button=False
-                              --ServerApp.tornado_settings={"user":"stratus","hub_host":"https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}?notebookLogout=${OAI_NAME}","hub_prefix":"/projects/${OAI_NS}"}
+            --ServerApp.token=''
+            --ServerApp.password=''
+            --ServerApp.base_url=/notebook/${OAI_NS}/${OAI_NAME}
+            --ServerApp.quit_button=False
+            --ServerApp.tornado_settings={"user":"stratus","hub_host":"https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}?notebookLogout=${OAI_NAME}","hub_prefix":"/projects/${OAI_NS}"}
         - name: JUPYTER_IMAGE
           value: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9@sha256:a8cfef07ffc89d99acfde08ee879cc87aaa08e9a369e0cf7b36544b61b3ee3c7
         image: registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9@sha256:a8cfef07ffc89d99acfde08ee879cc87aaa08e9a369e0cf7b36544b61b3ee3c7
@@ -321,6 +431,8 @@ spec:
           name: app-root
         - mountPath: /dev/shm
           name: shm
+        - name: azure-secret
+          mountPath: "/sealed/azure-value"
         workingDir: /opt/app-root/src
       - args:
         - --provider=openshift
@@ -379,9 +491,11 @@ spec:
       enableServiceLinks: false
       serviceAccountName: ${OAI_NAME}
       volumes:
+      - name: azure-secret
+        secret:
+          secretName: sealed-azure-sas
       - name: app-root
-        emptyDir:
-          medium: Memory
+        emptyDir: {}
       - emptyDir:
           medium: Memory
         name: shm
@@ -406,4 +520,6 @@ oc project default
 
 echo "################################################"
 echo "Configuration complete. Enjoy testing CoCo on OAI!"
+echo "Access the RHOAI Dashboard at:"
+echo "https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}"
 echo "################################################"

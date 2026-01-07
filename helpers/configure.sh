@@ -269,6 +269,7 @@ spec:
     size: 256
 EOF
 
+sleep 5
 oc wait deployment cert-manager-webhook -n cert-manager --for=condition=Available=True --timeout=300s
 while [[ $(oc get endpoints cert-manager-webhook -n cert-manager -o jsonpath='{.subsets[*].addresses[*].ip}') == "" ]]; do
   echo "Waiting for cert-manager-webhook endpoints..."
