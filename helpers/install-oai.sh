@@ -47,7 +47,7 @@ function wait_for_phase() {
 
 echo "############################ Check root disk size #############"
 NAMESPACE="openshift-sandboxed-containers-operator"
-CONFIGMAP="peer-pods"
+CONFIGMAP="peer-pods-cm"
 
 # Get current value (empty if not set)
 CURRENT_VALUE=$(oc get cm "${CONFIGMAP}" -n "${NAMESPACE}" \
@@ -61,20 +61,23 @@ fi
 echo "Current ROOT_VOLUME_SIZE=${CURRENT_VALUE}"
 
 if (( CURRENT_VALUE > 19 )); then
-  echo "ROOT_VOLUME_SIZE is already >= 20. Good."
-  exit 0
+  echo "ROOT_VOLUME_SIZE is already >= 20."
+else
+  echo "You need to update ROOT_VOLUME_SIZE in peer-pods-cm to at least 20"
+  echo "Remember to restart the OSC caa daemonset after this change:"
+  echo '# oc set env ds/osc-caa-ds -n openshift-sandboxed-containers-operator REBOOT="$(date)"'
+  exit 1
+
+  # oc patch cm "${CONFIGMAP}" -n "${NAMESPACE}" \
+  #   --type merge \
+  #   -p '{"data":{"ROOT_VOLUME_SIZE":"20"}}'
+
+  # echo "Update complete."
 fi
 
-echo "You need to update ROOT_VOLUME_SIZE in peer-pods-cm to at least 20"
-echo "Remember to restart the OSC caa daemonset after this change:"
-echo '# oc set env ds/osc-caa-ds -n openshift-sandboxed-containers-operator REBOOT="$(date)"'
-exit 1
 
-# oc patch cm "${CONFIGMAP}" -n "${NAMESPACE}" \
-#   --type merge \
-#   -p '{"data":{"ROOT_VOLUME_SIZE":"20"}}'
 
-# echo "Update complete."
+
 echo "###############################################################"
 echo "############################ Increase Kata worker node size #############"
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
