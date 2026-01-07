@@ -306,7 +306,7 @@ spec:
 EOF
 
 echo "############################ Wait for OAI DSC ########################"
-wait_for_phase rhods DataScienceCluster Ready || exit 1
+wait_for_phase default-dsc DataScienceCluster Ready || exit 1
 
 # Disable local registry
 oc patch configs.imageregistry.operator.openshift.io cluster \
@@ -404,6 +404,19 @@ spec:
       imagePullSecrets:
         - name: pull-secret
       affinity: {}
+      initContainers:
+        - name: git-clone
+          image: docker.io/alpine/git:latest
+          env:
+          - name: BRANCH_NAME
+            value: "coco_workshop_aro"
+          workingDir: /opt/app-root/src
+          command: ["/bin/sh", "-c"]
+          args:
+          - "git clone https://github.com/confidential-devhub/fraud-detection-on-cvms.git && cd fraud-detection-on-cvms && git checkout $BRANCH_NAME"
+          volumeMounts:
+          - name: app-root
+            mountPath: /opt/app-root/src
       containers:
       - env:
         - name: NOTEBOOK_ARGS
@@ -529,14 +542,18 @@ EOF
 oc project $OAI_NS
 wait_for_phase $OAI_NAME-0 Pod Ready || exit 1
 
-pod_name=$(oc get pods --selector=app=$OAI_NAME -o jsonpath='{.items[0].metadata.name}' -n $OAI_NS)
+# pod_name=$(oc get pods --selector=app=$OAI_NAME -o jsonpath='{.items[0].metadata.name}' -n $OAI_NS)
 
-oc exec $pod_name -n $OAI_NS -- /bin/bash -c "git clone https://github.com/confidential-devhub/fraud-detection-on-cvms.git && cd fraud-detection-on-cvms && git checkout $BRANCH_NAME"
+# oc exec $pod_name -n $OAI_NS -- /bin/bash -c "git clone https://github.com/confidential-devhub/fraud-detection-on-cvms.git && cd fraud-detection-on-cvms && git checkout $BRANCH_NAME"
 
 oc project default
 
 echo "################################################"
 echo "Configuration complete. Enjoy testing CoCo on OAI!"
+echo ""
 echo "Access the RHOAI Dashboard at:"
 echo "https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}"
+echo ""
+echo "Access the Notebook at:"
+echo "https://${OAI_NAME}-${OAI_NS}.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/notebook/${OAI_NS}/${OAI_NAME}/lab"
 echo "################################################"
