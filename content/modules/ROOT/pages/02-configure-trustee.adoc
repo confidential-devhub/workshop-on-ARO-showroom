@@ -717,6 +717,8 @@ This is the string that we need to provide to the CoCo container. Such secret do
 
 We can add this string to the CoCo container in multiple ways, either as secret/configmap, or as env variable. Therefore let's add it as a secret to the `default` namespace, meaning in the **untrusted** cluster.
 
+NOTE: Because this string is stored/loaded in the untrusted OCP cluster, one might think that any attacker with cluster access could modify it. And while this is true, recall that this string just points to the secret, does not define the policy to access it nor the Trustee address. Which means that worst case this secret will point to a non-existing Trustee resource, or a valid but inaccessible resource, if Trustee is configured correctly.
+
 [source,sh,role=execute]
 ----
 # Note that the namespace here is "default"!

@@ -42,9 +42,25 @@ The entire process relies on remote attestation to securely release the decrypti
 . The container uses the received key to decrypt the credit card datasets in memory.
 . The (now-decrypted) private data is fed into the public model for processing, all within the protected container.
 
-== Start the Jupyter notebook
+== CoCo-specific implementation steps
 
-Let's create a notebook and run it as CoCo. If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank], you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
+The main goal here is to show how much work is actually needed to convert the plain application to securely run with CoCo.
+
+There are three (plus one optional) main changes added to the podspec:
+
+. `runtimeClassName: kata-remote` in the podspec. This is just a single line to enable CoCo for this pod.
+
+. Sealed secrets. Such secrets are added to the podspec as normal secrets, but as we saw xref:02-configure-trustee.adoc#trustee-key[before] such secrets contain a reference to the actual secret provided by Trustee.
+
+. Persistent storage. For CoCo in public cloud using peer-pods, since the pod VM is external to the worker node and PVCs are actually mounted on the worker node, there are no proper and maintainable mechanisms to mount the PVC in the pod VM instead of on the worker node and secure it from the cluster. It’s left to the application to directly mount the storage and use client side encryption/decryption for the storage.
+.. In this example, we will replace the PVCs with podvm storage, meaning the CVM encrypted disk will be used to store data. However, once the pod terminates, the data will be lost too.
+
+. Optional: application-side attestation. The application itself can trigger attestation, by simply querying `localhost`. This of course requires modification in the application itself, but it's not mandatory. Trustee resources can be obtained either via sealed secret, or by providing sidecars that do this, leaving the main application pristine.
+.. In this example, we are adding application-side attestation just to show another way to fetch a secret.
+
+== Deploy the notebook
+
+Let's create a notebook and run it as CoCo.
 
 This notebook specifically uses python sdk to download the encrypted data from Azure for two reasons:
 
@@ -53,12 +69,66 @@ This notebook specifically uses python sdk to download the encrypted data from A
 
 Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap] is set at least to `20` GB, as the steps in the guide will install a lot of python packages. If you modify that value, remember as always to to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
 
+There are two ways to deploy the notebook:
+
+* Via a xref:05-fraud-detection-simple.adoc#fd-oai[Openshift AI (OAI) workbench]: everything is handled by Openshift AI. A `Notebook` object is created, and OAI takes care of deploying it and exposing it for the user. In such way, we integrate CoCo with Openshift AI traditional workbenches, that take care of most of the work.
+* Via a xref:05-fraud-detection-simple.adoc#fd-plain[plain Jupyter notebook]: a simple custom pod, with networking handled by a custom service and route. This is the simplest and fastest way to deploy.
+
+[#fd-oai]
+=== Openshift AI workbench
+
+==== Prerequisites
+
+First of all, we need to make sure we can install Openshift AI. The main requirement for OAI is to have big enough worker nodes, as they have to run OAI, OSC and Trustee.
+
+[tabs]
+====
+RHDP Workshop::
++
+If you have deployed this workshop with the RHDP catalog, you can choose to have worker nodes as big as `Standard_D8s_v5`. This should be enough. If you haven't picked big enough nodes, there is no problem, as the script below takes care of increasing the worker node size automatically.
++
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/increase-worker-size.sh -o increase-worker-size.sh
+
+chmod +x increase-worker-size.sh
+
+./increase-worker-size.sh
+----
+
+ARO/Azure standard deployments::
++
+You unfortunately need to manually upgrade the worker node or deploy a new cluster with big enough workers. Alternatively you can try to add more worker nodes.
+====
+
+==== Install OAI
+
+In order to simplify the installation of OAI and since it's not the focus of this workshop, we will provide a script to automatically handle that:
+
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/install-oai.sh -o install-oai.sh
+
+chmod +x install-oai.sh
+
+./install-oai.sh
+----
+
+Once completed, you will receive a link to access the RHOAI dashboard and also the notebook itself directly.
+
+Now you can xref:05-fraud-detection-simple.adoc#fd-run[go through the notebook].
+
+[#fd-plain]
+=== Plain Jupyter notebook
+
+If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
+
 [source,sh,role=execute]
 ----
 oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
 ----
 
-Switch to the newly created `fraud-detection` namespace
+Switch to the newly created `fraud-detection` namespace.
 
 [source,sh,role=execute]
 ----
@@ -82,6 +152,7 @@ echo "Click on the following URL to open the notebook in a new tab:"
 echo "https://${FD_ROUTE}"
 ----
 
+[#fd-run]
 == Run the notebook
 
 Starting from `fraud-detection/1_download_data.ipynb`, go through the various notebooks. Specifically:
