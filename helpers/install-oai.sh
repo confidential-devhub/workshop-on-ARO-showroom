@@ -45,6 +45,23 @@ function wait_for_phase() {
     return 1
 }
 
+echo "################################################"
+echo "Starting the script. Many of the following commands"
+echo "will periodically check on OCP for operations to"
+echo "complete, so it's normal to see errors."
+echo "If this scripts completes successfully, you will"
+echo "see a final message confirming installation went"
+echo "well."
+
+echo "This script will:"
+echo " - Check the podvm root disk size to ensure enough space for the notebook"
+echo " - Increase Kata worker node size to ensure OAI is installed properly"
+echo " - Install Openshift AI, Servicemesh and Serverless in the cluster"
+echo " - Create a new namespace and deploy CoCo fraud-detection notebook"
+echo "################################################"
+
+echo ""
+
 echo "############################ Check root disk size #############"
 NAMESPACE="openshift-sandboxed-containers-operator"
 CONFIGMAP="peer-pods-cm"
@@ -74,9 +91,6 @@ else
 
   # echo "Update complete."
 fi
-
-
-
 
 echo "###############################################################"
 echo "############################ Increase Kata worker node size #############"
