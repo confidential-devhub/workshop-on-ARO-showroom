@@ -228,7 +228,7 @@ In this formatted log, we can see how the `AzSnpVtpm` Verifier check passed, how
 
 [#destroy]
 == Destroy the example pod
-The pod created in this example section are no different from any other pod, therefore it can be destroyed just as the others (via command line, web ui, etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
+The pod created in this example section is no different from any other pod, therefore it can be destroyed just as the others (via command line, web ui, etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
 
 [source,sh,role=execute]
 ----
