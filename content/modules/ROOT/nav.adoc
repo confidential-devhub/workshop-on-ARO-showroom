@@ -30,7 +30,7 @@
 
 * xref:03-unsigned-pod.adoc[Test the image signature verification]
 
-* xref:05-fraud-detection-simple.adoc[Fraud-detection notebook]
+* xref:05-fraud-detection-simple.adoc[Fraud-detection]
 
 * xref:troubleshooting.adoc[Troubleshooting]
 
