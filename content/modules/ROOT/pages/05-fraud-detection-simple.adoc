@@ -98,7 +98,7 @@ chmod +x increase-worker-size.sh
 
 ARO/Azure standard deployments::
 +
-You unfortunately need to manually upgrade the worker node or deploy a new cluster with big enough workers. Alternatively you can try to add more worker nodes.
+You need to manually upgrade the worker node or deploy a new cluster with big enough workers. Alternatively you can try to add more worker nodes.
 ====
 
 ==== Install OAI
