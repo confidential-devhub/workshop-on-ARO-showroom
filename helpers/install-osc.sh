@@ -67,7 +67,7 @@ echo "############################ Wait for OSC ########################"
 wait_for_deployment controller-manager openshift-sandboxed-containers-operator || exit 1
 
 # echo "############################ Update kata rpm ########################"
-# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
 # chmod +x update-kata-rpm.sh
 # ./update-kata-rpm.sh
 

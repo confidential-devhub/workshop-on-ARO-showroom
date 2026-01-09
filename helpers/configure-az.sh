@@ -530,16 +530,7 @@ export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
 export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
 ./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
 
-mkdir -p podvm
 
-# Download the measurements
-podman pull --authfile cluster-pull-secret.json $IMAGE
-
-cid=$(podman create --entrypoint /bin/true $IMAGE)
-echo "CID: ${cid}"
-podman cp $cid:/image/measurements.json /podvm
-podman rm $cid
-JSON_DATA=$(cat podvm/measurements.json)
 
 # Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
@@ -675,20 +666,7 @@ oc apply -f cc-fg.yaml
 ####################################################################
 echo "################################################"
 
-# Get the Azure created RG
-AZURE_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 
-# Get the Azure region
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
-
-# Get VNET name used by Azure. openshift-install only creates one.
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
-
-# Get the Openshift worker subnet ip address id.
-# This usually contains 'worker'
-ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
-
-ARO_NSG_ID=$(az network nsg list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
 
 # Necessary otherwise the CoCo pods won't be able to connect with the OCP cluster (OSC and Trustee)
 PEERPOD_NAT_GW=peerpod-nat-gw

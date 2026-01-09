@@ -7,6 +7,11 @@ You can assume that **everything running in the trustee-operator-system namespac
 [NOTE]
 ====
 This whole section can be automated with the following command:
+
+[tabs]
+====
+RHDP workshop::
++
 [source,sh,role=execute]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-trustee.sh -o configure-trustee.sh
@@ -15,6 +20,19 @@ chmod +x configure-trustee.sh
 
 ./configure-trustee.sh
 ----
+
+ARO/Azure standard deployments::
++
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-trustee-gen.sh -o configure-trustee.sh
+
+chmod +x configure-trustee.sh
+
+./configure-trustee.sh
+----
+
+====
 
 Note that:
 

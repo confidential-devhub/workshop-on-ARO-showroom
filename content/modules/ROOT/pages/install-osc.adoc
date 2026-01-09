@@ -8,7 +8,7 @@ pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted cluster admin
 This whole section can be automated with the following command:
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/install-osc.sh -o install-osc.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/install-osc.sh -o install-osc.sh
 
 chmod +x install-osc.sh
 

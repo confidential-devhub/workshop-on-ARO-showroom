@@ -5,14 +5,46 @@ pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted cluster admin
 [NOTE]
 ====
 This whole section can be automated with the following command:
-[source,sh,role=execute]
+
+[tabs]
+====
+RHDP workshop::
++
+[source,sh,role="execute",subs=attributes+]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-osc.sh -o configure-osc.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc.sh -o configure-osc.sh
 
 chmod +x configure-osc.sh
 
 ./configure-osc.sh
 ----
+
+ARO::
++
+You need to find out how you called your subnet, as the name can be freely named during the install steps. Search it with `az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id}" --output tsv`, and then export it as `ARO_WORKER_SUBNET_ID=your-aro-subnet`.
++
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc-az.sh -o configure-osc.sh
+
+chmod +x configure-osc.sh
+
+./configure-osc.sh
+----
+
+Azure self managed::
++
+Azure self managed clusters only have a single resource group.
++
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc-aro.sh -o configure-osc.sh
+
+chmod +x configure-osc.sh
+
+./configure-osc.sh
+----
+====
 
 Note that the CoCo CVM root disk size is `20`. Refer xref:configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:configure-osc.adoc#pp-restart[restart the OSC daemonset].
 ====
