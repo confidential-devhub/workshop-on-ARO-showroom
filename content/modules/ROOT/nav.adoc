@@ -4,7 +4,7 @@
 ** xref:osc.adoc[Confidential containers: Openshift sandboxed containers operator]
 ** xref:trustee.adoc[Remote attester: the Trustee]
 
-* xref:trusted-cluster.adoc[The trusted cluster]
+* xref:trusted-cluster.adoc[Trusted cluster setup]
 ** xref:install-trustee.adoc[1. OpSec: Install Trustee]
 ** xref:configure-trustee.adoc[2. OpSec: Configure Trustee]
 *** xref:configure-trustee.adoc#trustee-keys[Create the keys]
@@ -21,7 +21,7 @@
 *** xref:dev-add-secrets.adoc#kbsconfig-secrets[Update the KbsConfig]
 *** xref:dev-add-secrets.adoc#fetch-secrets[Attestation]
 
-* xref:untrusted-cluster.adoc[The untrusted cluster]
+* xref:untrusted-cluster.adoc[Untrusted cluster setup]
 ** xref:install-osc.adoc[1. Admin: Install the OSC operator]
 ** xref:configure-osc.adoc[2. Admin: Configure the OSC operator]
 *** xref:configure-osc.adoc#feature-gate[Create the feature gate]

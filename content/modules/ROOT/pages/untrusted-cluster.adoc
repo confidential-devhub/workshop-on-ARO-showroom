@@ -1,4 +1,4 @@
-= The untrusted cluster
+= Untrusted cluster setup
 
 This chapter focuses on setting up and configuring the untrusted cluster. In this setup, we will act as the **untrusted cluster admin** persona that installs and configure OSC. For each configuration, we will explain the purpose and rationale behind it.
 
