@@ -27,7 +27,7 @@ Most of the time, errors will be propragated to the pod events. Make sure to che
 
 === Image pull fail
 
-If the CVM doesn't have enough disk space (set with `ROOT_VOLUME_SIZE` in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm]), image pulling might fail because the CoCo components need to pull the container image into the CVM and due to space fail to do so.
+If the CVM doesn't have enough disk space (set with `ROOT_VOLUME_SIZE` in xref:configure-osc.adoc#pp-cm[peer-pods-cm]), image pulling might fail because the CoCo components need to pull the container image into the CVM and due to space fail to do so.
 
 Usually the error is visible in the pod events:
 [source,texinfo,subs="attributes"]
@@ -35,7 +35,7 @@ Usually the error is visible in the pod events:
 Error: CreateContainer failed: rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Image Pull error: Failed to pull image <YOUR_IMAGE_HERE> from all mirror/mapping locations or original location: image: <YOUR_IMAGE_HERE>, error: Errors happened when pulling image: Failed to decode layer data stream: Failed to unpack layer"
 ----
 
-In order to solve this issue, try to increase `ROOT_VOLUME_SIZE` and xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment].
+In order to solve this issue, try to increase `ROOT_VOLUME_SIZE` and xref:configure-osc.adoc##pp-restart[restart the OSC deployment].
 
 === Wrong Azure instance size
 
@@ -58,7 +58,7 @@ RESPONSE 400: 400 Bad Request ERROR CODE: InvalidParameter
 
 The key message here is `The requested VM size Standard_DC4es_v5 is not available in the current region`. Make sure you are using a VM size that is supported.
 
-If you update `AZURE_INSTANCE_SIZE` in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm], make sure you xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment].
+If you update `AZURE_INSTANCE_SIZE` in xref:configure-osc.adoc#pp-cm[peer-pods-cm], make sure you xref:configure-osc.adoc##pp-restart[restart the OSC deployment].
 
 == CoCo pod stuck
 
@@ -106,12 +106,12 @@ echo azure_tenant_id $AZ_TID
 az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
 ----
 
-. Created and configured the xref:02-configure-osc.adoc#gateway[Azure public IP address and NAT Gateway].
+. Created and configured the xref:configure-osc.adoc#gateway[Azure public IP address and NAT Gateway].
 
 
 === INITDATA wrongly set
 
-Ispect the INITDATA. Inspect the INITDATA field in the  xref:02-configure-osc.adoc#pp-cm[peer-pods-cm] configmap in OSC namespace, or alternatively if you are providing manually in as xref:03-deployment-settings.adoc#initdata-ann[annotation].
+Ispect the INITDATA. Inspect the INITDATA field in the  xref:configure-osc.adoc#pp-cm[peer-pods-cm] configmap in OSC namespace, or alternatively if you are providing manually in as xref:deployment-settings.adoc#initdata-ann[annotation].
 
 [source,sh,role=execute]
 ----
@@ -122,17 +122,17 @@ echo "H4sIAAAAAAAAA+1YW3PiuBJ+969wsQ/ZLYaLuTNV8yCMIYTYgG0gZCqVErZsZBvLSDLGnDr//c
 * Make sure all `url=` point to the right Trustee route
 * Make sure `cert=` and `kbs_cert=` are not empty if using https
 * Make sure `image_security_policy_uri` points at an existing policy, and the policy points to an existing secret
-* Make sure the formatting and syntax is correct. Refer to xref:02-configure-trustee.adoc#trustee-ip[this initdata] for an example with correct syntax.
+* Make sure the formatting and syntax is correct. Refer to xref:configure-trustee.adoc#trustee-ip[this initdata] for an example with correct syntax.
 
-If you update the INITDATA, remember to update the xref:02-configure-trustee.adoc#pcr8[PCR8] in the xref:02-configure-trustee.adoc#trustee-refval[reference values] and xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
+If you update the INITDATA, remember to update the xref:configure-trustee.adoc#pcr8[PCR8] in the xref:configure-trustee.adoc#trustee-refval[reference values] and xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:configure-osc.adoc##pp-restart[restart the OSC deployment]!
 
 === Image signature policy too strict
 
 If you put an image signature too strict and you forget about it, the CVM will start but the pod will not run, because it isn't allowed to.
 
-For example, the policy used xref:02-configure-trustee.adoc#trustee-cisvp[in this example] is pretty permissive, as it has `"default": [ { "type": "insecureAcceptAnything" } ]`. However, if you change the type to `reject`, then you drastically reduce the amounts of CoCo pod images you can run.
+For example, the policy used xref:configure-trustee.adoc#trustee-cisvp[in this example] is pretty permissive, as it has `"default": [ { "type": "insecureAcceptAnything" } ]`. However, if you change the type to `reject`, then you drastically reduce the amounts of CoCo pod images you can run.
 
-If you update the signature policy, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]!
+If you update the signature policy, remember to xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]!
 
 == CoCo pod attestation failed
 
@@ -149,11 +149,11 @@ oc logs -n trustee-operator-system $POD_NAME
 
 === HTTPS certificates
 
-If not, then it's a routing issue. If you are using passthrough, are you using the right xref:02-configure-trustee.adoc#trustee-keys[https certificates]?
+If not, then it's a routing issue. If you are using passthrough, are you using the right xref:configure-trustee.adoc#trustee-keys[https certificates]?
 
 A common error is not pointing `dnsNames` to the Trustee route, or if creating the certs manually, not using `subjectAltName=DNS:$ROUTE`.
 
-If you update the https certificates, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]!
+If you update the https certificates, remember to xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]!
 
 === Connectivity between Azure and Trustee
 
@@ -165,18 +165,18 @@ If you do see the request coming into the Trustee pod, check what it says. Usual
 
 If you see that error, make sure the following is correct:
 
-* The xref:02-configure-trustee.adoc#trustee-ap[attestation policy] is formatted correctly. Sometimes wrong formatting or syntax errors prevent it from being loaded.
-* Same applies to the xref:02-configure-trustee.adoc#trustee-refval[reference values].
+* The xref:configure-trustee.adoc#trustee-ap[attestation policy] is formatted correctly. Sometimes wrong formatting or syntax errors prevent it from being loaded.
+* Same applies to the xref:configure-trustee.adoc#trustee-refval[reference values].
 ** If you changed the podvm image to be used, the reference values also change!
-** If you changed the INITDATA, the reference values (xref:02-configure-trustee.adoc#pcr8[PCR8]) also change!
-* Lastly check also the xref:02-configure-trustee.adoc#trustee-rap[resource access policy].
+** If you changed the INITDATA, the reference values (xref:configure-trustee.adoc#pcr8[PCR8]) also change!
+* Lastly check also the xref:configure-trustee.adoc#trustee-rap[resource access policy].
 
-After ANY change to any config/secret of the Trustee operator, remember to xref:02-configure-trustee.adoc#trustee-restart[restart the deployment]!
+After ANY change to any config/secret of the Trustee operator, remember to xref:configure-trustee.adoc#trustee-restart[restart the deployment]!
 
 [#trouble-refvals]
 === Wrong reference values
 
-In this workshop, the xref:02-configure-trustee.adoc#trustee-refval[reference values] are taken from the `latest` OSC available image, as we assume the operator is freshly installed. However, if OSC is not the latest version, or has not been updated, it might happen that `latest` won't match with the OSC deployed image.
+In this workshop, the xref:configure-trustee.adoc#trustee-refval[reference values] are taken from the `latest` OSC available image, as we assume the operator is freshly installed. However, if OSC is not the latest version, or has not been updated, it might happen that `latest` won't match with the OSC deployed image.
 
 If this happens, then the reference values will not match, as the images are different, and therefore some PCRs will differ.
 
@@ -207,15 +207,15 @@ All is working apparently, but you cannot see any log or access the pod.
 
 === INITDATA too strict
 
-If your pod is running, and service/route are working, but you cannot see logs nor exec, remember that this is controlled by INITDATA. If no INITDATA is provided in the CoCo pod via  xref:03-deployment-settings.adoc#initdata-ann[annotation], the global default one in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm] will be used. If no global is set, default permissive settings will be used (no signature image verification, no Trustee connection, exec and logs allowed).
+If your pod is running, and service/route are working, but you cannot see logs nor exec, remember that this is controlled by INITDATA. If no INITDATA is provided in the CoCo pod via  xref:deployment-settings.adoc#initdata-ann[annotation], the global default one in xref:configure-osc.adoc#pp-cm[peer-pods-cm] will be used. If no global is set, default permissive settings will be used (no signature image verification, no Trustee connection, exec and logs allowed).
 
 Check the `policy.rego` section.
 
 * If `default ExecProcessRequest := false`, exec will be forbidden.
-** It is possible to allow only specific exec commands. Refer to the xref:02-configure-trustee.adoc#trustee-ip[initdata example].
+** It is possible to allow only specific exec commands. Refer to the xref:configure-trustee.adoc#trustee-ip[initdata example].
 * If `default ReadStreamRequest := false`, logs are not shown.
 
-If you update the INITDATA, remember to update the xref:02-configure-trustee.adoc#pcr8[PCR8] in the xref:02-configure-trustee.adoc#trustee-refval[reference values] and xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:02-configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
+If you update the INITDATA, remember to update the xref:configure-trustee.adoc#pcr8[PCR8] in the xref:configure-trustee.adoc#trustee-refval[reference values] and xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:configure-osc.adoc##pp-restart[restart the OSC deployment]!
 
 == Facing an error that is not listed here?
 

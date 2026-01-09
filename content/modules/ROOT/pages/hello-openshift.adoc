@@ -37,7 +37,7 @@ oc create secret generic $HELLO_SECRET_NAME \
 rm key.bin
 ----
 
-And then instruct Trustee to load that secret into its deployment, by updating the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+And then instruct Trustee to load that secret into its deployment, by updating the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
 
 [source,sh,role=execute]
 ----
@@ -202,11 +202,11 @@ Look at the various VMs. You will see there are:
 * 3 masters VM (called _aro-cluster-{guid}-<random chars>-master-0/1/2_)
 * 3 workers VM (called _aro-cluster-{guid}-<random chars>-worker-<region>-<random chars>_)
 * 1 _bastion-{guid}_ VM, used internally by the workshop infrastructure. The console on the right is actually connected to this VM, and all commands are being performed from here.
-* 1 **podvm-hello-openshift-<random chars>**. This is where the `hello-openshift` pod is actually running! Note also how the instance tyoe under `Size` column at the right side is not the same as the other VMs. It is indeed `Standard_DC4es_v5`, as specified in the OSC xref:02-configure-osc.adoc#pp-cm[ConfigMap]. Looking at the https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/general-purpose/dcesv5-series[DCes Azure docs, window=blank] we can also confirm that this instance type is using confidential hardware.
+* 1 **podvm-hello-openshift-<random chars>**. This is where the `hello-openshift` pod is actually running! Note also how the instance tyoe under `Size` column at the right side is not the same as the other VMs. It is indeed `Standard_DC4es_v5`, as specified in the OSC xref:configure-osc.adoc#pp-cm[ConfigMap]. Looking at the https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/general-purpose/dcesv5-series[DCes Azure docs, window=blank] we can also confirm that this instance type is using confidential hardware.
 
 [#verify-security]
 == Retrieve a secret from Trustee (attestation)
-This `hello-openshift` test pod runs under the previously configured OSC initdata policy, therefore if you followed the xref:02-configure-trustee.adoc#trustee-ip[workshop initdata], logs are enabled and it will be possible to exec to retrieve `key1`.
+This `hello-openshift` test pod runs under the previously configured OSC initdata policy, therefore if you followed the xref:configure-trustee.adoc#trustee-ip[workshop initdata], logs are enabled and it will be possible to exec to retrieve `key1`.
 
 Check that logs are enabled
 
@@ -231,7 +231,7 @@ And notice how an error is returned:
 error: Internal error occurred: error executing command in container: cannot enter container 8c0001fb69f7b8e728a3ccc8ad51d362f284f17450765f895db91dce7fc00413, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
 ----
 
-Since this is one of the only commands allowed, `exec` to get the Trustee `key1` secret into the pod. This key was added in Trustee when xref:02-configure-trustee.adoc#trustee-key[configuring it]. If you followed the exact instructions, `key1` was configured to contain `Confidential_Secret!`.
+Since this is one of the only commands allowed, `exec` to get the Trustee `key1` secret into the pod. This key was added in Trustee when xref:configure-trustee.adoc#trustee-key[configuring it]. If you followed the exact instructions, `key1` was configured to contain `Confidential_Secret!`.
 
 [source,sh,role=execute]
 ----
@@ -246,7 +246,7 @@ And as expected, the secret is returned successfully.
 Confidential_Secret!
 ----
 
-IMPORTANT: Notice how the `curl` call is connecting with `http://127.0.0.1`. This is done on purpose, because the CoCo technology is designed to avoid hardcoding any special logic into the pod application. This means that a Confidential Container doesn't have to know where the Trustee lives, what is its ip, or even care about the attestation report. This is provided in the OSC `INITDATA` given in the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap] or via the annotation. Such url is then forwarded to the local `Trustee agent` running in side the CoCo Confidential VM automatically, so all the CoCo pod application has to do is communicate **locally** (therefore `http` is enough) with the local `Trustee agent` and ask for the path representing the secret it would like to get, in this case `hellosecret/key1`. The `Trustee agent` will then take care of collecting hardware & software attestation proofs, create an attestation report, establish an `https` connection with the remote attester `Trustee operator`, and then perform the attestation process.
+IMPORTANT: Notice how the `curl` call is connecting with `http://127.0.0.1`. This is done on purpose, because the CoCo technology is designed to avoid hardcoding any special logic into the pod application. This means that a Confidential Container doesn't have to know where the Trustee lives, what is its ip, or even care about the attestation report. This is provided in the OSC `INITDATA` given in the xref:configure-osc.adoc#pp-cm[peer-pods configmap] or via the annotation. Such url is then forwarded to the local `Trustee agent` running in side the CoCo Confidential VM automatically, so all the CoCo pod application has to do is communicate **locally** (therefore `http` is enough) with the local `Trustee agent` and ask for the path representing the secret it would like to get, in this case `hellosecret/key1`. The `Trustee agent` will then take care of collecting hardware & software attestation proofs, create an attestation report, establish an `https` connection with the remote attester `Trustee operator`, and then perform the attestation process.
 
 Let's also check if `key2` is automatically loaded into the sealed secret.
 

@@ -19,12 +19,12 @@ chmod +x configure-trustee.sh
 Note that:
 
 * Container signature policy requires that the `quay.io/confidential-devhub/signed` images are signed by a specific key. Any other image is accepted.
-** Refer xref:02-configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
+** Refer xref:configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
 
 * `INITDATA` allows logs, but disallows generic exec.
-** Refer xref:02-configure-trustee.adoc#trustee-ip[here] if you want to change OSC `INITDATA`.
-** For the OSC operator, updating initdata means updating xref:02-configure-osc.adoc#pp-cm[peer-pods-cm] and then xref:02-configure-osc.adoc#pp-restart[restart the daemonset].
-** For the Trustee operator, updating initdata means updating Trustee `PCR8` in the xref:02-configure-trustee.adoc#trustee-refval[reference values], otherwise attestation will fail, and then xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment].
+** Refer xref:configure-trustee.adoc#trustee-ip[here] if you want to change OSC `INITDATA`.
+** For the OSC operator, updating initdata means updating xref:configure-osc.adoc#pp-cm[peer-pods-cm] and then xref:configure-osc.adoc#pp-restart[restart the daemonset].
+** For the Trustee operator, updating initdata means updating Trustee `PCR8` in the xref:configure-trustee.adoc#trustee-refval[reference values], otherwise attestation will fail, and then xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment].
 ====
 
 Now that the Trustee operator is installed, we need to set it up.
@@ -47,7 +47,7 @@ In order to simplify the flow, we will ask the cert-manager operator to create  
 More specifically, these keys are:
 
 * Https keys, to ensure a secure connection between the CoCo pod and Trustee
-* Attestation token key (for more info see xref:02-configure-trustee.adoc#att-token-key[here])
+* Attestation token key (for more info see xref:configure-trustee.adoc#att-token-key[here])
 
 Of course the user can also bring his own existing keys, especially the `https` one.
 
@@ -198,7 +198,7 @@ cat trusteeconfig-restricted.yaml
 
 Note how the `httpsSpec:tlsSecretName` points to `trustee-tls-cert` and `attestationTokenVerificationSpec:tlsSecretName` points to `trustee-token-cert`.
 Such secrets will be copied over by the `Trusteeconfig` into the `trusteeconfig-https-key-secret`, `trusteeconfig-https-cert-secret` and `trusteeconfig-auth-secret` secrets.
-Lastly, these secrets will be given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respectively in the `kbsHttpsKeySecretName`,`kbsHttpsCertSecretName` and `kbsAuthSecretName` fields.
+Lastly, these secrets will be given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respectively in the `kbsHttpsKeySecretName`,`kbsHttpsCertSecretName` and `kbsAuthSecretName` fields.
 
 Let's now apply `Trusteeconfig` and see if the secrets and configs are created:
 
@@ -217,7 +217,7 @@ oc get configmaps -n trustee-operator-system | grep trusteeconfig
 Create a secure route with `passthrough` TLS termination for Trustee. External ingress traffic does not get decrypted by the router but forwarded directly to Trustee pod.
 It is also possible to create an `edge` route, but then the connection between Trustee and OCP router will be in plain text (http). In this workshop, we will use `passthrough`.
 
-Create the route and set `TRUSTEE_HOST`, which together with `TRUSTEE_CERT` will be used later when configuring the xref:02-configure-trustee.adoc#trustee-ip[initdata].
+Create the route and set `TRUSTEE_HOST`, which together with `TRUSTEE_CERT` will be used later when configuring the xref:configure-trustee.adoc#trustee-ip[initdata].
 
 [source,sh,role=execute]
 ----
@@ -254,7 +254,7 @@ First of all, we have three components to set up:
 
 * One or more secret containing the public key used by the trusted registry repository to sign the container images. Those have to reside in Trustee.
 * A secret containing the container image signature policy used in Trustee. This policy specifies which registry maps with which key added in the previous point. This has to reside in Trustee.
-* The xref:02-configure-trustee.adoc#trustee-initdata[initdata] config in the CoCo pod will have a section that points to that secret
+* The xref:configure-trustee.adoc#trustee-initdata[initdata] config in the CoCo pod will have a section that points to that secret
 
 The Trustee Operator returns the policy to the CoCo CVM components (which will run the CoCo pod) only after attestation is successful. This is to ensure that the components perform the intended check, and the initdata is pointing to the intended secret. The CVM components will then analyze the policy, check whether the running image is expected to be signed or not, and if so ask the Trustee for the public key to prove that the image has been signed by an entity we trust. In this way, we are sure that only trusted and authenticated container images are deployed in your environment.
 
@@ -282,9 +282,9 @@ oc create secret generic $SIGNATURE_SECRET_NAME \
     -n trustee-operator-system
 ----
 
-If you want to sign your own container, refer to the https://developers.redhat.com/products/trusted-artifact-signer/overview[Red Hat Trusted Artifact Signer, window=blank] or other tools to sign container images. A simple guide on how to use upstream `cosign` is xref:04-sign-pod.adoc[here].
+If you want to sign your own container, refer to the https://developers.redhat.com/products/trusted-artifact-signer/overview[Red Hat Trusted Artifact Signer, window=blank] or other tools to sign container images. A simple guide on how to use upstream `cosign` is xref:sign-pod.adoc[here].
 
-Note that `$SIGNATURE_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+Note that `$SIGNATURE_SECRET_NAME` will be later added in the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
 
 Then, create `verification-policy.json` that enables signature verification.
 
@@ -335,14 +335,14 @@ oc create secret generic $POLICY_SECRET_NAME \
   -n trustee-operator-system
 ----
 
-Note that this `$POLICY_SECRET_NAME` secret will be later added in the generated xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and referred (together with `$POLICY_SECRET_FILE`) by the CoCo pod xref:02-configure-trustee.adoc#trustee-initdata[initdata]
+Note that this `$POLICY_SECRET_NAME` secret will be later added in the generated xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and referred (together with `$POLICY_SECRET_FILE`) by the CoCo pod xref:configure-trustee.adoc#trustee-initdata[initdata]
 
 [#trustee-initdata]
 == Create the initdata policy
 
 === About initdata
 
-This step will be also useful in the xref:02-configure-osc.adoc#pp-cm[OSC operator setup]. However, since this policy is part of the attestation and we need the expected PCR(Platform Configuration Register see xref:02-configure-trustee.adoc#trustee-ap[Attestation policy]) to be added in the Trustee reference values, we will create the file now.
+This step will be also useful in the xref:configure-osc.adoc#pp-cm[OSC operator setup]. However, since this policy is part of the attestation and we need the expected PCR(Platform Configuration Register see xref:configure-trustee.adoc#trustee-ap[Attestation policy]) to be added in the Trustee reference values, we will create the file now.
 
 The initdata specification provides a flexible way to initialize a CoCo peer pod with sensitive or workload-specific data at runtime, avoiding the need to embed such data in the virtual machine (VM) image. This enhances security by reducing exposure of confidential information and improves flexibility by eliminating custom image builds. For example, initdata can include three configuration settings:
 
@@ -355,7 +355,7 @@ We can apply an initdata configuration by using one of the following methods:
 * Globally by including it in the peer pods config map, setting a cluster-wide default for all pods.
 * For a specific pod when configuring a pod workload object, allowing customization for individual workloads.
 +
-The `io.katacontainers.config.hypervisor.cc_init_data` annotation under `metadata:annotations:` in the pod yaml spec overrides the global `INITDATA` setting in the xref:02-configure-osc.adoc#pp-cm[peer pods config map] for that specific pod. The Kata runtime handles this precedence automatically at pod creation time.
+The `io.katacontainers.config.hypervisor.cc_init_data` annotation under `metadata:annotations:` in the pod yaml spec overrides the global `INITDATA` setting in the xref:configure-osc.adoc#pp-cm[peer pods config map] for that specific pod. The Kata runtime handles this precedence automatically at pod creation time.
 
 The initdata content configures the following components:
 
@@ -366,9 +366,9 @@ The initdata content configures the following components:
 [#trustee-ip]
 === Create the initdata policy
 
-In this section, we will create the initdata that will be later set up as global in the xref:02-configure-osc.adoc#pp-cm[OSC operator configmap].
+In this section, we will create the initdata that will be later set up as global in the xref:configure-osc.adoc#pp-cm[OSC operator configmap].
 
-In this policy, we will set the Trustee address in the internal CVM components. We will use `TRUSTEE_HOST` defined previously when xref:02-configure-trustee.adoc#trustee-route[configuring the Trustee].
+In this policy, we will set the Trustee address in the internal CVM components. We will use `TRUSTEE_HOST` defined previously when xref:configure-trustee.adoc#trustee-route[configuring the Trustee].
 
 IMPORTANT: **Why do we add this to the Trustee reference values?** Remember that this policy is actually added into the OSC operator Configmap, or injected as pod annotation at deployment time. Both scenarios are happening outside the trusted zone, meaning a rogue admin can simply change these values and connect the CoCo pod to a different Trustee, use insecure `http` and so on.
 
@@ -519,7 +519,7 @@ You can configure reference values for the Reference Value Provider Service (RVP
 
 Red Hat currently ships an official CoCo podVM image (Confidential VM disk pre-installed and configured with CoCo components)  together with its measurements. Therefore we simply need to insert the values into `rvps-configmap.yaml`. Such values ensure that CoCo is running that specific image, with a RH kernel and specific features like initdata policy enabled.
 
-A dummy reference value config is created by `Trusteeconfig` as `trusteeconfig-rvps-reference-values` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsRvpsRefValuesConfigMapName` field.
+A dummy reference value config is created by `Trusteeconfig` as `trusteeconfig-rvps-reference-values` ConfigMap, and given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsRvpsRefValuesConfigMapName` field.
 
 Before downloading any reference value from Red Hat, we need to be sure that they are actually coming from there, and the artifacts are signed by RH.
 
@@ -700,13 +700,13 @@ The KbsConfig is created by `Trusteeconfig` as `trusteeconfig-kbs-config` CRD, b
 
 The main fields of KbsConfig are:
 
-* xref:02-configure-trustee.adoc#trustee-tdx[tdxConfigSpec:kbsTdxConfigMapName]
-* xref:02-configure-trustee.adoc#trustee-jwk[kbsAttestationKeySecretName and kbsAttestationCertSecretName]
-* xref:02-configure-trustee.adoc#trustee-rap[kbsResourcePolicyConfigMapName]
-* xref:02-configure-trustee.adoc#trustee-cm[kbsConfigMapName]
-* xref:02-configure-trustee.adoc#trusteeconfig[kbsHttpsKeySecretName, kbsHttpsCertSecretName and kbsAuthSecretName]
-* xref:02-configure-trustee.adoc#trustee-refval[kbsRvpsRefValuesConfigMapName]
-* xref:02-configure-trustee.adoc#trustee-ap[kbsAttestationPolicyConfigMapName]
+* xref:configure-trustee.adoc#trustee-tdx[tdxConfigSpec:kbsTdxConfigMapName]
+* xref:configure-trustee.adoc#trustee-jwk[kbsAttestationKeySecretName and kbsAttestationCertSecretName]
+* xref:configure-trustee.adoc#trustee-rap[kbsResourcePolicyConfigMapName]
+* xref:configure-trustee.adoc#trustee-cm[kbsConfigMapName]
+* xref:configure-trustee.adoc#trusteeconfig[kbsHttpsKeySecretName, kbsHttpsCertSecretName and kbsAuthSecretName]
+* xref:configure-trustee.adoc#trustee-refval[kbsRvpsRefValuesConfigMapName]
+* xref:configure-trustee.adoc#trustee-ap[kbsAttestationPolicyConfigMapName]
 * `kbsSecretResources`: secrets added by the user, see below
 
 In order to add our newly uploaded signature secrets into Trustee, we need to update the KbsConfig:
@@ -803,7 +803,7 @@ Secret retrieval works in a two-step authentication:
 
 The attestation token has to therefore be signed by the Trustee, otherwise a malicious CoCo pod can sign its own fake attestation token and request secrets from the Trustee bypassing the whole reference values check.
 
-The attestation token key and certificate are loaded as secret, respectively `trusteeconfig-attestation-key-secret` and `trusteeconfig-attestation-cert-secret`, and are given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respectively in the `kbsAttestationKeySecretName` and `kbsAttestationCertSecretName` field.
+The attestation token key and certificate are loaded as secret, respectively `trusteeconfig-attestation-key-secret` and `trusteeconfig-attestation-cert-secret`, and are given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] respectively in the `kbsAttestationKeySecretName` and `kbsAttestationCertSecretName` field.
 
 [#trustee-cm]
 === The Trustee ConfigMap
@@ -812,9 +812,9 @@ This config is to set the Trustee internal server: it basically configures which
 
 In this ConfigMap we will enable HTTPS, authenticated admin API and signed attestation token verification.
 
-We will then instruct the Trustee operator where to find these keys and certs (they are secrets in OCP) via the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+We will then instruct the Trustee operator where to find these keys and certs (they are secrets in OCP) via the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
 
-This configmap is loaded in Trustee namespace as `trusteeconfig-kbs-config`, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsConfigMapName` field.
+This configmap is loaded in Trustee namespace as `trusteeconfig-kbs-config`, and given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsConfigMapName` field.
 
 [#trustee-ap]
 === Attestation policy
@@ -825,14 +825,14 @@ The policy checks the Platform Configuration Register (PCR) values `03`, `08`, `
 
 The attestation policy follows the https://www.openpolicyagent.org/docs/policy-language[Open Policy Agent, window=blank] specification.
 
-The attestation policy is created by `Trusteeconfig` as `trusteeconfig-attestation-policy` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsAttestationPolicyConfigMapName` field.
+The attestation policy is created by `Trusteeconfig` as `trusteeconfig-attestation-policy` ConfigMap, and given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsAttestationPolicyConfigMapName` field.
 
 [#trustee-tdx]
 === TDX ConfigMap
 
 If your TEE is **Intel Trust Domain Extensions (TDX)**, meaning the instance size you use or plan to use is Standard_DC**e***, you must create the following ConfigMap. Enabling such configmap does not prevent CoCo to use other TEEs.
 
-The TDX config is created by `Trusteeconfig` as `trusteeconfig-tdx-config` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `tdxConfigSpec:kbsTdxConfigMapName` field.
+The TDX config is created by `Trusteeconfig` as `trusteeconfig-tdx-config` ConfigMap, and given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `tdxConfigSpec:kbsTdxConfigMapName` field.
 
 [#trustee-rap]
 === Resource access policy
@@ -841,5 +841,5 @@ Resource policies control which secrets are released and are generally scoped to
 
 The default policy accepts any request that comes from an attester (client) that does use a TEE. For more information about resource access policies, and how to create stronger ones, look https://confidentialcontainers.org/docs/attestation/policies/#resource-policies[here, window=blank]
 
-The resource access policy is created by `Trusteeconfig` as `trusteeconfig-resource-policy` ConfigMap, and given to the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsResourcePolicyConfigMapName` field.
+The resource access policy is created by `Trusteeconfig` as `trusteeconfig-resource-policy` ConfigMap, and given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsResourcePolicyConfigMapName` field.
 

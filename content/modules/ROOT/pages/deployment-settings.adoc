@@ -51,9 +51,9 @@ metadata:
 # ...
 ----
 +
-Note that the `machine_type` must be one of the one specified in `AZURE_INSTANCE_SIZES` in the OSC xref:02-configure-osc.adoc#pp-cm[ConfigMap]. If the defined instance size is allowed by `AZURE_INSTANCE_SIZES`, it will override `AZURE_INSTANCE_SIZE` defined in the peer-pods ConfigMap. Otherwise, it will default to `AZURE_INSTANCE_SIZE`.
+Note that the `machine_type` must be one of the one specified in `AZURE_INSTANCE_SIZES` in the OSC xref:configure-osc.adoc#pp-cm[ConfigMap]. If the defined instance size is allowed by `AZURE_INSTANCE_SIZES`, it will override `AZURE_INSTANCE_SIZE` defined in the peer-pods ConfigMap. Otherwise, it will default to `AZURE_INSTANCE_SIZE`.
 
 [#initdata-ann]
-* Change the initdata policy to be used for the given pod manifest. As explained in the xref:02-configure-trustee.adoc#trustee-initdata[initdata] section, it is also possible to change the initdata policy by adding the base64 encoded policy as `io.katacontainers.config.runtime.cc_init_data` under `metadata:annotations` in the podspec.
+* Change the initdata policy to be used for the given pod manifest. As explained in the xref:configure-trustee.adoc#trustee-initdata[initdata] section, it is also possible to change the initdata policy by adding the base64 encoded policy as `io.katacontainers.config.runtime.cc_init_data` under `metadata:annotations` in the podspec.
 +
-IMPORTANT: you will need to also update the  xref:02-configure-trustee.adoc#pcr8[PCR8] value in the xref:02-configure-trustee.adoc#trustee-refval[Trustee reference values].
+IMPORTANT: you will need to also update the  xref:configure-trustee.adoc#pcr8[PCR8] value in the xref:configure-trustee.adoc#trustee-refval[Trustee reference values].

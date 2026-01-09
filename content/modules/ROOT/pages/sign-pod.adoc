@@ -1,6 +1,6 @@
 = Sign an existing pod
 
-xref:02-configure-trustee.adoc#trustee-cisvp[Back to signature verification policy]
+xref:configure-trustee.adoc#trustee-cisvp[Back to signature verification policy]
 
 1. Log into podman. This is necessary as `cosign` will push signatures into your repo.
 
@@ -64,4 +64,4 @@ podman push $DEST_IMAGE
 ./cosign verify --key cosign.pub $DEST_IMAGE
 ----
 
-xref:02-configure-trustee.adoc#trustee-cisvp[Back to signature verification policy]
+xref:configure-trustee.adoc#trustee-cisvp[Back to signature verification policy]

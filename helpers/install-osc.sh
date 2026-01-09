@@ -66,6 +66,27 @@ EOF
 echo "############################ Wait for OSC ########################"
 wait_for_deployment controller-manager openshift-sandboxed-containers-operator || exit 1
 
+# echo "############################ Update kata rpm ########################"
+# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+# chmod +x update-kata-rpm.sh
+# ./update-kata-rpm.sh
+
+# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/runtime-req-timetout.yaml -o kubelet-timeout.yaml
+# oc apply -f kubelet-timeout.yaml
+# sleep 5
+
+# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/crio-setup.yaml -o crio-setup.yaml
+# oc apply -f crio-setup.yaml
+# sleep 5
+# wait_for_mcp kata-oc || exit 1
+
+# ostree admin unlock --hotfix
+# chroot /host
+# curl -L https://people.redhat.com/eesposit/kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm -o kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
+# rpm -Uvh --replacefiles kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
+# systemctl restart crio
+
+
 echo ""
 echo "################################################"
 echo "OSC installed successfully!"

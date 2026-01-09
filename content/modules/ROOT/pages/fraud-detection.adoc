@@ -39,7 +39,7 @@ The entire process relies on remote attestation to securely release the decrypti
 . Then, it tries to pull the encrypted dataset.
 .. The Azure SAS (connection string in a real example) required to access the blob has been loaded as sealed secret in the CoCo pod. If everything went well, it should be available in a volume defined in the podspec.
 . Once the blob is accessed, the decryption key is not present in the container; it is held remotely by Trustee too.
-.. The key was already added in Trustee xref:02-configure-trustee.adoc#trustee-key[when adding the secrets], or was done automatically by the install script. For this demo, Trustee runs in the same cluster, but in production, it would be in a separate, secure domain.
+.. The key was already added in Trustee xref:configure-trustee.adoc#trustee-key[when adding the secrets], or was done automatically by the install script. For this demo, Trustee runs in the same cluster, but in production, it would be in a separate, secure domain.
 .. To get the decryption key, the same attestation process done by the sealed secret is performed. This time is just triggered manually by the application.
 . The container uses the received key to decrypt the credit card datasets in memory.
 . The (now-decrypted) private data is fed into the public model for processing, all within the protected container.
@@ -82,7 +82,7 @@ oc create secret generic $AZURE_SAS_SECRET_NAME \
   -n trustee-operator-system
 ----
 
-And then instruct Trustee to load that secret into its deployment, by updating the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+And then instruct Trustee to load that secret into its deployment, by updating the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
 
 [source,sh,role=execute]
 ----
@@ -129,12 +129,12 @@ This notebook specifically uses python sdk to download the encrypted data from A
 * Closely align with regular interactive AI workflows which uses python SDKs to download data from s3, azure, minio etc.
 * Provides an example of programmatic storage access for AI workloads when using the peer-pods approach.
 
-Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap] is set at least to `20` GB, as the steps in the guide will install a lot of python packages. If you modify that value, remember as always to to xref:02-configure-osc.adoc##pp-restart[restart the OSC deployment]!
+Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:configure-osc.adoc#pp-cm[peer-pods configmap] is set at least to `20` GB, as the steps in the guide will install a lot of python packages. If you modify that value, remember as always to to xref:configure-osc.adoc##pp-restart[restart the OSC deployment]!
 
 There are two ways to deploy the notebook:
 
-* Via a xref:05-fraud-detection-simple.adoc#fd-oai[Openshift AI (OAI) workbench]: everything is handled by Openshift AI. A `Notebook` object is created, and OAI takes care of deploying it and exposing it for the user. In such way, we integrate CoCo with Openshift AI traditional workbenches, that take care of most of the work.
-* Via a xref:05-fraud-detection-simple.adoc#fd-plain[plain Jupyter notebook]: a simple custom pod, with networking handled by a custom service and route. This is the simplest and fastest way to deploy.
+* Via a xref:fraud-detection.adoc#fd-oai[Openshift AI (OAI) workbench]: everything is handled by Openshift AI. A `Notebook` object is created, and OAI takes care of deploying it and exposing it for the user. In such way, we integrate CoCo with Openshift AI traditional workbenches, that take care of most of the work.
+* Via a xref:fraud-detection.adoc#fd-plain[plain Jupyter notebook]: a simple custom pod, with networking handled by a custom service and route. This is the simplest and fastest way to deploy.
 
 [#fd-oai]
 === Openshift AI workbench
@@ -178,7 +178,7 @@ chmod +x install-oai.sh
 
 Once completed, you will receive a link to access the RHOAI dashboard and also the notebook itself directly.
 
-Now you can xref:05-fraud-detection-simple.adoc#fd-run[go through the notebook].
+Now you can xref:fraud-detection.adoc#fd-run[go through the notebook].
 
 [#fd-plain]
 === Plain Jupyter notebook
