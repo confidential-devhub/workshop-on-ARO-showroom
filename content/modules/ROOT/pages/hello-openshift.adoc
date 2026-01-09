@@ -1,20 +1,93 @@
 = Hello openshift
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
 In this example we will show how easy is to modify an existing pod to make it running in CoCo, i.e. specifying `runtimeClassName` in the podspec. No other action is necessary w.r.t the pod itself, and the confidential VM is completely transparent to it.
 
 This is a sample yaml that runs an `hello-openshift` pod in the `default` namespace. The pod application is not developed by the CoCo team, nor was modified purposefully for this example. It was built from https://github.com/openshift-for-developers/hello[here, window=blank], signed and pushed into the `quay.io/confidential-devhub/signed-hello-openshift` repo. This pod creates a server and outputs `"Hello Openshift!"` every time it is reached. The difference between this pod deployed as Confidential Container and traditional pod is just that the former has `spec.runtimeClassName: kata-remote` defined in the pod spec.
 
-In order to use the Sealed Secret support feature, we will also attach a volume that will be use to load the required key if attestation is successful.
+== Add the application secrets into Trustee
 
-. Switch to the `default` namespace if not done already
-+
+In this example, the `hellosecret` secret has two entries (`key1`, `key2`), which the CoCo pods retrieve.
+
+For the purpose of this workshop, in the xref:hello-openshift.adoc[hello-world example] we will show how to retrieve the key in two ways:
+
+. `key1` will be retrieved via xref:dev-add-secrets#lazy-attestation[lazy attestation].
+. `key2` will be retireved via a xref:dev-add-secrets#sealed-secrets[sealed secret].
+
+Create what `key2`:
+[source,sh,role=execute]
+----
+echo "This is my super secret key!" > key.bin
+# Alternatively:
+# openssl rand 128 > key.bin
+----
+
+Add `key1` as a simple string containing the text `Confidential_Secret!`, and `key2` as `key.bin`.
+
+[source,sh,role=execute]
+----
+HELLO_SECRET_NAME=hellosecret
+
+oc create secret generic $HELLO_SECRET_NAME \
+  --from-literal key1=Confidential_Secret! \
+  --from-file key2=key.bin \
+  -n trustee-operator-system
+
+rm key.bin
+----
+
+And then instruct Trustee to load that secret into its deployment, by updating the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+
+[source,sh,role=execute]
+----
+echo "Default Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+
+echo ""
+
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$HELLO_SECRET_NAME\"},
+  ]"
+
+echo ""
+
+echo "Updated Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+----
+
+== Create the sealed secret
+
+As said previously, let's load `key2` as sealed secret in the **untrusted** cluster.
+
+[source,sh,role=execute]
+----
+SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${HELLO_SECRET_NAME}/key2 --provider kbs | grep -v "Warning")
+
+echo $SECRET
+
+# Note that the namespace here is "default"!
+oc create secret generic sealed-secret --from-literal=attstatus=$SECRET -n default
+----
+
+== Run the application
+
+Let's now run the application in the untrusted cluster.
+
+Switch to the `default` namespace if not done already
+
 [source,sh,role=execute]
 ----
 oc project default
 ----
 
-. Create and apply the yaml file.
-+
+Create and apply the yaml file.
+
 [source,sh,role=execute]
 ----
 cat > sample-openshift.yaml << EOF
@@ -67,31 +140,31 @@ EOF
 clear
 cat sample-openshift.yaml
 ----
-+
+
 [source,sh,role=execute]
 ----
 oc apply -f sample-openshift.yaml
 ----
 
-. Wait that the pod is created.
-+
+Wait that the pod is created.
+
 [source,sh,role=execute]
 ----
 watch oc get pods/hello-openshift
 ----
-+
+
 The pod is ready when the `STATUS` is in `Running`.
 
-. Now expose the pod to make it reachable:
-+
+Now expose the pod to make it reachable:
+
 [source,sh,role=execute]
 ----
 oc expose service hello-openshift-service -l app=hello-openshift
 APP_URL=$(oc get routes/hello-openshift-service -o jsonpath='{.spec.host}')
 ----
 
-. And try to connect to the pod. It should print `Hello Openshift!`.
-+
+And try to connect to the pod. It should print `Hello Openshift!`.
+
 [source,sh,role=execute]
 ----
 curl ${APP_URL}
@@ -135,80 +208,80 @@ Look at the various VMs. You will see there are:
 == Retrieve a secret from Trustee (attestation)
 This `hello-openshift` test pod runs under the previously configured OSC initdata policy, therefore if you followed the xref:02-configure-trustee.adoc#trustee-ip[workshop initdata], logs are enabled and it will be possible to exec to retrieve `key1`.
 
-. Check that logs are enabled
-+
+Check that logs are enabled
+
 [source,sh,role=execute]
 ----
 oc logs pods/hello-openshift
 ----
-+
+
 And notice how the workload log (`serving on 8888`) is printed.
 
-. Check that pod exec is disabled
-+
+Check that pod exec is disabled
+
 [source,sh,role=execute]
 ----
 oc exec -it pods/hello-openshift -- bash
 ----
-+
+
 And notice how an error is returned:
-+
+
 [source,texinfo,subs="attributes"]
 ----
 error: Internal error occurred: error executing command in container: cannot enter container 8c0001fb69f7b8e728a3ccc8ad51d362f284f17450765f895db91dce7fc00413, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
 ----
 
-. Since this is one of the only commands allowed, `exec` to get the Trustee `key1` secret into the pod. This key was added in Trustee when xref:02-configure-trustee.adoc#trustee-key[configuring it]. If you followed the exact instructions, `key1` was configured to contain `Confidential_Secret!`.
-+
+Since this is one of the only commands allowed, `exec` to get the Trustee `key1` secret into the pod. This key was added in Trustee when xref:02-configure-trustee.adoc#trustee-key[configuring it]. If you followed the exact instructions, `key1` was configured to contain `Confidential_Secret!`.
+
 [source,sh,role=execute]
 ----
 oc exec -it pods/hello-openshift -- curl -s http://127.0.0.1:8006/cdh/resource/default/hellosecret/key1 && echo ""
 ----
-+
+
 And as expected, the secret is returned successfully.
-+
+
 [source,texinfo,subs="attributes"]
 ----
 [azure@bastion ~]# oc exec -it pods/hello-openshift -- curl -s http://127.0.0.1:8006/cdh/resource/default/hellosecret/key1 && echo ""
 Confidential_Secret!
 ----
-+
+
 IMPORTANT: Notice how the `curl` call is connecting with `http://127.0.0.1`. This is done on purpose, because the CoCo technology is designed to avoid hardcoding any special logic into the pod application. This means that a Confidential Container doesn't have to know where the Trustee lives, what is its ip, or even care about the attestation report. This is provided in the OSC `INITDATA` given in the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap] or via the annotation. Such url is then forwarded to the local `Trustee agent` running in side the CoCo Confidential VM automatically, so all the CoCo pod application has to do is communicate **locally** (therefore `http` is enough) with the local `Trustee agent` and ask for the path representing the secret it would like to get, in this case `hellosecret/key1`. The `Trustee agent` will then take care of collecting hardware & software attestation proofs, create an attestation report, establish an `https` connection with the remote attester `Trustee operator`, and then perform the attestation process.
 
-. Let's also check if `key2` is automatically loaded into the sealed secret.
-+
+Let's also check if `key2` is automatically loaded into the sealed secret.
+
 [source,sh,role=execute]
 ----
 oc exec -it pods/hello-openshift -- cat /sealed/secret-value/key2 && echo ""
 ----
-+
+
 The output will be the actual content of the `key2`.
-+
+
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/hello-openshift -- /sealed/secret-value/key2 && echo ""
+[azure@bastion ~]# oc exec -it pods/hello-openshift -- cat /sealed/secret-value/key2 && echo ""
 This is my super secret key!
 ----
 
-. Trying any other command in `exec` will fail.
-+
+Trying any other command in `exec` will fail.
+
 [source,texinfo,subs="attributes"]
 ----
 [azure@bastion ~]# oc exec -it pods/hello-openshift -- bash
 error: Internal error occurred: error executing command in container: cannot enter container d60d9d18412d0e4d9bb2e29975b420e4535bac9d966452bc58775ba847cb940c, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
 ----
 
-. It is also possible to inspect Trustee logs to understand how the process worked.
-+
+It is also possible to inspect Trustee logs to understand how the process worked.
+
 [source,sh,role=execute]
 ----
 POD_NAME=$(oc get pods -l app=kbs -o jsonpath='{.items[0].metadata.name}' -n trustee-operator-system)
 clear
 oc logs -n trustee-operator-system $POD_NAME
 ----
-+
+
 Expected output (filtering the important logs only):
-+
+
 [source,texinfo,subs="attributes"]
 ----
 ...
@@ -223,7 +296,7 @@ Expected output (filtering the important logs only):
 [2025-11-28T19:17:35Z INFO actix_web::middleware::logger] 10.128.2.73 "GET /kbs/v0/resource/default/hellosecret/key1 HTTP/1.1" 200 418 "-" "attestation-agent-kbs-client/0.1.0" 0.001017
 ...
 ----
-+
+
 In this formatted log, we can see how the `AzSnpVtpm` Verifier check passed, how the `conf-devhub-image-policy/policy` policy for the image signature was requested and how subsequently the `conf-devhub-signature/pub-key` public key was fetched to ensure the signature is correct. Lastly, `default/hellosecret/key2` was automatically requested by the sealed secret, and `default/hellosecret/key2` by us manually in the previous step.
 
 [#destroy]

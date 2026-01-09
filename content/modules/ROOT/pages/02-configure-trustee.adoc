@@ -1,8 +1,33 @@
 = Configure the Trustee operator
 
-Now that the Trustee operator is installed, we need to set it up.
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
 
-Reminder: You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+
+[NOTE]
+====
+This whole section can be automated with the following command:
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-trustee.sh -o configure-trustee.sh
+
+chmod +x configure-trustee.sh
+
+./configure-trustee.sh
+----
+
+Note that:
+
+* Container signature policy requires that the `quay.io/confidential-devhub/signed` images are signed by a specific key. Any other image is accepted.
+** Refer xref:02-configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
+
+* `INITDATA` allows logs, but disallows generic exec.
+** Refer xref:02-configure-trustee.adoc#trustee-ip[here] if you want to change OSC `INITDATA`.
+** For the OSC operator, updating initdata means updating xref:02-configure-osc.adoc#pp-cm[peer-pods-cm] and then xref:02-configure-osc.adoc#pp-restart[restart the daemonset].
+** For the Trustee operator, updating initdata means updating Trustee `PCR8` in the xref:02-configure-trustee.adoc#trustee-refval[reference values], otherwise attestation will fail, and then xref:02-configure-trustee.adoc#trustee-restart[restart the Trustee deployment].
+====
+
+Now that the Trustee operator is installed, we need to set it up.
 
 [#trustee-restart]
 [NOTE]
@@ -666,105 +691,8 @@ Once the reference values have been added, update the ConfigMap.
 oc apply -f rvps-configmap.yaml
 ----
 
-[#trustee-key]
-== Add a secret to Trustee
-
-Populate Trustee with secret(s) that are then managed by the above policies and if attestation is successful, are sent to the client(s) (CoCo). For example, a Confidential Container image/workload could be encrypted, and the key to decrypt it is stored inside the Trustee and provided only if attestation is successful. In this section, we will show how to add the key into Trustee.
-
-**Prerequisites:** You have created one or more custom keys. In this workshop, we will  create 2 keys.
-
-Define secret name and values. In this example, the `hellosecret` secret has two entries (`key1`, `key2`), which the clients retrieve. You can add additional secrets according to your requirements by using the same format.
-
-For the purpose of this workshop, in the xref:hello-openshift.adoc[hello-world example] we will show how to retrieve the key in two ways:
-
-1. `key1` will be retrieved via lazy attestation, meaning the application has to retrieve it itself by connecting with the **internal** guest components (the container does not need to know the Trustee address!)
-2. `key2` will be retireved via a sealed secret, which automatically loads the defined secret into the container as a volume available for the application to be used.
-
-Create what will be uploaded as `key2`:
-[source,sh,role=execute]
-----
-echo "This is my super secret key!" > key.bin
-# Alternatively:
-# openssl rand 128 > key.bin
-----
-
-We will add `key1` as a simple string containing the text `Confidential_Secret!`, and `key2` as `key.bin`.
-
-[source,sh,role=execute]
-----
-HELLO_SECRET_NAME=hellosecret
-
-oc create secret generic $HELLO_SECRET_NAME \
-  --from-literal key1=Confidential_Secret! \
-  --from-file key2=key.bin \
-  -n trustee-operator-system
-
-rm key.bin
-----
-
-Note that `$HELLO_SECRET_NAME` will be later added in the xref:02-configure-trustee.adoc#trustee-kbsconfig[KbsConfig]
-
-Now, we need to prepare the `key2` sealed secret. Above we added the secret into Trustee, so the remote attester is fine. However, in order to automatically mount it when a confidential container starts, we need to also instruct CoCo to do so.
-
-[source,sh,role=execute]
-----
-SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${HELLO_SECRET_NAME}/key2 --provider kbs | grep -v "Warning")
-
-echo $SECRET
-----
-
-This is the string that we need to provide to the CoCo container. Such secret does **not** contain anything precious, as we don't trust the environment and whoever can access it, but instead it is just a reference so that CoCo knows where exactly is the real secret in Trustee. In other words, see this additional secret as a string that says "the actual content of this secret is stored in trustee under <what you specify in `--resource-uri` below>. When the container starts and volume is mounted, ask Trustee (URL is defined in INITDATA) for this resource, and if received successfully mount it here".
-
-We can add this string to the CoCo container in multiple ways, either as secret/configmap, or as env variable. Therefore let's add it as a secret to the `default` namespace, meaning in the **untrusted** cluster.
-
-NOTE: Because this string is stored/loaded in the untrusted OCP cluster, one might think that any attacker with cluster access could modify it. And while this is true, recall that this string just points to the secret, does not define the policy to access it nor the Trustee address. Which means that worst case this secret will point to a non-existing Trustee resource, or a valid but inaccessible resource, if Trustee is configured correctly.
-
-[source,sh,role=execute]
-----
-# Note that the namespace here is "default"!
-oc create secret generic sealed-secret --from-literal=key2=$SECRET -n default
-
-# Alternatively:
-# In the podspec of the CoCo pod, add
-# env:
-#   - name: MY_VARIABLE
-#   - value: $SECRET
-# and $MY_VARIABLE will contain the content of `key2`!
-----
-
-=== Secrets needed in the next steps
-
-To simplify the examples coming after setup, let's also automatically add some other keys:
-[source,sh,role=execute]
-----
-# default attestation check
-## trustee secrets
-oc create secret generic attestation-status \
-  --from-literal status=success \
-  -n trustee-operator-system
-
-# fraud-detection-encrypted-datasets
-## trustee secrets
-### dataset decryption key - application requires it
-curl -L https://people.redhat.com/eesposit/fd-workshop-key.bin -o fd.bin
-FD_SECRET_NAME=fraud-detection
-oc create secret generic $FD_SECRET_NAME \
-  --from-file dataset_key=fd.bin \
-  -n trustee-operator-system
-rm -rf fd.bin
-### Azure SAS - sealed secret
-AZURE_SAS_SECRET_NAME=fraud-azure-sas
-oc create secret generic $AZURE_SAS_SECRET_NAME \
-  --from-literal azure-sas="sp=r&st=2025-10-27T15:42:27Z&se=2028-10-27T22:57:27Z&spr=https&sv=2024-11-04&sr=b&sig=vjaRotd7de%2B3QwlzHVaHF2GVyehw1xb3fFiXe9E7YOI%3D" \
-  -n trustee-operator-system
-SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
-## NS secret
-oc create namespace fraud-detection
-oc create secret generic sealed-azure-sas --from-literal=azure-sas=$SECRET -n fraud-detection
-----
-
 [#trustee-kbsconfig]
-== Update the KbsConfig
+== The KbsConfig
 
 The purpose of `KbsConfig` is to tell the operator which secret/configmap is used and for what, so it then attaches them automatically into the Trustee pod.
 
@@ -781,7 +709,7 @@ The main fields of KbsConfig are:
 * xref:02-configure-trustee.adoc#trustee-ap[kbsAttestationPolicyConfigMapName]
 * `kbsSecretResources`: secrets added by the user, see below
 
-Let's update `kbsSecretResources` with our secrets:
+In order to add our newly uploaded signature secrets into Trustee, we need to update the KbsConfig:
 
 [source,sh,role=execute]
 ----
@@ -795,10 +723,6 @@ oc patch kbsconfig trusteeconfig-kbs-config \
   -n trustee-operator-system \
   --type=json \
   -p="[
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"attestation-status\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$HELLO_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$FD_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$AZURE_SAS_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
   ]"
@@ -810,8 +734,8 @@ oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
   | jq '.spec.kbsSecretResources'
 ----
 
-
-Once the KbsConfig has been configured, restart the deployment to apply the changes.
+[#update-kbsconfig]
+Once the KbsConfig has been updated, restart the deployment to apply the changes.
 
 [source,sh,role=execute]
 ----

@@ -1,6 +1,22 @@
 = Install the OSC operator
 
-Let's also install OSC to enable CoCo.
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted cluster admin
+
+
+[NOTE]
+====
+This whole section can be automated with the following command:
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/install-osc.sh -o install-osc.sh
+
+chmod +x install-osc.sh
+
+./install-osc.sh
+----
+====
+
+Let's install OSC to enable CoCo.
 
 [#cmdline]
 == Install via command line

@@ -1,5 +1,7 @@
 = How to deploy a CoCo pod
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
 Now that the everything is ready, we can finally run a CoCo workload.
 Let's first see what we can and must add into an **existing** pod yaml to make it run in a confidential environment.
 

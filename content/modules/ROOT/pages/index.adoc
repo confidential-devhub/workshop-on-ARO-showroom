@@ -20,15 +20,32 @@ Before starting this workshop, we suggest to read the following blogposts to get
 All blogposts are under this https://www.redhat.com/en/blog/learn-about-confidential-containers[blog series, window=blank].
 
 [#guide]
-== Choose your guide
+== Structure of the workshop
 
-There are three guides:
+This workshop demystifies the CoCo threat model and architecture. We will demonstrate the different roles and knowledge requirements of various personas in a typical Kubernetes environment.
 
-* The xref:index-theory.adoc[theory], to get a high level overview of what confidential computing is and what are the two operators we are going to use.
+We will show performed by 3 different personas:
 
-* The xref:index-admin.adoc[admin guide], to learn how to install and configure the operators, which configs to set up and why we need such things. This is useful for admins (operational security persona) that need to set up the cluster environment.
+* The *operational security (OpSec)* persona, which is responsible of the overall security and ensuring that CoCo is actually working and protecting the workload. This persona knows well what CoCo is, studied the whole xref:index-theory.adoc[CoCo theory chapter] of this workshop, and knows how to install and configure it (especially Trustee), and has access to Trustee to insert secrets and configure the policies.
 
-* The xref:index-user.adoc[user guide], where both OSC and Trustee will be automatically installed and configured, and what is left to do is just run the confidential container. This is useful for end users (developers) that want to experiment CoCo without going into the installation steps or knowing how all internals work.
+* The *cluster admin* persona, in charge of maintaining and monitoring the cluster. In the CoCo threat model, the **cluster admin is not trusted**. This person can potentially see what a traditional pod is doing, read secrets inside the cluster, and manipulate settings and container images.
+
+* The *application developer* persona, which has **very to no little knowledge of CoCo**. He/she doesn't need to know about the CoCo architecture, what attestation is, and doesn't need to do **any** modification in the application to run it with CoCo. In some environment, this persona could very well be completely oblivious to CoCo, if operations like the secret management is handled by the operational security persona. In others, it has to have a very minimal knowledge, for example know that secrets are stored and managed somewhere else (Trustee).
+
+The workshop will show the steps performed by the above users in two phases: setup and deployment.
+
+. Setup phase 1: install and configure the trusted cluster (Trustee and secrets)
+  .. The *operational security* persona, responsible of the cluster(s) security, installs and configures Trustee in a **trusted and secure** cluster, by defining all security policies.
+  .. The *application developer* adds the application-specific secrets to Trustee, and creates the necessary sealed secres (more on this later). As mentioned before, this operation can also be performed by the operational security persona. In this workshop, we will delegate this to the developer, as always relying on the operational security persona could cause bottlenecks for developers.
+
+. Setup phase 2: install and configure the untrusted cluster (where CoCo runs)
+  .. The *cluster admin* installs and configures OSC in the **untrusted** cluster, where the CoCo application will be first checked by Trustee and its policies, and then run.
+
+. Deployment phase: the *application developer* launches various applications
+  .. If they behave as expected, and secrets are available, it means the application is running securely despite not trusting the cluster and admin where it runs.
+  .. If they don't, it means something has been compromised or forbidden by security policies. The developer needs the operational security responsible helo to understand what is happening and how to solve the issue.
+
+If you are mostly interested into the developer role and/or want to skip some persona step, at the beginning of each section of the setup phases we will provide a script that automates the steps, so you can also only focus on the deployment. What is important is to not skip any section, but rather execute the scripts to speedup the flow when available.
 
 IMPORTANT: In this workshop, we will install Trustee in the **same cluster** that hosts OSC and therefore Confidential Containers. **This is not a suitable solution for production environments.**
-Because the Trustee operator contains the reference values and secrets that are necessary to establish if a Confidential Container is running in a truly safe environment, it should be installed in a separate cluster running in a trusted environment (on prem, for example). Because of the limitations of this ARO workshop, it is not possible to set up two clusters. You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
+Because the Trustee operator contains the reference values and secrets that are necessary to establish if a Confidential Container is running in a truly safe environment, it should be installed in a separate cluster running in a trusted environment (on prem, for example). Because of the limitations of this ARO workshop, it is not possible to set up two clusters. You can assume that **every steps done in the setup phase 1, and in general everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.

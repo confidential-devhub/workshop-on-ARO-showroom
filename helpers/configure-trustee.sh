@@ -1,79 +1,18 @@
 #! /bin/bash
 set -e
 
-#sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y
-#sudo dnf install screen -y
-
-function wait_for_runtimeclass() {
-
-    local runtimeclass=$1
-    local timeout=900
-    local interval=60
-    local elapsed=0
-    local ready=0
-
-    # oc get runtimeclass "$runtimeclass" -o jsonpath={.metadata.name} should return the runtimeclass
-    echo "Runtimeclass $runtimeclass is not yet ready, waiting another $interval seconds"
-    while [ $elapsed -lt $timeout ]; do
-        ready=$(oc get runtimeclass "$runtimeclass" -o jsonpath='{.metadata.name}')
-        if [ "$ready" == "$runtimeclass" ]; then
-            echo "Runtimeclass $runtimeclass is ready"
-            return 0
-        fi
-        echo "Runtimeclass $runtimeclass is not yet ready, waiting another $interval seconds"
-        sleep $interval
-        elapsed=$((elapsed + interval))
-    done
-
-    echo "Runtimeclass $runtimeclass is not ready after $timeout seconds"
-    return 1
-}
-
-function wait_for_mcp() {
-    local mcp=$1
-    local timeout=900
-    local interval=30
-    local elapsed=0
-    echo "MCP $mcp is not yet ready, waiting another $interval seconds"
-    while [ $elapsed -lt $timeout ]; do
-        if [ "$statusUpdated" == "True" ] && [ "$statusUpdating" == "False" ] && [ "$statusDegraded" == "False" ]; then
-            echo "MCP $mcp is ready"
-            return 0
-        fi
-        sleep $interval
-        elapsed=$((elapsed + interval))
-        statusUpdated=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updated")].status}')
-        statusUpdating=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Updating")].status}')
-        statusDegraded=$(oc get mcp "$mcp" -o=jsonpath='{.status.conditions[?(@.type=="Degraded")].status}')
-        echo "MCP $mcp is not yet ready, waiting another $interval seconds"
-    done
-
-    echo "MCP $mcp is not ready after $timeout seconds"
-    return 1
-}
-
-echo "Checking Azure login status..."
-if az account show; then
-  echo "User is logged into Azure."
-else
-  echo "User is not logged in. Please run 'az login' first."
-  exit 1
-fi
-
-echo ""
-
-echo "Checking for AZURE_RESOURCE_GROUP..."
-if [[ -n "$AZURE_RESOURCE_GROUP" ]]; then
-  echo "AZURE_RESOURCE_GROUP is set to: '$AZURE_RESOURCE_GROUP'"
-else
-  echo "The AZURE_RESOURCE_GROUP environment variable is not set."
-  echo "   Please set it, for example: export AZURE_RESOURCE_GROUP=\"my-rg-name\""
-  exit 1
-fi
-
-echo ""
-
 echo "################################################"
+echo "Starting the script. Many of the following commands"
+echo "will periodically check on OCP for operations to"
+echo "complete, so it's normal to see errors."
+echo "If this scripts completes successfully, you will"
+echo "see a final message confirming installation went"
+echo "well."
+echo "################################################"
+
+echo ""
+
+echo "################# Configuring Trustee ###############################"
 
 mkdir -p trustee
 cd trustee
@@ -194,7 +133,6 @@ TRUSTEE_HOST=https://${TRUSTEE_ROUTE}
 
 echo $TRUSTEE_HOST
 
-####################################################################
 echo "################################################"
 
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/showroom/helpers/cosign.pub -o cosign.pub
@@ -450,224 +388,7 @@ EOF
 cat rvps-configmap.yaml
 oc apply -f rvps-configmap.yaml
 
-####################################################################
+echo ""
 echo "################################################"
-
-####################################################################
-echo "################################################"
-
-echo "This is my super secret key!" > key.bin
-# Alternatively:
-# openssl rand 128 > key.bin
-HELLO_SECRET_NAME=hellosecret
-
-oc create secret generic $HELLO_SECRET_NAME \
-  --from-literal key1=Confidential_Secret! \
-  --from-file key2=key.bin \
-  -n trustee-operator-system
-
-oc create secret generic attestation-status \
-  --from-literal status=success \
-  -n trustee-operator-system
-
-curl -L https://people.redhat.com/eesposit/fd-workshop-key.bin -o fd.bin
-FD_SECRET_NAME=fraud-detection
-
-oc create secret generic $FD_SECRET_NAME \
-  --from-file dataset_key=fd.bin \
-  -n trustee-operator-system
-
-rm -rf fd.bin key.bin
-
-AZURE_SAS_SECRET_NAME=fraud-azure-sas
-
-oc create secret generic $AZURE_SAS_SECRET_NAME \
-  --from-literal azure-sas="sp=r&st=2025-10-27T15:42:27Z&se=2028-10-27T22:57:27Z&spr=https&sv=2024-11-04&sr=b&sig=vjaRotd7de%2B3QwlzHVaHF2GVyehw1xb3fFiXe9E7YOI%3D" \
-  -n trustee-operator-system
-
-SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
-
-oc create namespace fraud-detection
-
-oc create secret generic sealed-azure-sas --from-literal=azure-sas=$SECRET -n fraud-detection
-
-SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${HELLO_SECRET_NAME}/key2 --provider kbs | grep -v "Warning")
-
-oc create secret generic sealed-secret --from-literal=key2=$SECRET -n default
-
-####################################################################
-echo "################################################"
-
-oc patch kbsconfig trusteeconfig-kbs-config \
-  -n trustee-operator-system \
-  --type=json \
-  -p="[
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"attestation-status\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$HELLO_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$FD_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$AZURE_SAS_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
-  ]"
-
-oc get pods -n trustee-operator-system
-
-####################################################################
-echo "################################################"
-
-mkdir -p ~/osc
-cd ~/osc
-
-cat > cc-fg.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: osc-feature-gates
-  namespace: openshift-sandboxed-containers-operator
-data:
-  confidential: "true"
-EOF
-
-oc apply -f cc-fg.yaml
-
-####################################################################
-echo "################################################"
-
-# Get the ARO created RG
-ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
-
-# If the cluster is Azure self managed, run
-# AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
-
-# Get the ARO region
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
-
-# Get VNET name used by ARO. This exists in the admin created RG.
-# In this ARO infrastructure, there are 2 VNETs: pick the one starting with "aro-".
-# The other is used internally by this workshop
-# If the cluster is Azure self managed, change
-# contains(Name, 'aro')
-# with
-# contains(Name, '')
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
-
-# Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
-ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
-
-ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
-
-# Necessary otherwise the CoCo pods won't be able to connect with the OCP cluster (OSC and Trustee)
-PEERPOD_NAT_GW=peerpod-nat-gw
-PEERPOD_NAT_GW_IP=peerpod-nat-gw-ip
-
-az network public-ip create -g "${AZURE_RESOURCE_GROUP}" \
-    -n "${PEERPOD_NAT_GW_IP}" -l "${ARO_REGION}" --sku Standard
-
-az network nat gateway create -g "${AZURE_RESOURCE_GROUP}" \
-    -l "${ARO_REGION}" --public-ip-addresses "${PEERPOD_NAT_GW_IP}" \
-    -n "${PEERPOD_NAT_GW}"
-
-az network vnet subnet update --nat-gateway "${PEERPOD_NAT_GW}" \
-    --ids "${ARO_WORKER_SUBNET_ID}"
-
-ARO_NAT_ID=$(az network vnet subnet show --ids "${ARO_WORKER_SUBNET_ID}" \
-    --query "natGateway.id" -o tsv)
-
-echo "ARO_REGION: \"$ARO_REGION\""
-echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
-echo "ARO_NAT_ID: \"$ARO_NAT_ID\""
-
-cat > pp-cm.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: peer-pods-cm
-  namespace: openshift-sandboxed-containers-operator
-data:
-  CLOUD_PROVIDER: "azure"
-  VXLAN_PORT: "9000"
-  AZURE_INSTANCE_SIZES: "Standard_DC4as_v5,Standard_DC4es_v5"
-  AZURE_INSTANCE_SIZE: "Standard_DC4es_v5"
-  AZURE_RESOURCE_GROUP: "${ARO_RESOURCE_GROUP}"
-  AZURE_REGION: "${ARO_REGION}"
-  AZURE_SUBNET_ID: "${ARO_WORKER_SUBNET_ID}"
-  AZURE_NSG_ID: "${ARO_NSG_ID}"
-  PROXY_TIMEOUT: "5m"
-  DISABLECVM: "false"
-  INITDATA: "${INITDATA}"
-  PEERPODS_LIMIT_PER_NODE: "10"
-  TAGS: "key1=value1,key2=value2"
-  ROOT_VOLUME_SIZE: "20"
-  AZURE_IMAGE_ID: ""
-EOF
-
-cat pp-cm.yaml
-oc apply -f pp-cm.yaml
-
-####################################################################
-echo "################################################"
-
-oc label node $(oc get nodes -l node-role.kubernetes.io/worker -o jsonpath='{.items[0].metadata.name}') workerType=kataWorker
-
-cat > kataconfig.yaml <<EOF
-apiVersion: kataconfiguration.openshift.io/v1
-kind: KataConfig
-metadata:
- name: example-kataconfig
-spec:
-  enablePeerPods: true
-  kataConfigPoolSelector:
-    matchLabels:
-      workerType: 'kataWorker'
-EOF
-
-cat kataconfig.yaml
-oc apply -f kataconfig.yaml
-
-echo "############################ Wait for Kataconfig ########################"
-sleep 10
-
-wait_for_mcp kata-oc || exit 1
-
-# Wait for runtimeclass kata to be ready
-wait_for_runtimeclass kata || exit 1
-
-echo "############################ Wait for kata-remote + job ########################"
-
-# Wait for runtimeclass kata-remote to be ready
-wait_for_runtimeclass kata-remote || exit 1
-
-# echo "############################ Update kata rpm ########################"
-# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
-# chmod +x update-kata-rpm.sh
-# ./update-kata-rpm.sh
-
-# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/runtime-req-timetout.yaml -o kubelet-timeout.yaml
-# oc apply -f kubelet-timeout.yaml
-# sleep 5
-
-# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/crio-setup.yaml -o crio-setup.yaml
-# oc apply -f crio-setup.yaml
-# sleep 5
-# wait_for_mcp kata-oc || exit 1
-
-# ostree admin unlock --hotfix
-# chroot /host
-# curl -L https://people.redhat.com/eesposit/kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm -o kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
-# rpm -Uvh --replacefiles kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
-# systemctl restart crio
-
-echo ""
-echo ""
-echo ""
-echo ""
-echo ""
-echo ""
-echo ""
-echo ""
-
-echo "################################################"
-echo "Configuration complete. Enjoy testing CoCo!"
+echo "Trustee configured successfully!"
 echo "################################################"

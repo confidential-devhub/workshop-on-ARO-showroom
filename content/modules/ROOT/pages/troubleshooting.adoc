@@ -1,6 +1,6 @@
 = Troubleshooting
 
-Here you can find the solution to most of the common errors.#
+Here you can find the solution to most of the common errors.
 
 == Which environment are you using?
 

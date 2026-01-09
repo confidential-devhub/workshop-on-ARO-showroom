@@ -1,4 +1,4 @@
-= The Trustee operator
+= The Trustee
 
 In confidential computing environments, *attestation* is crucial in verifying the trustworthiness of the location where you plan to run your workload or where you plan to send confidential information. Before actually running the workload or transmitting the confidential information, you need to perform **attestation**.
 

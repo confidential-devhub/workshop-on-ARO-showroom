@@ -1,5 +1,22 @@
 = Install the Trustee operator
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+
+[NOTE]
+====
+This whole section can be automated with the following command:
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/install-trustee.sh -o install-trustee.sh
+
+chmod +x install-trustee.sh
+
+./install-trustee.sh
+----
+====
+
 Let's start with installing Trustee. In addition to the Trustee operator, we also need the cert-manager operator to automatically create keys needed by Trustee.
 
 [#tcmdline]

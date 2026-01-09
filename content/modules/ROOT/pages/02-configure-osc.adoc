@@ -1,12 +1,29 @@
 = Configure the OSC operator
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted cluster admin
+
+[NOTE]
+====
+This whole section can be automated with the following command:
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/configure-osc.sh -o configure-osc.sh
+
+chmod +x configure-osc.sh
+
+./configure-osc.sh
+----
+
+Note that the CoCo CVM root disk size is `20`. Refer xref:02-configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:02-configure-osc.adoc#pp-restart[restart the OSC daemonset].
+====
+
 Now that the OSC operator is installed, we need to set it up.
 
 **Prerequisites**
 
-To complete this section, it is mandatory to have all ARO credentials at hand defined in the xref:index-admin.adoc#credentials[introduction], because they will have to be inserted in the various resources that we are going to create.
+To complete this section, it is mandatory to have all ARO credentials at hand defined in the xref:untrusted-cluster.adoc#credentials[introduction], because they will have to be inserted in the various resources that we are going to create.
 
-In order to create the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap], it is necessary to have Trustee xref:01-install-trustee.adoc#twebui[installed] and xref:02-configure-trustee.adoc#trustee-route[configured].
+In order to create the xref:02-configure-osc.adoc#pp-cm[peer-pods configmap], it is necessary to have Trustee xref:01-install-trustee.adoc[installed] and xref:02-configure-trustee.adoc[configured].
 
 If you are following this guide in an Azure/ARO environment deployed **outside** the RH demo environment, and your cluster version is older than `4.18.30`, you are expected to upgrade to `4.18.30+` **before** installing OSC.
 

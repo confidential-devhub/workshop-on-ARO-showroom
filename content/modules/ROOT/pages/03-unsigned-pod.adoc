@@ -1,5 +1,7 @@
 = Test the image signature verification
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
 In this example, we will show how a pod fails when it doesn't meet the signature verification requirements we defined when xref:02-configure-trustee.adoc#trustee-cisvp[configuring Trustee].
 
 == Signature check flow
