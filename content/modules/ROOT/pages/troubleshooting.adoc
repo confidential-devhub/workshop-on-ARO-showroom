@@ -197,6 +197,10 @@ It could be very easy to think that a quick way to get the right image is to dir
 However, this is highly unsafe, especially in production environments! The OSC operator runs in the **untrusted** cluster, therefore queying anything from it is against the CoCo Threath model. The CSV could be easily compromised and point to a malicious image, leading to Trustee downloading and using reference values that successfully attest it, causing a compromised image to access Trustee secrets.
 ====
 
+=== Sealed secret contains gibberish
+
+If you mounted a sealed secret, but when reading it the application reads something like `secret=sealed.fakejwsheader...` it simply means that the attestation failed. What you are reading is the "pointer" original value inside the secret, and since attestation failed it was not replaced by the actual secret content. Check the connectivity with Trustee and its logs.
+
 == CoCo pod inaccessible
 
 All is working apparently, but you cannot see any log or access the pod.
