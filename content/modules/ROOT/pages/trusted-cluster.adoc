@@ -1,4 +1,4 @@
-= The trusted cluster
+= Trusted cluster setup
 
 This chapter focuses on setting up and configuring the trusted cluster. In this setup, we will first act as the **operational security** persona that installs and configure Trustee, and then as the **application developer** that stores its own secrets in Trustee. For each configuration, we will explain the purpose and rationale behind it.
 
