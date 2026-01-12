@@ -53,6 +53,8 @@ spec:
           mountPath: /home/jovyan
         - name: azure-secret
           mountPath: "/sealed/azure-value"
+        - name: dataset-key
+          mountPath: "/sealed/decryption"
       ports:
         - containerPort: 8888
           name: http
@@ -86,6 +88,9 @@ spec:
     - name: azure-secret
       secret:
         secretName: sealed-azure-sas
+    - name: dataset-key
+      secret:
+        secretName: sealed-dataset-key
 ---
 apiVersion: v1
 kind: Service

@@ -31,16 +31,17 @@ These two steps above are already prepared for you, no need to do anything at th
 The entire process relies on remote attestation to securely release the decryption key to the running container. In this demo, we will run the whole workflow.
 
 . The fraud-detection container starts.
-. One of the attached volumes in this pod is a sealed secret.
-. CoCo internal components read which secret it is actually referring to, and begin attestation to get its content.
+. Two of the attached volumes in this pod are sealed secret (azure credentials and decryption key).
+. CoCo internal components find the sealed secrets, and begin attestation to get their content.
 .. Attestation starts by first having the confidential container to generate a report that shows it is a genuine CoCo running on a secure, trusted platform.
 .. The CoCo then sends this report to Trustee. Only after Trustee verifies that this report is genuine and correct, it can confirm that the container is secure by releasing the requested secret.
+.. The secret is then inserted in the corresponding sealed secret, which acts as normal volume mount.
 . The container downloads the public model.
-. Then, it tries to pull the encrypted dataset.
+. Then, it tries to pull the encrypted dataset. The Azure credentials are not available in the container; they are held remotely by Trustee.
 .. The Azure SAS (connection string in a real example) required to access the blob has been loaded as sealed secret in the CoCo pod. If everything went well, it should be available in a volume defined in the podspec.
 . Once the blob is accessed, the decryption key is not present in the container; it is held remotely by Trustee too.
-.. The key was already added in Trustee xref:configure-trustee.adoc#trustee-key[when adding the secrets], or was done automatically by the install script. For this demo, Trustee runs in the same cluster, but in production, it would be in a separate, secure domain.
-.. To get the decryption key, the same attestation process done by the sealed secret is performed. This time is just triggered manually by the application.
+.. The key required to decrypt the dataset has been loaded as sealed secret in the CoCo pod. If everything went well, it should be available in a volume defined in the podspec.
+.. In addition, in the jupyter notebook it is also possible to try lazy attestation to fetch the key manually.
 . The container uses the received key to decrypt the credit card datasets in memory.
 . The (now-decrypted) private data is fed into the public model for processing, all within the protected container.
 
@@ -48,7 +49,7 @@ The entire process relies on remote attestation to securely release the decrypti
 
 The main goal here is to show how much work is actually needed to convert the plain application to securely run with CoCo.
 
-There are three (plus one optional) main changes added to the podspec:
+There are three main changes added to the podspec:
 
 . `runtimeClassName: kata-remote` in the podspec. This is just a single line to enable CoCo for this pod.
 
@@ -56,9 +57,6 @@ There are three (plus one optional) main changes added to the podspec:
 
 . Persistent storage. For CoCo in public cloud using peer-pods, since the pod VM is external to the worker node and PVCs are actually mounted on the worker node, there are no proper and maintainable mechanisms to mount the PVC in the pod VM instead of on the worker node and secure it from the cluster. It’s left to the application to directly mount the storage and use client side encryption/decryption for the storage.
 .. In this example, we will replace the PVCs with podvm storage, meaning the CVM encrypted disk will be used to store data. However, once the pod terminates, the data will be lost too.
-
-. Optional: application-side attestation. The application itself can trigger attestation, by simply querying `localhost`. This of course requires modification in the application itself, but it's not mandatory. Trustee resources can be obtained either via sealed secret, or by providing sidecars that do this, leaving the main application pristine.
-.. In this example, we are adding application-side attestation just to show another way to fetch a secret.
 
 == Add the application secrets into Trustee
 
@@ -68,7 +66,7 @@ Let's add the application secrets (decryption key and azure credentials) into th
 ----
 ### dataset decryption key - application requires it
 curl -L https://people.redhat.com/eesposit/fd-workshop-key.bin -o fd.bin
-FD_SECRET_NAME=fraud-detection
+FD_SECRET_NAME=fraud-dataset-key
 oc create secret generic $FD_SECRET_NAME \
   --from-file dataset_key=fd.bin \
   -n trustee-operator-system
@@ -113,11 +111,14 @@ Let's now create the sealed secret that contains the pointer to the actual secre
 
 [source,sh,role=execute]
 ----
-SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
+AZ_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
+
+KEY_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
 
 # namespace here is fraud-detection!
 oc create namespace fraud-detection
-oc create secret generic sealed-azure-sas --from-literal=azure-sas=$SECRET -n fraud-detection
+oc create secret generic sealed-azure-sas --from-literal=azure-sas=$AZ_SECRET -n fraud-detection
+oc create secret generic sealed-dataset-key --from-literal=key=$KEY_SECRET -n fraud-detection
 ----
 
 == Deploy the notebook

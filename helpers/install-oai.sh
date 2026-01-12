@@ -391,6 +391,8 @@ spec:
           name: shm
         - name: azure-secret
           mountPath: "/sealed/azure-value"
+        - name: dataset-key
+          mountPath: "/sealed/decryption"
         workingDir: /opt/app-root/src
       - args:
         - --provider=openshift
@@ -452,6 +454,9 @@ spec:
       - name: azure-secret
         secret:
           secretName: sealed-azure-sas
+      - name: dataset-key
+        secret:
+          secretName: sealed-dataset-key
       - name: app-root
         emptyDir: {}
       - emptyDir:
