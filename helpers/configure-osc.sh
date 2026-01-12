@@ -1,7 +1,13 @@
 #! /bin/bash
 set -e
 
+INITDATA_PATH=${INITDATA_PATH:-"$HOME/trustee/initdata.toml"}
 OSC_ENV=${OSC_ENV:-"rhdp"}
+
+if [[ ! -f "$INITDATA_PATH" ]]; then
+  echo "ERROR: INITDATA file not found: $INITDATA_PATH" >&2
+  exit 1
+fi
 
 # force lowercase
 OSC_ENV=$(echo "$OSC_ENV" | tr '[:upper:]' '[:lower:]')
@@ -187,6 +193,11 @@ echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
 echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
 echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
 echo "ARO_NAT_ID: \"$ARO_NAT_ID\""
+
+INITDATA=$(cat $INITDATA_PATH | gzip | base64 -w0)
+echo ""
+echo $INITDATA
+echo ""
 
 cat > pp-cm.yaml <<EOF
 apiVersion: v1

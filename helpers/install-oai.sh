@@ -247,32 +247,9 @@ oc adm policy add-cluster-role-to-user cluster-admin "kube:admin"
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 CLUSTER_ID=${ARO_RESOURCE_GROUP#aro-}
 ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
-OAI_NS=fraud-detection-oai
+OAI_NS=fraud-detection
 OAI_NAME=fraud-detection
 BRANCH_NAME=coco_workshop_aro
-
-oc apply -f-<<EOF
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ${OAI_NS}
-  labels:
-    opendatahub.io/dashboard: "true"
-    modelmesh-enabled: "false"
-spec:
-  displayName: "Run CoCo on OAI"
-  kserve:
-    enabled: true
-EOF
-
-AZURE_SAS_SECRET_NAME=fraud-azure-sas
-
-oc get secret "$AZURE_SAS_SECRET_NAME" -n trustee-operator-system >/dev/null 2>&1 || \
-oc create secret generic "$AZURE_SAS_SECRET_NAME"  --from-literal azure-sas="sp=r&st=2025-10-27T15:42:27Z&se=2028-10-27T22:57:27Z&spr=https&sv=2024-11-04&sr=b&sig=vjaRotd7de%2B3QwlzHVaHF2GVyehw1xb3fFiXe9E7YOI%3D" -n trustee-operator-system
-
-SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
-oc create secret generic sealed-azure-sas --from-literal=azure-sas=$SECRET -n ${OAI_NS}
 
 oc get secret pull-secret -n openshift-config -o yaml \
   | sed "s/namespace: openshift-config/namespace: ${OAI_NS}/" \
