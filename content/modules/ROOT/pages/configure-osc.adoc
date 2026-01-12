@@ -5,6 +5,7 @@ pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted cluster admin
 [NOTE]
 ====
 This whole section can be automated with the following command:
+====
 
 [tabs]
 ====
@@ -46,6 +47,8 @@ chmod +x configure-osc.sh
 ----
 ====
 
+[NOTE]
+====
 Note that the CoCo CVM root disk size is `20`. Refer xref:configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:configure-osc.adoc#pp-restart[restart the OSC daemonset].
 ====
 
