@@ -37,7 +37,7 @@ oc create secret generic $HELLO_SECRET_NAME \
 rm key.bin
 ----
 
-And then instruct Trustee to load that secret into its deployment, by updating the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+And then instruct Trustee to load that secret into its deployment, by updating the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and xref:configure-trustee.adoc#trustee-restart[restarting the Trustee deployment].
 
 [source,sh,role=execute]
 ----
@@ -59,6 +59,8 @@ echo ""
 echo "Updated Kbsconfig - kbsSecretResources:"
 oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
   | jq '.spec.kbsSecretResources'
+
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 ----
 
 == Create the sealed secret

@@ -80,7 +80,7 @@ oc create secret generic $AZURE_SAS_SECRET_NAME \
   -n trustee-operator-system
 ----
 
-And then instruct Trustee to load that secret into its deployment, by updating the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+And then instruct Trustee to load that secret into its deployment, by updating the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and xref:configure-trustee.adoc#trustee-restart[restarting the Trustee deployment].
 
 [source,sh,role=execute]
 ----
@@ -103,6 +103,8 @@ echo ""
 echo "Updated Kbsconfig - kbsSecretResources:"
 oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
   | jq '.spec.kbsSecretResources'
+
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 ----
 
 == Create the sealed secret
@@ -152,11 +154,11 @@ If you have deployed this workshop with the RHDP catalog, you can choose to have
 +
 [source,sh,role=execute]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/increase-worker-size.sh -o increase-worker-size.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/increase_worker_size.sh -o increase_worker_size.sh
 
-chmod +x increase-worker-size.sh
+chmod +x increase_worker_size.sh
 
-./increase-worker-size.sh
+./increase_worker_size.sh
 ----
 
 ARO/Azure standard deployments::
@@ -221,7 +223,7 @@ echo "https://${FD_ROUTE}"
 Starting from `fraud-detection/1_download_data.ipynb`, go through the various notebooks. Specifically:
 
 * `fraud-detection/1_download_data.ipynb`: download encrypted datasets
-* `fraud-detection/2_decrypt_data.ipynb`: fetch key through attestation and decrypt the datasets
+* `fraud-detection/2_decrypt_data.ipynb`: decrypt the datasets
 * `fraud-detection/3_run_model.ipynb`: run the model
 * `fraud-detection/4_cleanup.ipynb`: clean everything to restart the demo
 
