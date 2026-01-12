@@ -236,7 +236,7 @@ default RemoveStaleVirtiofsShareMountsRequest := true
 default ReseedRandomDevRequest := true
 default ResumeContainerRequest := true
 default SetGuestDateTimeRequest := true
-default SetPolicyRequest := true
+default SetPolicyRequest := false
 default SignalProcessRequest := true
 default StartContainerRequest := true
 default StartTracingRequest := true
@@ -248,7 +248,7 @@ default UpdateEphemeralMountsRequest := true
 default UpdateInterfaceRequest := true
 default UpdateRoutesRequest := true
 default WaitProcessRequest := true
-default WriteStreamRequest := true
+default WriteStreamRequest := false
 
 # Enable logs, to see the output of curl
 default ReadStreamRequest := true
