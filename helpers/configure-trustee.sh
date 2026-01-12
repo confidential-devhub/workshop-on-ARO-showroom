@@ -405,6 +405,20 @@ EOF
 cat rvps-configmap.yaml
 oc apply -f rvps-configmap.yaml
 
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
+  ]"
+
+echo "Updated Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
+
 echo ""
 echo "################################################"
 echo "Trustee configured successfully!"
