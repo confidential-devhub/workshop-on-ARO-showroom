@@ -1,6 +1,22 @@
 #! /bin/bash
 set -e
 
+TRUSTEE_ENV=${TRUSTEE_ENV:-"rhdp"}
+
+# force lowercase
+TRUSTEE_ENV=$(echo "$TRUSTEE_ENV" | tr '[:upper:]' '[:lower:]')
+
+# validate
+case "$TRUSTEE_ENV" in
+  rhdp|gen)
+    export TRUSTEE_ENV
+    ;;
+  *)
+    echo "ERROR: TRUSTEE_ENV must be one of: rhdp, gen (got '$TRUSTEE_ENV')" >&2
+    exit 1
+    ;;
+esac
+
 echo "################################################"
 echo "Starting the script. Many of the following commands"
 echo "will periodically check on OCP for operations to"
@@ -325,17 +341,27 @@ export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
 export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
 ./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
 
-sudo mkdir -p /podvm
-sudo chown azure:azure /podvm
+PODDIR=podvm
+PODROOT=""
+
+if [[ $TRUSTEE_ENV == "rhdp" ]]; then
+  PODDIR="/${PODDIR}"
+  PODROOT="--root $PODDIR"
+fi
+
+sudo mkdir -p $PODDIR
+if [[ $TRUSTEE_ENV == "rhdp" ]]; then
+  sudo chown azure:azure $PODDIR
+fi
 
 # Download the measurements
-podman pull --root /podvm --authfile cluster-pull-secret.json $IMAGE
+podman pull $PODROOT --authfile cluster-pull-secret.json $IMAGE
 
-cid=$(podman create --root /podvm --entrypoint /bin/true $IMAGE)
+cid=$(podman create $PODROOT --entrypoint /bin/true $IMAGE)
 echo "CID: ${cid}"
-podman cp --root /podvm $cid:/image/measurements.json /podvm
-podman rm --root /podvm $cid
-JSON_DATA=$(cat /podvm/measurements.json)
+podman cp $PODROOT $cid:/image/measurements.json $PODDIR
+podman rm $PODROOT $cid
+JSON_DATA=$(cat $PODDIR/measurements.json)
 
 # Prepare reference-values.json
 REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \

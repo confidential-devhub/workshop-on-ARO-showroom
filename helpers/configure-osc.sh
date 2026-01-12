@@ -1,6 +1,21 @@
 #! /bin/bash
 set -e
 
+OSC_ENV=${OSC_ENV:-"rhdp"}
+
+# force lowercase
+OSC_ENV=$(echo "$OSC_ENV" | tr '[:upper:]' '[:lower:]')
+
+# validate
+case "$OSC_ENV" in
+  rhdp|aro|az)
+    export OSC_ENV
+    ;;
+  *)
+    echo "ERROR: OSC_ENV must be one of: rhdp, aro, az (got '$OSC_ENV')" >&2
+    exit 1
+    ;;
+esac
 
 function wait_for_runtimeclass() {
 
@@ -60,15 +75,43 @@ fi
 
 echo ""
 
-echo "Checking for AZURE_RESOURCE_GROUP..."
-if [[ -n "$AZURE_RESOURCE_GROUP" ]]; then
-  echo "AZURE_RESOURCE_GROUP is set to: '$AZURE_RESOURCE_GROUP'"
-else
-  echo "The AZURE_RESOURCE_GROUP environment variable is not set."
-  echo "   Please set it, for example: export AZURE_RESOURCE_GROUP=\"my-rg-name\""
-  exit 1
+if [[ "$OSC_ENV" == "rhdp" || "$OSC_ENV" == "aro" ]]; then
+  echo "Checking for AZURE_RESOURCE_GROUP..."
+  if [[ -n "$AZURE_RESOURCE_GROUP" ]]; then
+    echo "AZURE_RESOURCE_GROUP is set to: '$AZURE_RESOURCE_GROUP'"
+  else
+    echo "The AZURE_RESOURCE_GROUP environment variable is not set."
+    echo "   Please set it, for example: export AZURE_RESOURCE_GROUP=\"my-rg-name\""
+    exit 1
+  fi
 fi
 
+if [[ "$OSC_ENV" == "aro" ]]; then
+  echo "Checking for ARO_WORKER_SUBNET_ID..."
+  if [[ -n "$ARO_WORKER_SUBNET_ID" ]]; then
+    echo "ARO_WORKER_SUBNET_ID is set to: '$ARO_WORKER_SUBNET_ID'"
+  else
+    echo "The ARO_WORKER_SUBNET_ID environment variable is not set."
+    echo "   Please set it, for example: export ARO_WORKER_SUBNET_ID=\"my-subnet-name\""
+    exit 1
+  fi
+fi
+
+if [[ "$OSC_ENV" == "aro" || "$OSC_ENV" == "az" ]]; then
+  REQUIRED="4.18.30"
+  # Extract version number (e.g., 4.18.30)
+  CURRENT=$(oc version 2>/dev/null | grep "Server Version" | awk '{print $3}')
+
+  echo "Current: $CURRENT"
+  echo "Required: $REQUIRED"
+
+  # Use sort -V to compare versions correctly
+  # If the lowest version in the list is NOT the required one, then Current < Required.
+  if [ "$(printf '%s\n' "$REQUIRED" "$CURRENT" | sort -V | head -n1)" != "$REQUIRED" ]; then
+    echo "Exiting: Cluster version is below $REQUIRED"
+    exit 1
+  fi
+fi
 
 echo "################################################"
 echo "Starting the script. Many of the following commands"
@@ -104,23 +147,21 @@ echo "################################################"
 # Get the ARO created RG
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 
-# If the cluster is Azure self managed, run
-# AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
-
 # Get the ARO region
 ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
 
-# Get VNET name used by ARO. This exists in the admin created RG.
-# In this ARO infrastructure, there are 2 VNETs: pick the one starting with "aro-".
-# The other is used internally by this workshop
-# If the cluster is Azure self managed, change
-# contains(Name, 'aro')
-# with
-# contains(Name, '')
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
+if [[ "$OSC_ENV" == "rhdp" ]]; then
+  ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
 
-# Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
-ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
+  # Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
+  ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
+elif [[ "$OSC_ENV" == "aro" ]]; then
+  ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
+elif [[ "$OSC_ENV" == "az" ]]; then
+  AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
+  ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
+  ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
+fi
 
 ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
 
