@@ -18,9 +18,7 @@ case "$TRUSTEE_ENV" in
 esac
 
 echo "################################################"
-echo "Starting the script. Many of the following commands"
-echo "will periodically check on OCP for operations to"
-echo "complete, so it's normal to see errors."
+echo "Starting the script..."
 echo "If this scripts completes successfully, you will"
 echo "see a final message confirming installation went"
 echo "well."

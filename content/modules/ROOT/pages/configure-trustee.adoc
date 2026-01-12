@@ -39,7 +39,7 @@ export TRUSTEE_ENV="gen"
 
 [NOTE]
 ====
-Note that:
+These scripts replicate the instructions below, so keep in mind:
 
 * Container signature policy requires that the `quay.io/confidential-devhub/signed` images are signed by a specific key. Any other image is accepted.
 ** Refer xref:configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
@@ -48,19 +48,16 @@ Note that:
 ** Refer xref:configure-trustee.adoc#trustee-ip[here] if you want to change OSC `INITDATA`.
 ** For the OSC operator, updating initdata means updating xref:configure-osc.adoc#pp-cm[peer-pods-cm] and then xref:configure-osc.adoc#pp-restart[restart the daemonset].
 ** For the Trustee operator, updating initdata means updating Trustee `PCR8` in the xref:configure-trustee.adoc#trustee-refval[reference values], otherwise attestation will fail, and then xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment].
-====
-
-Now that the Trustee operator is installed, we need to set it up.
 
 [#trustee-restart]
-[NOTE]
-====
 If you later update any of the Trustee secrets/configmaps/KbsConfig, you must restart the `trustee-deployment` deployment to apply the changes.
 [source,sh,role=execute]
 ----
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 ----
 ====
+
+Now that the Trustee operator is installed, we need to set it up.
 
 [#trustee-keys]
 == Create the required keys
