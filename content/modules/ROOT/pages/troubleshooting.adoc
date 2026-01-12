@@ -72,9 +72,9 @@ Upon inspection of the OSC operator `osc-caa-ds` deployment, you should see it i
 
 [source,sh,role=execute]
 ----
-POD_NAME=$(oc get pods -l name=osc-caa-ds -o jsonpath='{.items[0].metadata.name}' -n openshift-sandboxed-containers-operator)
-clear
-oc logs -n openshift-sandboxed-containers-operator $POD_NAME
+POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
+
+oc logs -n trustee-operator-system "$POD_NAME" | less -R
 ----
 
 [source,texinfo,subs="attributes"]
@@ -142,9 +142,9 @@ Do you see any request coming in the `trustee-deployment` logs?
 
 [source,sh,role=execute]
 ----
-POD_NAME=$(oc get pods -l app=kbs -o jsonpath='{.items[0].metadata.name}' -n trustee-operator-system)
-clear
-oc logs -n trustee-operator-system $POD_NAME
+POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
+
+oc logs -n trustee-operator-system "$POD_NAME" | less -R
 ----
 
 === HTTPS certificates

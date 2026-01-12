@@ -85,7 +85,7 @@ data:
   confidential: "true"
 EOF
 
-cat cc-fg.yaml
+less cc-fg.yaml
 
 oc apply -f cc-fg.yaml
 ----
@@ -230,8 +230,7 @@ data:
   AZURE_IMAGE_ID: ""
 EOF
 
-clear
-cat pp-cm.yaml
+less pp-cm.yaml
 
 oc apply -f pp-cm.yaml
 ----
@@ -304,7 +303,7 @@ spec:
       workerType: 'kataWorker'
 EOF
 
-cat kataconfig.yaml
+less kataconfig.yaml
 
 oc apply -f kataconfig.yaml
 ----
