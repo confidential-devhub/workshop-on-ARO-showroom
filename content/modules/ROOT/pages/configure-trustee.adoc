@@ -212,7 +212,9 @@ spec:
     tlsSecretName: trustee-token-cert
 EOF
 
-less trusteeconfig-restricted.yaml
+echo ""
+cat trusteeconfig-restricted.yaml
+echo ""
 ----
 
 Note how the `httpsSpec:tlsSecretName` points to `trustee-tls-cert` and `attestationTokenVerificationSpec:tlsSecretName` points to `trustee-token-cert`.
@@ -336,7 +338,9 @@ cat > verification-policy.json <<EOF
 }
 EOF
 
-less verification-policy.json
+echo ""
+cat verification-policy.json
+echo ""
 ----
 
 For more information on security policy, see https://github.com/containers/image/blob/main/docs/containers-policy.json.5.md[containers-policy.json.5, window=blank] and in particular https://github.com/containers/image/blob/main/docs/containers-policy.json.5.md#a-reasonably-locked-down-system[this example,  window=blank].
@@ -488,7 +492,9 @@ policy_data := {
 '''
 EOF
 
-less initdata.toml
+echo ""
+cat initdata.toml
+echo ""
 ----
 
 [#trustee-pr]
@@ -698,7 +704,9 @@ data:
 $REFERENCE_VALUES_JSON
 EOF
 
-less rvps-configmap.yaml
+echo ""
+cat rvps-configmap.yaml
+echo ""
 ----
 
 Once the reference values have been added, update the ConfigMap.
@@ -785,7 +793,8 @@ trustee-operator-controller-manager-5fbd44cd97-55dlh   2/2     Running   0      
 ----
 POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
 
-oc logs -n trustee-operator-system "$POD_NAME" | less -R
+echo ""
+oc logs -n trustee-operator-system "$POD_NAME"
 ----
 +
 Expected output:

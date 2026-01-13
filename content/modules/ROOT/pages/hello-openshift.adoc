@@ -139,7 +139,9 @@ spec:
     - port: 8888
 EOF
 
-less sample-openshift.yaml
+echo ""
+cat sample-openshift.yaml
+echo ""
 ----
 
 [source,sh,role=execute]
@@ -278,7 +280,8 @@ It is also possible to inspect Trustee logs to understand how the process worked
 ----
 POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
 
-oc logs -n trustee-operator-system "$POD_NAME" | less -R
+echo ""
+oc logs -n trustee-operator-system "$POD_NAME"
 ----
 
 Expected output (filtering the important logs only):

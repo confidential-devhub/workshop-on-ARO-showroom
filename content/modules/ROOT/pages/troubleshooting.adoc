@@ -74,7 +74,8 @@ Upon inspection of the OSC operator `osc-caa-ds` deployment, you should see it i
 ----
 POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
 
-oc logs -n trustee-operator-system "$POD_NAME" | less -R
+echo ""
+oc logs -n trustee-operator-system "$POD_NAME"
 ----
 
 [source,texinfo,subs="attributes"]
@@ -144,7 +145,8 @@ Do you see any request coming in the `trustee-deployment` logs?
 ----
 POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
 
-oc logs -n trustee-operator-system "$POD_NAME" | less -R
+echo ""
+oc logs -n trustee-operator-system "$POD_NAME"
 ----
 
 === HTTPS certificates

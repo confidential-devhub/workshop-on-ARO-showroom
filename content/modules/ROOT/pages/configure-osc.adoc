@@ -42,7 +42,9 @@ data:
   confidential: "true"
 EOF
 
-less cc-fg.yaml
+echo ""
+cat cc-fg.yaml
+echo ""
 
 oc apply -f cc-fg.yaml
 ----
@@ -72,11 +74,13 @@ AZURE_REGION="$LOCATION"
 AZURE_SUBNET_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${USER_RESOURCE_GROUP}/providers/Microsoft.Network/virtualNetworks/${VNET_NAME}/subnets/${SUBNET_NAME}"
 AZURE_NSG_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${CLUSTER_RESOURCE_GROUP}/providers/Microsoft.Network/networkSecurityGroups/${SECURITY_GROUP_NAME}"
 
-(echo "AZURE_REGION: \"$AZURE_REGION\""
+echo ""
+echo "AZURE_REGION: \"$AZURE_REGION\""
 echo "CLUSTER_RESOURCE_GROUP: \"$CLUSTER_RESOURCE_GROUP\""
 echo "USER_RESOURCE_GROUP: \"$USER_RESOURCE_GROUP\""
 echo "AZURE_SUBNET_ID: \"$AZURE_SUBNET_ID\""
-echo "AZURE_NSG_ID: \"$AZURE_NSG_ID\"") | less
+echo "AZURE_NSG_ID: \"$AZURE_NSG_ID\"")
+echo ""
 ----
 
 [#gateway]
@@ -130,7 +134,9 @@ data:
   AZURE_IMAGE_ID: ""
 EOF
 
-less pp-cm.yaml
+echo ""
+cat pp-cm.yaml
+echo ""
 
 oc apply -f pp-cm.yaml
 ----
@@ -203,7 +209,10 @@ spec:
       workerType: 'kataWorker'
 EOF
 
-less kataconfig.yaml
+echo ""
+cat kataconfig.yaml
+echo ""
+
 
 oc apply -f kataconfig.yaml
 ----

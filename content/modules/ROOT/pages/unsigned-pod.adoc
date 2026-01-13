@@ -97,7 +97,9 @@ spec:
         secretName: sealed-secret
 EOF
 
-less unsigned-confidential-devhub.yaml
+echo ""
+cat unsigned-confidential-devhub.yaml
+echo ""
 ----
 
 This is very similar to xref:hello-openshift.adoc[hello openshift], but the image changes: it's `quay.io/confidential-devhub/signed/unsigned-image:latest`. This image is not signed.
