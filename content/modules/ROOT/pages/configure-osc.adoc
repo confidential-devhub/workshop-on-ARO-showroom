@@ -16,17 +16,11 @@ chmod +x configure-osc.sh
 ----
 
 Note that the CoCo CVM root disk size is set to `20`. Refer xref:configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:configure-osc.adoc#pp-restart[restart the OSC daemonset].
+
+If you are following this guide in an Azure/ARO environment deployed **outside** the RH demo environment, and your cluster version is older than `4.18.30`, you are expected to upgrade to `4.18.30+` **before** installing OSC.
 ====
 
 Now that the OSC operator is installed, we need to set it up.
-
-**Prerequisites**
-
-To complete this section, it is mandatory to have all ARO credentials at hand defined in the xref:untrusted-cluster.adoc#credentials[introduction], because they will have to be inserted in the various resources that we are going to create.
-
-In order to create the xref:configure-osc.adoc#pp-cm[peer-pods configmap], it is necessary to have Trustee xref:install-trustee.adoc[installed] and xref:configure-trustee.adoc[configured].
-
-If you are following this guide in an Azure/ARO environment deployed **outside** the RH demo environment, and your cluster version is older than `4.18.30`, you are expected to upgrade to `4.18.30+` **before** installing OSC.
 
 [#feature-gate]
 == Enable Confidential Containers feature gate
@@ -109,7 +103,7 @@ AZURE_NAT_ID=$(az network vnet subnet show --ids "${AZURE_SUBNET_ID}" \
 echo "AZURE_NAT_ID: \"$AZURE_NAT_ID\""
 ----
 
-. Create and apply the `peer-pods-configmap.yaml` ConfigMap. Note that at this point you must have already xref:configure-trustee.adoc#trustee-initdata[configured initdata] and got `$INITDATA`.
+. Create and apply the `peer-pods-configmap.yaml` ConfigMap. Note that at this point you must have already xref:configure-trustee.adoc#trustee-initdata[configured initdata] and exported `$INITDATA`.
 +
 [source,sh,role=execute]
 ----
