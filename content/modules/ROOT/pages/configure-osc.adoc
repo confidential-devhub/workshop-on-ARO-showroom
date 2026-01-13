@@ -15,7 +15,7 @@ chmod +x configure-osc.sh
 ./configure-osc.sh
 ----
 
-Note that the CoCo CVM root disk size is `20`. Refer xref:configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:configure-osc.adoc#pp-restart[restart the OSC daemonset].
+Note that the CoCo CVM root disk size is set to `20`. Refer xref:configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:configure-osc.adoc#pp-restart[restart the OSC daemonset].
 ====
 
 Now that the OSC operator is installed, we need to set it up.
