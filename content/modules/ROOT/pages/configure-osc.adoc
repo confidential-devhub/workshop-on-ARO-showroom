@@ -5,53 +5,16 @@ pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted cluster admin
 [NOTE]
 ====
 This whole section can be automated with the following command:
-====
 
-[tabs]
-====
-RHDP workshop::
-+
-[source,sh,role="execute",subs=attributes+]
+[source,sh,role="execute"]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc.sh -o configure-osc.sh
 
 chmod +x configure-osc.sh
 
-export OSC_ENV="rhdp"
 ./configure-osc.sh
 ----
 
-ARO::
-+
-You need to find out how you called your subnet, as the name can be freely named during the install steps. Search it with `az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id}" --output tsv`, and then export it as `ARO_WORKER_SUBNET_ID=your-aro-subnet`.
-+
-[source,sh,role=execute]
-----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc.sh -o configure-osc.sh
-
-chmod +x configure-osc.sh
-
-export OSC_ENV="aro"
-./configure-osc.sh
-----
-
-Azure self managed::
-+
-Azure self managed clusters only have a single resource group.
-+
-[source,sh,role=execute]
-----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-osc.sh -o configure-osc.sh
-
-chmod +x configure-osc.sh
-
-export OSC_ENV="az"
-./configure-osc.sh
-----
-====
-
-[NOTE]
-====
 Note that the CoCo CVM root disk size is `20`. Refer xref:configure-osc.adoc#pp-cm[here (`ROOT_VOLUME_SIZE`)] to change it. Minimum has to be `6`. Remember that after the change you need to xref:configure-osc.adoc#pp-restart[restart the OSC daemonset].
 ====
 
@@ -93,90 +56,34 @@ oc apply -f cc-fg.yaml
 [#pp-cm]
 == Create the peer-pods configmap
 
-. Get the necessary credentials.
+. Get the necessary informations.
 +
-[tabs]
-====
-RHDP workshop::
-+
-[source,sh,role="execute",subs=attributes+]
+[source,sh,role="execute"]
 ----
-AZURE_RESOURCE_GROUP={azure_resource_group}
+CLOUD_CONF=$(oc get configmap cloud-conf \
+  -n openshift-cloud-controller-manager \
+  -o jsonpath='{.data.cloud\.conf}')
 
-# Get the ARO created RG
-ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
+# Parse required fields
+SUBSCRIPTION_ID=$(echo "$CLOUD_CONF" | jq -r '.subscriptionId')
+LOCATION=$(echo "$CLOUD_CONF" | jq -r '.location')
+USER_RESOURCE_GROUP=$(echo "$CLOUD_CONF" | jq -r '.vnetResourceGroup')
+VNET_NAME=$(echo "$CLOUD_CONF" | jq -r '.vnetName')
+SUBNET_NAME=$(echo "$CLOUD_CONF" | jq -r '.subnetName')
+CLUSTER_RESOURCE_GROUP=$(echo "$CLOUD_CONF" | jq -r '.resourceGroup')
+SECURITY_GROUP_NAME=$(echo "$CLOUD_CONF" | jq -r '.securityGroupName')
 
-# Get the ARO region
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
+# Construct resource IDs
+AZURE_REGION="$LOCATION"
+AZURE_SUBNET_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${USER_RESOURCE_GROUP}/providers/Microsoft.Network/virtualNetworks/${VNET_NAME}/subnets/${SUBNET_NAME}"
+AZURE_NSG_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${CLUSTER_RESOURCE_GROUP}/providers/Microsoft.Network/networkSecurityGroups/${SECURITY_GROUP_NAME}"
 
-# Get VNET name used by ARO. This exists in the admin created RG.
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
-
-# Get the Openshift worker subnet ip address id.
-# This exists in the admin created RG, and contains 'worker'
-ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
-
-ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
-
-echo "ARO_REGION: \"$ARO_REGION\""
-echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
+(echo "AZURE_REGION: \"$AZURE_REGION\""
+echo "CLUSTER_RESOURCE_GROUP: \"$CLUSTER_RESOURCE_GROUP\""
+echo "USER_RESOURCE_GROUP: \"$USER_RESOURCE_GROUP\""
+echo "AZURE_SUBNET_ID: \"$AZURE_SUBNET_ID\""
+echo "AZURE_NSG_ID: \"$AZURE_NSG_ID\"") | less
 ----
-
-ARO::
-+
-You need to find out how you called your subnet, as the name can be freely named during the install steps. Search it with `az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id}" --output tsv`, and then export it as `ARO_WORKER_SUBNET_ID=your-aro-subnet`.
-+
-[source,sh,role=execute]
-----
-# Get the ARO created RG
-ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
-
-# Get the ARO region
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
-
-# Get VNET name used by ARO. We assume there is only one.
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
-
-# Define here your subnet!
-# ARO_WORKER_SUBNET_ID=your-aro-subnet
-
-ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
-
-echo "ARO_REGION: \"$ARO_REGION\""
-echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
-----
-
-Azure self managed::
-+
-Azure self managed clusters only have a single resource group.
-+
-[source,sh,role=execute]
-----
-# Get the Azure created RG
-AZURE_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
-
-# Get the Azure region
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
-
-# Get VNET name used by Azure. openshift-install only creates one.
-ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
-
-# Get the Openshift worker subnet ip address id.
-# This usually contains 'worker'
-ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
-
-ARO_NSG_ID=$(az network nsg list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
-
-echo "ARO_REGION: \"$ARO_REGION\""
-echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
-----
-====
 
 [#gateway]
 . Create the necessary ip and gateway to enable connection between CoCo and the worker node.
@@ -186,20 +93,20 @@ echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
 PEERPOD_NAT_GW=peerpod-nat-gw
 PEERPOD_NAT_GW_IP=peerpod-nat-gw-ip
 
-az network public-ip create -g "${AZURE_RESOURCE_GROUP}" \
-    -n "${PEERPOD_NAT_GW_IP}" -l "${ARO_REGION}" --sku Standard
+az network public-ip create -g "${USER_RESOURCE_GROUP}" \
+    -n "${PEERPOD_NAT_GW_IP}" -l "${AZURE_REGION}" --sku Standard
 
-az network nat gateway create -g "${AZURE_RESOURCE_GROUP}" \
-    -l "${ARO_REGION}" --public-ip-addresses "${PEERPOD_NAT_GW_IP}" \
+az network nat gateway create -g "${USER_RESOURCE_GROUP}" \
+    -l "${AZURE_REGION}" --public-ip-addresses "${PEERPOD_NAT_GW_IP}" \
     -n "${PEERPOD_NAT_GW}"
 
 az network vnet subnet update --nat-gateway "${PEERPOD_NAT_GW}" \
-    --ids "${ARO_WORKER_SUBNET_ID}"
+    --ids "${AZURE_SUBNET_ID}"
 
-ARO_NAT_ID=$(az network vnet subnet show --ids "${ARO_WORKER_SUBNET_ID}" \
+AZURE_NAT_ID=$(az network vnet subnet show --ids "${AZURE_SUBNET_ID}" \
     --query "natGateway.id" -o tsv)
 
-echo "ARO_NAT_ID: \"$ARO_NAT_ID\""
+echo "AZURE_NAT_ID: \"$AZURE_NAT_ID\""
 ----
 
 . Create and apply the `peer-pods-configmap.yaml` ConfigMap. Note that at this point you must have already xref:configure-trustee.adoc#trustee-initdata[configured initdata] and got `$INITDATA`.
@@ -217,12 +124,11 @@ data:
   VXLAN_PORT: "9000"
   AZURE_INSTANCE_SIZES: "Standard_DC4as_v5,Standard_DC4es_v5, Standard_DC8es_v5, Standard_DC8as_v5"
   AZURE_INSTANCE_SIZE: "Standard_DC4es_v5"
-  AZURE_RESOURCE_GROUP: "${ARO_RESOURCE_GROUP}"
-  AZURE_REGION: "${ARO_REGION}"
-  AZURE_SUBNET_ID: "${ARO_WORKER_SUBNET_ID}"
-  AZURE_NSG_ID: "${ARO_NSG_ID}"
+  AZURE_RESOURCE_GROUP: "${CLUSTER_RESOURCE_GROUP}"
+  AZURE_REGION: "${AZURE_REGION}"
+  AZURE_SUBNET_ID: "${AZURE_SUBNET_ID}"
+  AZURE_NSG_ID: "${AZURE_NSG_ID}"
   PROXY_TIMEOUT: "5m"
-  DISABLECVM: "false"
   INITDATA: "${INITDATA}"
   PEERPODS_LIMIT_PER_NODE: "10"
   TAGS: "key1=value1,key2=value2"

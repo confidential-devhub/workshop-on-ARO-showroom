@@ -246,7 +246,11 @@ oc adm policy add-cluster-role-to-user cluster-admin "kube:admin"
 
 ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 CLUSTER_ID=${ARO_RESOURCE_GROUP#aro-}
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
+
+CLOUD_CONF=$(oc get configmap cloud-conf \
+  -n openshift-cloud-controller-manager \
+  -o jsonpath='{.data.cloud\.conf}')
+ARO_REGION=$(echo "$CLOUD_CONF" | jq -r '.location')
 OAI_NS=fraud-detection
 OAI_NAME=fraud-detection
 BRANCH_NAME=coco_workshop_aro

@@ -18,9 +18,6 @@ az login --service-principal \
 --username={azure_service_principal_id} \
 --password={azure_service_principal_password} \
 --tenant={azure_tenant_id}
-
-# Export AZURE_RESOURCE_GROUP
-export AZURE_RESOURCE_GROUP={azure_resource_group}
 ----
 +
 . If you need to use the web UI (not necessary in this workshop):
@@ -35,7 +32,7 @@ export AZURE_RESOURCE_GROUP={azure_resource_group}
 
 ARO::
 +
-. Make sure you log into the right service principal:
+Make sure you log into the right service principal:
 +
 [source,sh,role=execute]
 ----
@@ -51,12 +48,10 @@ echo azure_tenant_id $AZ_TID
 
 az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
 ----
-+
-. Export the resource group `export AZURE_RESOURCE_GROUP=your-resource-group` where ARO is deployed. This is **not** the resource group created with the OCP ARO cluster.
 
 Azure::
 +
-. Make sure you log into the right service principal:
+Make sure you log into the right service principal:
 +
 [source,sh,role=execute]
 ----
@@ -71,12 +66,5 @@ echo azure_client_secret $AZ_CS
 echo azure_tenant_id $AZ_TID
 
 az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
-----
-+
-. Export the resource group.
-+
-[source,sh,role=execute]
-----
-export AZURE_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
 ----
 ====

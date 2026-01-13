@@ -81,42 +81,18 @@ fi
 
 echo ""
 
-if [[ "$OSC_ENV" == "rhdp" || "$OSC_ENV" == "aro" ]]; then
-  echo "Checking for AZURE_RESOURCE_GROUP..."
-  if [[ -n "$AZURE_RESOURCE_GROUP" ]]; then
-    echo "AZURE_RESOURCE_GROUP is set to: '$AZURE_RESOURCE_GROUP'"
-  else
-    echo "The AZURE_RESOURCE_GROUP environment variable is not set."
-    echo "   Please set it, for example: export AZURE_RESOURCE_GROUP=\"my-rg-name\""
-    exit 1
-  fi
-fi
+REQUIRED="4.18.30"
+# Extract version number (e.g., 4.18.30)
+CURRENT=$(oc version 2>/dev/null | grep "Server Version" | awk '{print $3}')
 
-if [[ "$OSC_ENV" == "aro" ]]; then
-  echo "Checking for ARO_WORKER_SUBNET_ID..."
-  if [[ -n "$ARO_WORKER_SUBNET_ID" ]]; then
-    echo "ARO_WORKER_SUBNET_ID is set to: '$ARO_WORKER_SUBNET_ID'"
-  else
-    echo "The ARO_WORKER_SUBNET_ID environment variable is not set."
-    echo "   Please set it, for example: export ARO_WORKER_SUBNET_ID=\"my-subnet-name\""
-    exit 1
-  fi
-fi
+echo "Current: $CURRENT"
+echo "Required: $REQUIRED"
 
-if [[ "$OSC_ENV" == "aro" || "$OSC_ENV" == "az" ]]; then
-  REQUIRED="4.18.30"
-  # Extract version number (e.g., 4.18.30)
-  CURRENT=$(oc version 2>/dev/null | grep "Server Version" | awk '{print $3}')
-
-  echo "Current: $CURRENT"
-  echo "Required: $REQUIRED"
-
-  # Use sort -V to compare versions correctly
-  # If the lowest version in the list is NOT the required one, then Current < Required.
-  if [ "$(printf '%s\n' "$REQUIRED" "$CURRENT" | sort -V | head -n1)" != "$REQUIRED" ]; then
-    echo "Exiting: Cluster version is below $REQUIRED"
-    exit 1
-  fi
+# Use sort -V to compare versions correctly
+# If the lowest version in the list is NOT the required one, then Current < Required.
+if [ "$(printf '%s\n' "$REQUIRED" "$CURRENT" | sort -V | head -n1)" != "$REQUIRED" ]; then
+  echo "Exiting: Cluster version is below $REQUIRED"
+  exit 1
 fi
 
 echo "################################################"
@@ -150,49 +126,48 @@ oc apply -f cc-fg.yaml
 ####################################################################
 echo "################################################"
 
-# Get the ARO created RG
-ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
+CLOUD_CONF=$(oc get configmap cloud-conf \
+  -n openshift-cloud-controller-manager \
+  -o jsonpath='{.data.cloud\.conf}')
 
-# Get the ARO region
-ARO_REGION=$(oc get secret -n kube-system azure-credentials -o jsonpath="{.data.azure_region}" | base64 -d)
+# Parse required fields
+SUBSCRIPTION_ID=$(echo "$CLOUD_CONF" | jq -r '.subscriptionId')
+LOCATION=$(echo "$CLOUD_CONF" | jq -r '.location')
+USER_RESOURCE_GROUP=$(echo "$CLOUD_CONF" | jq -r '.vnetResourceGroup')
+VNET_NAME=$(echo "$CLOUD_CONF" | jq -r '.vnetName')
+SUBNET_NAME=$(echo "$CLOUD_CONF" | jq -r '.subnetName')
+CLUSTER_RESOURCE_GROUP=$(echo "$CLOUD_CONF" | jq -r '.resourceGroup')
+SECURITY_GROUP_NAME=$(echo "$CLOUD_CONF" | jq -r '.securityGroupName')
 
-if [[ "$OSC_ENV" == "rhdp" ]]; then
-  ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name} | [? contains(Name, 'aro')]" --output tsv)
+# Construct resource IDs
+AZURE_REGION="$LOCATION"
+AZURE_SUBNET_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${USER_RESOURCE_GROUP}/providers/Microsoft.Network/virtualNetworks/${VNET_NAME}/subnets/${SUBNET_NAME}"
+AZURE_NSG_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${CLUSTER_RESOURCE_GROUP}/providers/Microsoft.Network/networkSecurityGroups/${SECURITY_GROUP_NAME}"
 
-  # Get the Openshift worker subnet ip address cidr. This exists in the admin created RG
-  ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
-elif [[ "$OSC_ENV" == "aro" ]]; then
-  ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
-elif [[ "$OSC_ENV" == "az" ]]; then
-  AZURE_RESOURCE_GROUP=$ARO_RESOURCE_GROUP
-  ARO_VNET_NAME=$(az network vnet list --resource-group $AZURE_RESOURCE_GROUP --query "[].{Name:name}" --output tsv)
-  ARO_WORKER_SUBNET_ID=$(az network vnet subnet list --resource-group $AZURE_RESOURCE_GROUP --vnet-name $ARO_VNET_NAME --query "[].{Id:id} | [? contains(Id, 'worker')]" --output tsv)
-fi
-
-ARO_NSG_ID=$(az network nsg list --resource-group $ARO_RESOURCE_GROUP --query "[].{Id:id}" --output tsv)
+echo "AZURE_REGION: \"$AZURE_REGION\""
+echo "CLUSTER_RESOURCE_GROUP: \"$CLUSTER_RESOURCE_GROUP\""
+echo "USER_RESOURCE_GROUP: \"$USER_RESOURCE_GROUP\""
+echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
+echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
 
 # Necessary otherwise the CoCo pods won't be able to connect with the OCP cluster (OSC and Trustee)
 PEERPOD_NAT_GW=peerpod-nat-gw
 PEERPOD_NAT_GW_IP=peerpod-nat-gw-ip
 
-az network public-ip create -g "${AZURE_RESOURCE_GROUP}" \
-    -n "${PEERPOD_NAT_GW_IP}" -l "${ARO_REGION}" --sku Standard
+az network public-ip create -g "${USER_RESOURCE_GROUP}" \
+    -n "${PEERPOD_NAT_GW_IP}" -l "${AZURE_REGION}" --sku Standard
 
-az network nat gateway create -g "${AZURE_RESOURCE_GROUP}" \
-    -l "${ARO_REGION}" --public-ip-addresses "${PEERPOD_NAT_GW_IP}" \
+az network nat gateway create -g "${USER_RESOURCE_GROUP}" \
+    -l "${AZURE_REGION}" --public-ip-addresses "${PEERPOD_NAT_GW_IP}" \
     -n "${PEERPOD_NAT_GW}"
 
 az network vnet subnet update --nat-gateway "${PEERPOD_NAT_GW}" \
-    --ids "${ARO_WORKER_SUBNET_ID}"
+    --ids "${AZURE_SUBNET_ID}"
 
-ARO_NAT_ID=$(az network vnet subnet show --ids "${ARO_WORKER_SUBNET_ID}" \
+AZURE_NAT_ID=$(az network vnet subnet show --ids "${AZURE_SUBNET_ID}" \
     --query "natGateway.id" -o tsv)
 
-echo "ARO_REGION: \"$ARO_REGION\""
-echo "ARO_RESOURCE_GROUP: \"$ARO_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
-echo "ARO_NAT_ID: \"$ARO_NAT_ID\""
+echo "AZURE_NAT_ID: \"$AZURE_NAT_ID\""
 
 INITDATA=$(cat $INITDATA_PATH | gzip | base64 -w0)
 echo ""
@@ -208,14 +183,13 @@ metadata:
 data:
   CLOUD_PROVIDER: "azure"
   VXLAN_PORT: "9000"
-  AZURE_INSTANCE_SIZES: "Standard_DC4as_v5,Standard_DC4es_v5"
+  AZURE_INSTANCE_SIZES: "Standard_DC4as_v5,Standard_DC4es_v5, Standard_DC8es_v5, Standard_DC8as_v5"
   AZURE_INSTANCE_SIZE: "Standard_DC4es_v5"
-  AZURE_RESOURCE_GROUP: "${ARO_RESOURCE_GROUP}"
-  AZURE_REGION: "${ARO_REGION}"
-  AZURE_SUBNET_ID: "${ARO_WORKER_SUBNET_ID}"
-  AZURE_NSG_ID: "${ARO_NSG_ID}"
+  AZURE_RESOURCE_GROUP: "${CLUSTER_RESOURCE_GROUP}"
+  AZURE_REGION: "${AZURE_REGION}"
+  AZURE_SUBNET_ID: "${AZURE_SUBNET_ID}"
+  AZURE_NSG_ID: "${AZURE_NSG_ID}"
   PROXY_TIMEOUT: "5m"
-  DISABLECVM: "false"
   INITDATA: "${INITDATA}"
   PEERPODS_LIMIT_PER_NODE: "10"
   TAGS: "key1=value1,key2=value2"
