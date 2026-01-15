@@ -74,7 +74,7 @@ SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secr
 echo $SECRET
 
 # Note that the namespace here is "default"!
-oc create secret generic sealed-secret --from-literal=attstatus=$SECRET -n default
+oc create secret generic sealed-secret --from-literal=key2=$SECRET -n default
 ----
 
 == Run the application
