@@ -17,6 +17,12 @@ case "$TRUSTEE_ENV" in
     ;;
 esac
 
+if ! command -v skopeo >/dev/null 2>&1; then
+  echo "Please install skopeo first"
+  echo "On you can install it via: sudo dnf install -y skopeo"
+  exit 1
+fi
+
 echo "################################################"
 echo "Starting the script..."
 echo "If this scripts completes successfully, you will"
@@ -31,9 +37,9 @@ echo "################# Configuring Trustee ###############################"
 mkdir -p trustee
 cd trustee
 
-oc completion bash > oc_bash_completion
-sudo cp oc_bash_completion /etc/bash_completion.d/
-source /etc/bash_completion.d/oc_bash_completion
+# oc completion bash > oc_bash_completion
+# sudo cp oc_bash_completion /etc/bash_completion.d/
+# source /etc/bash_completion.d/oc_bash_completion
 
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
@@ -300,7 +306,7 @@ echo "PCR 8:" $PCR8_HASH
 echo "################################################"
 
 # Prepare required files
-sudo dnf install -y skopeo
+# sudo dnf install -y skopeo
 curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
 mv cosign-linux-amd64 cosign
 chmod +x cosign
@@ -334,16 +340,16 @@ export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
 
 PODDIR=podvm
 PODROOT=""
+USE_SUDO=""
 
 if [[ $TRUSTEE_ENV == "rhdp" ]]; then
   PODDIR="/${PODDIR}"
   PODROOT="--root $PODDIR"
+  USE_SUDO="sudo"
 fi
 
-sudo mkdir -p $PODDIR
-if [[ $TRUSTEE_ENV == "rhdp" ]]; then
-  sudo chown azure:azure $PODDIR
-fi
+$USE_SUDO mkdir -p $PODDIR
+$USE_SUDO chown azure:azure $PODDIR
 
 # Download the measurements
 podman pull $PODROOT --authfile cluster-pull-secret.json $IMAGE
