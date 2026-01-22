@@ -17,14 +17,14 @@ cat ~/trustee/initdata.toml | grep -B 1 image_
 [source,texinfo,subs="attributes"]
 ----
 [image]
-image_security_policy_uri = 'kbs:///default/conf-devhub-image-policy/policy'
+image_security_policy_uri = 'kbs:///default/trustee-image-policy/policy'
 ----
 
-How is the `conf-devhub-image-policy/policy` set?
+How is the `trustee-image-policy/policy` set?
 
 [source,sh,role=execute]
 ----
-oc extract secrets/conf-devhub-image-policy -n trustee-operator-system --to=-
+oc extract secrets/trustee-image-policy -n trustee-operator-system --to=-
 ----
 
 [source,texinfo,subs="attributes"]
@@ -149,7 +149,7 @@ This is the expected output:
 ...
 [2025-11-28T20:09:46Z INFO attestation_service] AzTdxVtpm Verifier/endorsement check passed.
 [2025-11-28T20:09:46Z INFO actix_web::middleware::logger] 10.128.2.73 "POST /kbs/v0/attest HTTP/1.1" 200 7733 "-" "attestation-agent-kbs-client/0.1.0" 0.892395
-[2025-11-28T20:09:46Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-image-policy/policy HTTP/1.1" 200 850 "-" "attestation-agent-kbs-client/0.1.0" 0.001137
+[2025-11-28T20:09:46Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/trustee-image-policy/policy HTTP/1.1" 200 850 "-" "attestation-agent-kbs-client/0.1.0" 0.001137
 [2025-11-28T20:09:47Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-signature/pub-key HTTP/1.1" 200 629 "-" "attestation-agent-kbs-client/0.1.0" 0.001067
 ----
 

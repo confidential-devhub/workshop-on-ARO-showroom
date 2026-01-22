@@ -187,7 +187,7 @@ cat > verification-policy.json <<EOF
 }
 EOF
 
-POLICY_SECRET_NAME=conf-devhub-image-policy
+POLICY_SECRET_NAME=trustee-image-policy
 POLICY_SECRET_FILE=policy
 
 oc create secret generic $POLICY_SECRET_NAME \
