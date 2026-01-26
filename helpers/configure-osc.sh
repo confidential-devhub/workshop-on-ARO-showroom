@@ -147,8 +147,8 @@ AZURE_NSG_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${CLUSTER_RESOURC
 echo "AZURE_REGION: \"$AZURE_REGION\""
 echo "CLUSTER_RESOURCE_GROUP: \"$CLUSTER_RESOURCE_GROUP\""
 echo "USER_RESOURCE_GROUP: \"$USER_RESOURCE_GROUP\""
-echo "ARO_SUBNET_ID: \"$ARO_WORKER_SUBNET_ID\""
-echo "ARO_NSG_ID: \"$ARO_NSG_ID\""
+echo "ARO_SUBNET_ID: \"$AZURE_SUBNET_ID\""
+echo "ARO_NSG_ID: \"$AZURE_NSG_ID\""
 
 # Necessary otherwise the CoCo pods won't be able to connect with the OCP cluster (OSC and Trustee)
 PEERPOD_NAT_GW=peerpod-nat-gw
