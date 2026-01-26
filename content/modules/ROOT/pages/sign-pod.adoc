@@ -11,7 +11,7 @@ xref:configure-trustee.adoc#trustee-cisvp[Back to signature verification policy]
 mkdir -p cosign
 cd cosign
 
-curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
+curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.6.2/cosign-linux-amd64"
 
 mv cosign-linux-amd64 cosign
 chmod +x cosign
