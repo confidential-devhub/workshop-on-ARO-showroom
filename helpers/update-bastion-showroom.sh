@@ -4,6 +4,8 @@ sudo -u showroom -H bash -c '
 set -e
 
 cd /opt/showroom/content
+
+cp content/antora.yml /tmp/antora.yml
 cp www/index.html /tmp/index.html
 git pull
 
@@ -14,4 +16,5 @@ podman run --rm \
   default-site.yml
 
 cp /tmp/index.html www/index.html
+cp /tmp/antora.yml content/antora.yml
 '
