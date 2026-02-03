@@ -5,10 +5,7 @@ This chapter focuses on setting up and configuring the untrusted cluster. In thi
 [#credentials]
 == Log in into the environment
 
-[tabs]
-====
-RHDP workshop::
-+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 . Go into the terminal on the right and run the following commands:
 +
 [source,sh,role="execute",subs=attributes+]
@@ -19,7 +16,7 @@ az login --service-principal \
 --password={azure_service_principal_password} \
 --tenant={azure_tenant_id}
 ----
-+
+
 . If you need to use the web UI (not necessary in this workshop):
 +
 * Navigate to the {aro_console}[Openshift Console, window=blank]
@@ -29,11 +26,11 @@ az login --service-principal \
 ** *Username:* {aro_kube_username}
 +
 ** *Password:* {aro_kube_password}
+endif::[]
 
-ARO::
-+
-. Make sure you log into the right service principal:
-+
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
+Make sure you log into the right service principal:
+
 [source,sh,role=execute]
 ----
 AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
@@ -48,23 +45,4 @@ echo azure_tenant_id $AZ_TID
 
 az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
 ----
-
-Azure::
-+
-. Make sure you log into the right service principal:
-+
-[source,sh,role=execute]
-----
-AZ_CID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_id | base64 -d)
-
-AZ_CS=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_client_secret | base64 -d)
-
-AZ_TID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_tenant_id | base64 -d)
-
-echo azure_client_id $AZ_CID
-echo azure_client_secret $AZ_CS
-echo azure_tenant_id $AZ_TID
-
-az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
-----
-====
+endif::[]
