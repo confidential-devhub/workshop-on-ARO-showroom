@@ -1,9 +1,5 @@
 * xref:index.adoc[Introduction]
 
-* xref:index-theory.adoc[Theory]
-** xref:osc.adoc[Confidential containers: Openshift sandboxed containers operator]
-** xref:trustee.adoc[Remote attester: the Trustee]
-
 * xref:trusted-cluster.adoc[Trusted cluster setup]
 ** xref:install-trustee.adoc[1. OpSec: Install Trustee]
 ** xref:configure-trustee.adoc[2. OpSec: Configure Trustee]
@@ -32,6 +28,10 @@
 ** xref:hello-openshift.adoc[Hello openshift]
 ** xref:unsigned-pod.adoc[Test the image signature verification]
 ** xref:fraud-detection.adoc[Fraud-detection]
-** xref:troubleshooting.adoc[Troubleshooting] TODO: show which user is affected
+** xref:troubleshooting.adoc[Troubleshooting]
+
+* xref:index-theory.adoc[Theory]
+** xref:osc.adoc[Confidential containers: Openshift sandboxed containers operator]
+** xref:trustee.adoc[Remote attester: the Trustee]
 
 * xref:conclusion.adoc[Conclusion and what's next]
