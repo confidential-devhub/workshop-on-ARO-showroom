@@ -7,6 +7,7 @@ cd /opt/showroom/content
 
 cp content/antora.yml /tmp/antora.yml
 cp www/index.html /tmp/index.html
+git stash
 git pull
 
 podman run --rm \
