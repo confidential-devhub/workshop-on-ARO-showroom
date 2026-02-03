@@ -15,6 +15,12 @@ az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
 
 echo "Login succeeded!"
 
+CLOUD_CONF=$(oc get configmap cloud-conf \
+  -n openshift-cloud-controller-manager \
+  -o jsonpath='{.data.cloud\.conf}')
+
+ARO_RESOURCE_GROUP=$(echo "$CLOUD_CONF" | jq -r '.resourceGroup')
+
 set +e
 PODVMS=$(az vm list -d --query "[].name" -o tsv | grep podvm)
 set -e
