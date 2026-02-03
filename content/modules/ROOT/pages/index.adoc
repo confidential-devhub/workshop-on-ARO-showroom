@@ -49,3 +49,26 @@ If you are mostly interested into the developer role and/or want to skip some pe
 
 IMPORTANT: In this workshop, we will install Trustee in the **same cluster** that hosts OSC and therefore Confidential Containers. **This is not a suitable solution for production environments.**
 Because the Trustee operator contains the reference values and secrets that are necessary to establish if a Confidential Container is running in a truly safe environment, it should be installed in a separate cluster running in a trusted environment (on prem, for example). Because of the limitations of this ARO workshop, it is not possible to set up two clusters. You can assume that **every steps done in the setup phase 1, and in general everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
+
+== Enable tmux
+
+Since many steps create and require environment variables, it is higly recommended to run the whole workshop on `tmux`.
+
+If you are running this workshop for the first time, run
+[source,sh,role=execute]
+----
+tmux
+----
+
+To enter the console. If you are entering again, first list all the existing sessions and ensure there is the one you previously opened:
+
+[source,sh,role=execute]
+----
+tmux ls
+----
+
+And then access it:
+[source,sh,role=execute]
+----
+tmux a
+----
