@@ -5,7 +5,9 @@ pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 Now that the everything is ready, we can finally run a CoCo workload.
 Let's first see what we can and must add into an **existing** pod yaml to make it run in a confidential environment.
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Because of CPU Quota limitations of this ARO subscription, and since each CoCo runs in a Confidential VM, you are just allowed to deploy max **two single CoCo pods** at time. Trying to deploy a third one will result in failure and container stuck in `ContainerCreating` state.
+endif::[]
 
 In this section, we will show you how easy is to modify an existing pod into CoCo and how to additionally customize it.
 

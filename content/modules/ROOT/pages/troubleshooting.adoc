@@ -2,10 +2,6 @@
 
 Here you can find the solution to most of the common errors.
 
-== Which environment are you using?
-
-Some of the steps differ if you are using the **RHDP demo workshop**, a standard **ARO deployment** or **Azure self managed cluster**. Check the various tabs in the steps.
-
 == Follow the order
 
 Order is very important. If you install OSC and insert an empty/incomplete INITDATA in it (for example empty trustee URL), the CoCo pod will not start because it will try to connect to a non-existing service, getting 404 and therefore preventing the pod from creating.
@@ -159,7 +155,7 @@ If you update the https certificates, remember to xref:configure-trustee.adoc#tr
 
 === Connectivity between Azure and Trustee
 
-If you are deploying Trustee outside the workshop in a separate cluster, make sure the connectivity between the Trustee and Azure OCP cluster is working.
+If you are deploying Trustee in a separate cluster, make sure the connectivity between the Trustee and Azure OCP cluster is working.
 
 === Policy Deny
 

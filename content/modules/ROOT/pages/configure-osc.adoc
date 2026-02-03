@@ -217,7 +217,7 @@ echo ""
 oc apply -f kataconfig.yaml
 ----
 
-. [Skip this step on Azure SNO deployments] Wait for kata-oc `MachineConfigPool` (MCP) to be in `UPDATED` state (once `UPDATEDMACHINECOUNT` equals `MACHINECOUNT`). In this ARO setup with 3 worker nodes, it should take around 15 minutes.
+. [Skip this step on Azure SNO deployments] Wait for kata-oc `MachineConfigPool` (MCP) to be in `UPDATED` state (once `UPDATEDMACHINECOUNT` equals `MACHINECOUNT`). In the ARO standard setup with 3 worker nodes, it should take around 15 minutes.
 +
 [source,sh,role=execute]
 ----

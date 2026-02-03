@@ -146,12 +146,10 @@ There are two ways to deploy the notebook:
 
 First of all, we need to make sure we can install Openshift AI. The main requirement for OAI is to have big enough worker nodes, as they have to run OAI, OSC and Trustee.
 
-[tabs]
-====
-RHDP Workshop::
-+
+// RHDP workshop
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 If you have deployed this workshop with the RHDP catalog, you can choose to have worker nodes as big as `Standard_D8s_v5`. This should be enough. If you haven't picked big enough nodes, there is no problem, as the script below takes care of increasing the worker node size automatically.
-+
+
 [source,sh,role=execute]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/increase_worker_size.sh -o increase_worker_size.sh
@@ -160,11 +158,12 @@ chmod +x increase_worker_size.sh
 
 ./increase_worker_size.sh
 ----
+endif::[]
 
-ARO/Azure standard deployments::
-+
-You need to manually upgrade the worker node or deploy a new cluster with big enough workers. Alternatively you can try to add more worker nodes.
-====
+// Github instructions
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
+Please ensure you have big enough worker nodes. In ARO, 3 workers with size `Standard_D8s_v5` should be enough. In case you don't have them, you can manually upgrade the worker node, deploy a new cluster with bigger workers or try to add more worker nodes.
+endif::[]
 
 ==== Install OAI
 

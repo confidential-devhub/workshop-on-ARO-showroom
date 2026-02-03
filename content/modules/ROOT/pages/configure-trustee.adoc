@@ -2,17 +2,17 @@
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
 
-You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**. Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+endif::[]
 
 [NOTE]
 ====
 This whole section can be automated with the following command:
-====
 
-[tabs]
-====
-RHDP workshop::
-+
+// RHDP workshop
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-trustee.sh -o configure-trustee.sh
@@ -22,9 +22,10 @@ chmod +x configure-trustee.sh
 export TRUSTEE_ENV="rhdp"
 ./configure-trustee.sh
 ----
+endif::[]
 
-ARO/Azure standard deployments::
-+
+// Github instructions
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/configure-trustee.sh -o configure-trustee.sh
@@ -34,11 +35,8 @@ chmod +x configure-trustee.sh
 export TRUSTEE_ENV="gen"
 ./configure-trustee.sh
 ----
+endif::[]
 
-====
-
-[NOTE]
-====
 These scripts replicate the instructions below, so keep in mind:
 
 * Container signature policy requires that the `quay.io/confidential-devhub/signed` images are signed by a specific key. Any other image is accepted.
@@ -614,10 +612,8 @@ Now that we are sure the image is the right one, let's download the measurements
 
 Pull the measurements from the RH image:
 [#refval-fetch]
-[tabs]
-====
-RHDP Workshop::
-+
+// RHDP workshop
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
 # On the ARO workshop, we don't have enough space for podman.
@@ -634,9 +630,10 @@ podman cp --root /podvm $cid:/image/measurements.json /podvm
 podman rm --root /podvm $cid
 JSON_DATA=$(cat /podvm/measurements.json)
 ----
+endif::[]
 
-ARO/Azure standard deployments::
-+
+// Github instructions
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
 mkdir -p podvm
@@ -650,7 +647,8 @@ podman cp $cid:/image/measurements.json /podvm
 podman rm $cid
 JSON_DATA=$(cat podvm/measurements.json)
 ----
-====
+endif::[]
+
 
 Now, let's format the reference values correctly:
 [source,sh,role=execute]
