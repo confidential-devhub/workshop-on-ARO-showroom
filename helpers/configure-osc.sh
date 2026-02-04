@@ -233,6 +233,14 @@ echo "############################ Wait for kata-remote + job ##################
 # Wait for runtimeclass kata-remote to be ready
 wait_for_runtimeclass kata-remote || exit 1
 
+# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/runtime-req-timetout.yaml -o kubelet-timeout.yaml
+# oc apply -f kubelet-timeout.yaml
+# sleep 5
+
+# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/crio-setup.yaml -o crio-setup.yaml
+# oc apply -f crio-setup.yaml
+# sleep 5
+# wait_for_mcp kata-oc || exit 1
 
 echo ""
 echo "################################################"
