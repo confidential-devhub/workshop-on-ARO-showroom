@@ -6,6 +6,8 @@ OSC_ENV=${OSC_ENV:-"rhdp"}
 
 if [[ ! -f "$INITDATA_PATH" ]]; then
   echo "ERROR: INITDATA file not found: $INITDATA_PATH" >&2
+  echo "Please configure the INITDATA_PATH environment variable"
+  echo "For example: export INITDATA_PATH=\"/path/to/initdata.toml\""
   exit 1
 fi
 

@@ -1,7 +1,7 @@
 #! /bin/bash
 set -e
 
-TRUSTEE_ENV=${TRUSTEE_ENV:-"rhdp"}
+TRUSTEE_ENV=${TRUSTEE_ENV:-"gen"}
 
 # force lowercase
 TRUSTEE_ENV=$(echo "$TRUSTEE_ENV" | tr '[:upper:]' '[:lower:]')
@@ -339,25 +339,24 @@ export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
 ./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
 
 PODDIR=podvm
-PODROOT=""
-USE_SUDO=""
+PROOTF=""
 
 if [[ $TRUSTEE_ENV == "rhdp" ]]; then
   PODDIR="/${PODDIR}"
-  PODROOT="--root $PODDIR"
-  USE_SUDO="sudo"
+  PROOTF="--root $PODDIR"
+  sudo mkdir -p $PODDIR
+  sudo chown azure:azure $PODDIR
+else
+  mkdir -p $PODDIR
 fi
 
-$USE_SUDO mkdir -p $PODDIR
-$USE_SUDO chown azure:azure $PODDIR
-
 # Download the measurements
-podman pull $PODROOT --authfile cluster-pull-secret.json $IMAGE
+podman pull $PROOTF --authfile cluster-pull-secret.json $IMAGE
 
-cid=$(podman create $PODROOT --entrypoint /bin/true $IMAGE)
+cid=$(podman create $PROOTF --entrypoint /bin/true $IMAGE)
 echo "CID: ${cid}"
-podman cp $PODROOT $cid:/image/measurements.json $PODDIR
-podman rm $PODROOT $cid
+podman cp $PROOTF $cid:/image/measurements.json $PODDIR
+podman rm $PROOTF $cid
 JSON_DATA=$(cat $PODDIR/measurements.json)
 
 # Prepare reference-values.json
