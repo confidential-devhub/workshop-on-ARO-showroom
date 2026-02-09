@@ -2,6 +2,12 @@
 set -e
 
 INITDATA_PATH=${INITDATA_PATH:-"$HOME/trustee/initdata.toml"}
+# Expand ~ to $HOME (handles ~/path)
+INITDATA_PATH="${INITDATA_PATH/#\~/$HOME}"
+# Resolve to absolute path
+if [[ "$INITDATA_PATH" != /* ]]; then
+  INITDATA_PATH="$(cd "$(dirname "$INITDATA_PATH")" && pwd)/$(basename "$INITDATA_PATH")"
+fi
 OSC_ENV=${OSC_ENV:-"rhdp"}
 
 if [[ ! -f "$INITDATA_PATH" ]]; then
