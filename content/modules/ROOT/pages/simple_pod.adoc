@@ -120,7 +120,7 @@ Check that logs are enabled
 
 [source,sh,role=execute]
 ----
-oc logs pods/sample-fraud-detection -n default
+oc logs pods/sample-fraud-detection -n default | head -n 15
 ----
 
 And notice how the workload log is printed.

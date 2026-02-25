@@ -405,6 +405,7 @@ apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
   annotations:
+    io.katacontainers.config.hypervisor.cc_init_data: "$NEW_INIT"
     notebooks.opendatahub.io/inject-oauth: "true"
     opendatahub.io/image-display-name: "CoCo | Jupyter | Data Science | CPU | Python 3.12"
     notebooks.opendatahub.io/oauth-logout-url: https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}?notebookLogout=${OAI_NAME}
@@ -424,9 +425,6 @@ metadata:
   namespace: ${OAI_NS}
 spec:
   template:
-    metadata:
-      annotations:
-        io.katacontainers.config.hypervisor.cc_init_data: "$NEW_INIT"
     spec:
       runtimeClassName: kata-remote
       imagePullSecrets:

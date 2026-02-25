@@ -84,8 +84,12 @@ spec:
       - /bin/sh
       - -c
       - |
+        echo "Content of /app/downloaded_keys:"
+        ls -l /app/downloaded_keys
+        echo "Downloading key..."
         curl -sf http://localhost:8006/cdh/resource/default/fraud-dataset/dataset_key -o /app/downloaded_keys/dataset_key
-        echo "Downloaded decryption key:"
+        echo "Downloaded decryption key."
+        echo "Content of /app/downloaded_keys:"
         ls -l /app/downloaded_keys
       volumeMounts:
         - name: downloaded-keys-volume
@@ -147,7 +151,7 @@ The only way to check that the pod is running as intended is to watch its logs. 
 
 [source,sh,role=execute]
 ----
-oc logs pods/decryption-fraud-detection -c fraud-detection -n default
+oc logs pods/decryption-fraud-detection -c fraud-detection -n default | head -n 15
 ----
 
 Notice how the log is different this time:
@@ -172,6 +176,24 @@ Inspecting credit card transactions:
 ----
 
 As you can see, the application did use the fetched key to decrypt the dataset and run.
+
+Inspecting the `fetch-secret` initContainer, we see how that simple `curl` to localhost managed to get the key from Trustee.
+
+[source,sh,role=execute]
+----
+oc logs pods/decryption-fraud-detection -c fetch-secret -n default
+----
+
+[source,texinfo,subs="attributes"]
+----
+Content of /app/downloaded_keys:
+total 0
+Downloading key...
+Downloaded decryption key.
+Content of /app/downloaded_keys:
+total 4
+-rw-r--r--. 1 root root 32 Feb 25 15:17 dataset_key
+----
 
 It is also possible to inspect Trustee logs to understand how the process worked when the init container run.
 
@@ -215,7 +237,7 @@ While the initcontainer/sidecar approach is valid in this example, such approach
 
 Here an example of a similar sidecar constantly checking for a secret. Note that the secret isn't really used to do anything, the goal is just to successfully retrieve it:
 
-[source,sh,role=execute]
+[source,texinfo,subs="attributes"]
 ----
 [...]
 containers:

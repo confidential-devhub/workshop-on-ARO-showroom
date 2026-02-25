@@ -206,7 +206,7 @@ Check that pod exec is disabled
 
 [source,sh,role=execute]
 ----
-oc exec -it pods/initdata-fraud-detection -- bash
+oc exec -it pods/initdata-fraud-detection -n default -- bash
 ----
 
 And notice how an error is returned:
@@ -220,14 +220,14 @@ Since this is one of the only commands allowed, let's try to `exec` to get the e
 
 [source,sh,role=execute]
 ----
-oc exec -it pods/initdata-fraud-detection -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/initdata-fraud-detection -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 ----
 
 And as expected, the secret is returned successfully.
 
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 resval1
 ----
 
@@ -235,7 +235,7 @@ Trying any other command in `exec` will fail.
 
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -- ls
+[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -n default -- ls
 error: Internal error occurred: error executing command in container: cannot enter container ba883405d94b151886307518daa04171716edcb410e8b4ff556a76ca951fbfa9, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
 ----
 

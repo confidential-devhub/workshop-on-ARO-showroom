@@ -118,7 +118,7 @@ There are two ways to deploy the notebook:
 [#fd-oai]
 === Openshift AI workbench
 
-==== Prerequisites
+==== **Prerequisites**
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
 
@@ -143,7 +143,7 @@ ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 Please ensure you have big enough worker nodes. In ARO, 3 workers with size `Standard_D8s_v5` should be enough. In case you don't have them, you can manually upgrade the worker node, deploy a new cluster with bigger workers or try to add more worker nodes.
 endif::[]
 
-==== Install OAI
+==== **Install OAI**
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
@@ -218,4 +218,16 @@ Note for a second how a secret like `/sealed/azure-value/azure-sas` can be read 
 The difference is that the notebook is running **within** the container, whereas `oc exec` is executed from outside. This shows exactly the CoCo threat model: an application/developer *inside* the CoCo pod is obviously allowed to read the secrets granted. However, a cluster/infra/platform admin is not trusted, therefore there is no way for him/her to access this data.
 
 == Delete the notebook
-The pod created in this example section are no different from any other pod, therefore they can be destroyed just as the others (via command line, web ui, OAI etc.). Behind the scenes, the operator will make sure that the created VM will also be completely deallocated.
+
+[source,sh,role=execute]
+----
+oc delete pods/fraud-encrypted-datasets -n fraud-detection
+----
+
+Switch to the default ns again.
+
+[source,sh,role=execute]
+----
+oc project default
+----
+

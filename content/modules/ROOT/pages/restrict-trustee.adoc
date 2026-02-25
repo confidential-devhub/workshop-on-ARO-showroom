@@ -535,24 +535,24 @@ Let's now try if the policies are enforced:
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod1 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
+oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod1 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
+[azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
 Pod 1 secret!
 ----
 * `pod1` **cannot** access `p2-secret/secret`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod1 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod1 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+[azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
 ----
 +
@@ -579,12 +579,12 @@ oc logs -n trustee-operator-system "$POD_NAME"
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod1 -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod1 -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+[azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 resval1
 ----
 
@@ -594,36 +594,36 @@ Same logic applies to `pod2`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod2 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod2 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 Pod 2 secret!
 ----
 * `pod2` **cannot** access `p1-secret/secret`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod2 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
+oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod2 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
+[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
 ----
 * `pod2` **can** access `kbsres1/key1`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod2 -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod2 -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 resval1
 ----
 
@@ -633,36 +633,36 @@ The interesting part comes with `pod3`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod3 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
+oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod3 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
+[azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/secret && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
 ----
 * `pod3` **cannot** access `p2-secret/secret`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod3 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod3 -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+[azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
 ----
 * `pod3` **can** access `kbsres1/key1`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod3 -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod3 -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+[azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
 resval1
 ----
 

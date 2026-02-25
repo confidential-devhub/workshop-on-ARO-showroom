@@ -113,7 +113,7 @@ And the container will find the content of `fraud-dataset/dataset_key` in `/app/
 
 Alternatively, this pointer can also be also directly plugged in the podspec as environment variable:
 
-[source,sh,role=execute]
+[source,texinfo,subs="attributes"]
 ----
 [...]
 env:
@@ -128,7 +128,7 @@ Let's run the pod.
 
 [source,sh,role=execute]
 ----
-oc apply -f decryption-fd.yaml
+oc apply -f sealed-fd.yaml
 ----
 
 Wait that the pod is created.
@@ -148,7 +148,7 @@ The only way to check that the pod is running as intended is to watch its logs. 
 
 [source,sh,role=execute]
 ----
-oc logs pods/sealed-fraud-detection -n default
+oc logs pods/sealed-fraud-detection -n default | head -n 15
 ----
 
 Notice how the log is exactly the same as in the xref:curl_pod.adoc[key retrieval pod], but this time we didn't need the initcontainer:
@@ -201,5 +201,5 @@ oc logs -n trustee-operator-system "$POD_NAME"
 
 [source,sh,role=execute]
 ----
-oc delete pods/decryption-fraud-detection -n default
+oc delete pods/sealed-fraud-detection -n default
 ----
