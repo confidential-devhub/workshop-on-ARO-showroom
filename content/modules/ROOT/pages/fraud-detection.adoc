@@ -162,7 +162,7 @@ Once completed, you will receive a link to access the RHOAI dashboard and also t
 
 [IMPORTANT]
 ====
-The script also modifies the signature image verification policy. The OAI workbench is running other signed images from registry.redhat.io, therefore we can extend the policy to also allow them.
+The script also creates a new signature image verification policy. The OAI workbench is running other signed images from registry.redhat.io, therefore we can create a new policy for them.
 ====
 
 Now you can xref:fraud-detection.adoc#fd-run[go through the notebook].
