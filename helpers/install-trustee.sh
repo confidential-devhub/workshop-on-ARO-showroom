@@ -97,6 +97,8 @@ echo "############################ Wait for Trustee ########################"
 wait_for_deployment trustee-operator-controller-manager trustee-operator-system || exit 1
 wait_for_deployment cert-manager-operator-controller-manager cert-manager-operator || exit 1
 
+sleep 10
+
 echo ""
 echo "################################################"
 echo "Trustee and cert-manager installed successfully!"

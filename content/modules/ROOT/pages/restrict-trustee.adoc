@@ -524,6 +524,11 @@ oc apply -f pod3.yaml
 
 Wait that the pod are created.
 
+[source,sh,role=execute]
+----
+watch -n 2 "oc get pod pod1 pod2 pod3 -n default"
+----
+
 Let's now try if the policies are enforced:
 
 * `pod1` **can** access `p1-secret/secret`
