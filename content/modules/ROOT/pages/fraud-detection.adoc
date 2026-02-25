@@ -31,7 +31,7 @@ There are three main changes added to the podspec:
 
 . `runtimeClassName: kata-remote` in the podspec. This is just a single line to enable CoCo for this pod.
 
-. Sealed secrets. Such secrets are added to the podspec as normal secrets, but as we saw xref:dev-add-secrets.adoc#sealed-secrets[before] such secrets contain a reference to the actual secret provided by Trustee.
+. Sealed secrets. Such secrets are added to the podspec as normal secrets, but as we saw xref:sealed_pod.adoc#sealed-secrets[before] such secrets contain a reference to the actual secret provided by Trustee.
 
 . Persistent storage. For CoCo in public cloud using peer-pods, since the pod VM is external to the worker node and PVCs are actually mounted on the worker node, there are no proper and maintainable mechanisms to mount the PVC in the pod VM instead of on the worker node and secure it from the cluster. It’s left to the application to directly mount the storage and use client side encryption/decryption for the storage.
 .. In this example, we will replace the PVCs with podvm storage, meaning the CVM encrypted disk will be used to store data. However, once the pod terminates, the data will be lost too.
@@ -108,7 +108,7 @@ This notebook specifically uses python sdk to download the encrypted data from A
 * Closely align with regular interactive AI workflows which uses python SDKs to download data from s3, azure, minio etc.
 * Provides an example of programmatic storage access for AI workloads when using the peer-pods approach.
 
-Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:configure-osc.adoc#pp-cm[peer-pods configmap] is set at least to `20` GB, as the steps in the guide will install a lot of python packages. If you modify that value, remember as always to to xref:configure-osc.adoc##pp-restart[restart the OSC deployment]!
+Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:configure-osc.adoc#pp-cm[peer-pods configmap] is set at least to `20` GB, as the steps in the guide will install a lot of python packages. If you modify that value, remember as always to to xref:configure-osc.adoc#pp-restart[restart the OSC deployment]!
 
 There are two ways to deploy the notebook:
 

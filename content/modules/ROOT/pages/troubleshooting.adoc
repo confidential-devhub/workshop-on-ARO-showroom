@@ -31,7 +31,7 @@ Usually the error is visible in the pod events:
 Error: CreateContainer failed: rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Image Pull error: Failed to pull image <YOUR_IMAGE_HERE> from all mirror/mapping locations or original location: image: <YOUR_IMAGE_HERE>, error: Errors happened when pulling image: Failed to decode layer data stream: Failed to unpack layer"
 ----
 
-In order to solve this issue, try to increase `ROOT_VOLUME_SIZE` and xref:configure-osc.adoc##pp-restart[restart the OSC deployment].
+In order to solve this issue, try to increase `ROOT_VOLUME_SIZE` and xref:configure-osc.adoc#pp-restart[restart the OSC deployment].
 
 === Wrong Azure instance size
 
@@ -54,7 +54,7 @@ RESPONSE 400: 400 Bad Request ERROR CODE: InvalidParameter
 
 The key message here is `The requested VM size Standard_DC4es_v5 is not available in the current region`. Make sure you are using a VM size that is supported.
 
-If you update `AZURE_INSTANCE_SIZE` in xref:configure-osc.adoc#pp-cm[peer-pods-cm], make sure you xref:configure-osc.adoc##pp-restart[restart the OSC deployment].
+If you update `AZURE_INSTANCE_SIZE` in xref:configure-osc.adoc#pp-cm[peer-pods-cm], make sure you xref:configure-osc.adoc#pp-restart[restart the OSC deployment].
 
 == CoCo pod stuck
 
@@ -121,7 +121,7 @@ echo "H4sIAAAAAAAAA+1YW3PiuBJ+969wsQ/ZLYaLuTNV8yCMIYTYgG0gZCqVErZsZBvLSDLGnDr//c
 * Make sure `image_security_policy_uri` points at an existing policy, and the policy points to an existing secret
 * Make sure the formatting and syntax is correct. Refer to xref:configure-trustee.adoc#trustee-ip[this initdata] for an example with correct syntax.
 
-If you update the INITDATA, remember to update the xref:configure-trustee.adoc#pcr8[PCR8] in the xref:configure-trustee.adoc#trustee-refval[reference values] and xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:configure-osc.adoc##pp-restart[restart the OSC deployment]!
+If you update the INITDATA, remember to update the xref:configure-trustee.adoc#pcr8[PCR8] in the xref:configure-trustee.adoc#trustee-refval[reference values] and xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:configure-osc.adoc#pp-restart[restart the OSC deployment]!
 
 === Image signature policy too strict
 
@@ -213,7 +213,7 @@ Check the `policy.rego` section.
 ** It is possible to allow only specific exec commands. Refer to the xref:configure-trustee.adoc#trustee-ip[initdata example].
 * If `default ReadStreamRequest := false`, logs are not shown.
 
-If you update the INITDATA, remember to update the xref:configure-trustee.adoc#pcr8[PCR8] in the xref:configure-trustee.adoc#trustee-refval[reference values] and xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:configure-osc.adoc##pp-restart[restart the OSC deployment]!
+If you update the INITDATA, remember to update the xref:configure-trustee.adoc#pcr8[PCR8] in the xref:configure-trustee.adoc#trustee-refval[reference values] and xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:configure-osc.adoc#pp-restart[restart the OSC deployment]!
 
 == Facing an error that is not listed here?
 
