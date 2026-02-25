@@ -1,0 +1,249 @@
+= Custom initdata
+
+Having such restrictive initdata policy is secure, but it's a bit inconvinient in some use cases.
+
+Suppose the developer wants to be able to debug or check some informations in a running CoCo pod. With the default restrictive policy, any exec command will be forbidden. On the other side, relaxing to allow exec is also not recommended, as it would allow anyone with cluster/namespace access to enter the pod and inspect data.
+
+The solution is to use a custom initdata policy that only allows specific commands.
+
+[IMPORTANT]
+====
+In general, using custom initdata is the preferred and safer way to define initdata, rather than having a generic single policy for all pods. In this workshop we started with using the generic one to simplify the user experience.
+====
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+== A recap on initdata
+
+As we saw during the xref:configure-trustee.adoc#trustee-initdata[Trustee setup], initdata is composed of multiple sections, that define image policy signature, Trustee URL and certificates, and the agent policy. The latter is what interests us.
+
+Let's inspect what we defined as default initdata:
+
+[source,sh,role=execute]
+----
+DEFAULT_INITDATA=$(oc get configmaps \
+ -n openshift-sandboxed-containers-operator \
+ peer-pods-cm -o jsonpath='{.data.INITDATA'} \
+ | base64 -d | gunzip)
+
+echo "$DEFAULT_INITDATA" | tail -n 8
+----
+
+Notice how `ExecProcessRequest` is set to `false`.
+
+== Extending initdata
+
+We will now extend it to allow only some commands:
+
+* `curl` to fetch the example secret pre-loaded into Trustee, to show how attestation can be also manually triggered
+* A `uname -r` command that simply shows the kernel version (notice how it differs from the worker node!)
+
+Let's extend the existing initdata by keeping everything before the exec policy block, then appending a new policy that allows only specific commands:
+
+[source,sh,role=execute]
+----
+# Keep the initdata up to (but not including) the "# Disable exec" section
+BEFORE_EXEC_POLICY=$(printf '%s\n' "$DEFAULT_INITDATA" | sed '/# Disable exec/,$d')
+
+# New policy: disable exec by default, allow only listed commands
+NEW_EXEC_POLICY=$(cat << 'POLICY_END'
+
+# Disable exec
+default ExecProcessRequest := false
+
+ExecProcessRequest if {
+    input_command = concat(" ", input.process.Args)
+    some allowed_command in policy_data.allowed_commands
+    input_command == allowed_command
+}
+
+# Add allowed commands for exec
+policy_data := {
+  "allowed_commands": [
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
+        "uname -r"
+  ]
+}
+
+'''
+POLICY_END
+)
+
+CUSTOM_INITDATA="${BEFORE_EXEC_POLICY}
+${NEW_EXEC_POLICY}"
+
+echo "$CUSTOM_INITDATA"
+----
+
+In order to securely allow the user to manually perform some commands, we restrict the `exec` commands to only allow the secret fetching, and nothing else. `allowed_commands` defines the only commands allowed to be exec'ed into the CoCo pod.
+
+What the above means is that the defined commands to `curl kbsres1/key1` and `uname -r` will work, but **any** other command will fail. Even `oc exec -it pods/your_pod -- curl http://127.0.0.1:8006/cdh/resource/default/kbsres1/key2` will not work.
+
+Let's now translate it into base64 and calculate the PCR8 for the reference values.
+
+[source,sh,role=execute]
+----
+echo "$CUSTOM_INITDATA" > custom-initdata.toml
+
+CUSTOM_INITDATA_B64=$(cat custom-initdata.toml | gzip | base64 -w0)
+echo ""
+echo "$CUSTOM_INITDATA_B64"
+
+initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
+hash=$(sha256sum custom-initdata.toml | cut -d' ' -f1)
+PCR8_HASH_CI=$(echo -n "$initial_pcr$hash" | xxd -r -p | sha256sum | cut -d' ' -f1)
+echo ""
+echo "PCR 8 CUSTOM_INITDATA:" $PCR8_HASH_CI
+
+rm custom-initdata.toml
+----
+
+== Update the reference values
+
+As we have a new initdata, we need to tell the Trustee that it can also accept such.
+
+In order to do so, all we need to do is to add the new PCR8 to the reference values:
+
+[source,sh,role=execute]
+----
+oc get configmap trusteeconfig-rvps-reference-values \
+  -n trustee-operator-system \
+  -o jsonpath='{.data.reference-values\.json}' \
+| jq --arg p1 "$PCR8_HASH_CI" '
+  map(
+    if .name == "snp_pcr08" or .name == "tdx_pcr08"
+    then .value += [$p1]
+    else .
+    end
+  )
+' \
+| jq --indent 2 . \
+| oc create configmap trusteeconfig-rvps-reference-values \
+    -n trustee-operator-system \
+    --from-file=reference-values.json=/dev/stdin \
+    --dry-run=client -o yaml \
+| oc apply -f -
+
+echo ""
+
+oc get configmap trusteeconfig-rvps-reference-values \
+  -n trustee-operator-system \
+  -o jsonpath='{.data.reference-values\.json}'
+----
+
+The PCR8 should be added to the `snp_pcr08` and `tdx_pcr08` list.
+
+And finally let's apply the changes.
+
+[source,sh,role=execute]
+----
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
+----
+
+== Run the application
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+Once that Trustee is completely set up, we can inject our custom initdata and see the pod running with a slightly relaxed but still secure policy.
+
+To keep things as simple as possible, we will use the xref:simple_pod.adoc[CoCo pod with default settings] example.
+
+[source,sh,role=execute]
+----
+cat > relaxed-fd.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: initdata-fraud-detection
+  namespace: default
+  annotations:
+    io.katacontainers.config.hypervisor.cc_init_data: "$CUSTOM_INITDATA_B64"
+spec:
+  runtimeClassName: kata-remote
+  containers:
+    - name: fraud-detection
+      image: quay.io/confidential-devhub/signed/fraud-detection:latest
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+EOF
+
+echo ""
+cat relaxed-fd.yaml
+echo ""
+----
+
+Note how the only difference in the podspec from the original example is the addition of `metadata:annotations:io.katacontainers.config.hypervisor.cc_init_data`.
+
+Let's run the pod.
+
+[source,sh,role=execute]
+----
+oc apply -f relaxed-fd.yaml
+----
+
+Wait that the pod is created.
+
+[source,sh,role=execute]
+----
+watch oc get pods/initdata-fraud-detection -n default
+----
+
+The pod is ready when the `STATUS` is in `Running`.
+
+== Verify that is possible to exec
+
+Once the pod is ready, let's try to exec into it.
+
+Check that pod exec is disabled
+
+[source,sh,role=execute]
+----
+oc exec -it pods/initdata-fraud-detection -- bash
+----
+
+And notice how an error is returned:
+
+[source,texinfo,subs="attributes"]
+----
+error: Internal error occurred: error executing command in container: cannot enter container ba883405d94b151886307518daa04171716edcb410e8b4ff556a76ca951fbfa9, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
+----
+
+Since this is one of the only commands allowed, let's try to `exec` to get the example Trustee secret `kbsres/key1` into the pod.
+
+[source,sh,role=execute]
+----
+oc exec -it pods/initdata-fraud-detection -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+----
+
+And as expected, the secret is returned successfully.
+
+[source,texinfo,subs="attributes"]
+----
+[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+resval1
+----
+
+Trying any other command in `exec` will fail.
+
+[source,texinfo,subs="attributes"]
+----
+[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -- ls
+error: Internal error occurred: error executing command in container: cannot enter container ba883405d94b151886307518daa04171716edcb410e8b4ff556a76ca951fbfa9, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
+----
+
+[#destroy]
+== Destroy the pod
+
+[source,sh,role=execute]
+----
+oc delete pods/initdata-fraud-detection -n default
+----
+

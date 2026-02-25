@@ -191,7 +191,7 @@ metadata:
 data:
   CLOUD_PROVIDER: "azure"
   VXLAN_PORT: "9000"
-  AZURE_INSTANCE_SIZES: "Standard_DC4as_v5,Standard_DC4es_v5, Standard_DC8es_v5, Standard_DC8as_v5"
+  AZURE_INSTANCE_SIZES: "Standard_DC2as_v5,Standard_DC2es_v5,Standard_DC4as_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC8as_v5"
   AZURE_INSTANCE_SIZE: "Standard_DC4as_v5"
   AZURE_RESOURCE_GROUP: "${CLUSTER_RESOURCE_GROUP}"
   AZURE_REGION: "${AZURE_REGION}"

@@ -21,7 +21,7 @@ spec:
       type: RuntimeDefault
   initContainers:
     - name: git-clone
-      image: docker.io/alpine/git:latest
+      image: quay.io/confidential-devhub/signed/git:latest
       env:
       - name: BRANCH_NAME
         value: "coco_workshop_aro"
@@ -34,10 +34,7 @@ spec:
         mountPath: /home/jovyan
   containers:
     - name: jupyter
-      # image pre-built with all required pip packages + curl
-      # image: quay.io/confidential-devhub/base-notebook:latest
-      # original image:
-      image: quay.io/jupyter/base-notebook:latest
+      image: quay.io/confidential-devhub/signed/base-notebook:latest
       imagePullPolicy: IfNotPresent
       args:
         - start-notebook.sh

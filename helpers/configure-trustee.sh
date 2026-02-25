@@ -137,19 +137,15 @@ oc get configmaps -n trustee-operator-system | grep trusteeconfig
 
 echo "################################################"
 
-oc get secret trustee-tls-cert -n trustee-operator-system -o json | jq -r '.data."tls.crt"' | base64 --decode > https.crt
-
-TRUSTEE_CERT=$(cat https.crt)
+TRUSTEE_CERT=$(oc get secret trustee-tls-cert -n trustee-operator-system -o json | jq -r '.data."tls.crt"' | base64 --decode)
 
 oc create route passthrough kbs-service \
   --service=kbs-service \
   --port=kbs-port \
   -n trustee-operator-system
 
-TRUSTEE_ROUTE="$(oc get route -n trustee-operator-system kbs-service \
+TRUSTEE_HOST="https://$(oc get route -n trustee-operator-system kbs-service \
   -o jsonpath={.spec.host})"
-
-TRUSTEE_HOST=https://${TRUSTEE_ROUTE}
 
 echo $TRUSTEE_HOST
 
@@ -170,7 +166,7 @@ cat > verification-policy.json <<EOF
 {
   "default": [
       {
-      "type": "insecureAcceptAnything"
+      "type": "reject"
       }
   ],
   "transports": {
@@ -273,22 +269,8 @@ default WriteStreamRequest := false
 # Enable logs, to see the output of curl
 default ReadStreamRequest := true
 
-# Restrict exec
+# Forbid exec
 default ExecProcessRequest := false
-
-ExecProcessRequest if {
-    input_command = concat(" ", input.process.Args)
-    some allowed_command in policy_data.allowed_commands
-    input_command == allowed_command
-}
-
-# Add allowed commands for exec
-policy_data := {
-  "allowed_commands": [
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/hellosecret/key1",
-        "cat /sealed/secret-value/key2"
-  ]
-}
 
 '''
 EOF

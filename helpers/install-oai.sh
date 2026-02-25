@@ -281,8 +281,16 @@ subjects:
   name: admin
 EOF
 
-# TODO: image-registry.openshift-image-registry.svc:5000/redhat-ods-applications/s2i-minimal-notebook:2025.2
-# TODO: default-dockercfg-bgsjr
+IMAGE=registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9@sha256:a8cfef07ffc89d99acfde08ee879cc87aaa08e9a369e0cf7b36544b61b3ee3c7
+
+cosign download signature $IMAGE \
+| jq -r 'select(.Bundle != null) | .Bundle.Payload.body' \
+| base64 -d \
+| jq -r '.spec.signature.publicKey.content' \
+| sort -u \
+| head -n1 \
+| base64 -d > redhat.pub
+
 oc apply -f-<<EOF
 ---
 apiVersion: kubeflow.org/v1
@@ -315,7 +323,7 @@ spec:
       affinity: {}
       initContainers:
         - name: git-clone
-          image: docker.io/alpine/git:latest
+          image: quay.io/confidential-devhub/signed/git:latest
           env:
           - name: BRANCH_NAME
             value: "coco_workshop_aro"

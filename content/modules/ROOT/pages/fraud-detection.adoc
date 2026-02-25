@@ -2,33 +2,11 @@
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
-This example demonstrates a typical Confidential Containers (CoCo) deployment using a fraud-detection application. The primary goal is to show how CoCo protects **data in use**, even when the application code itself is public.
-
-We will run a model to perform offline credit-card fraud detection, based on the following scenario.
-
-== Protecting Data, Not Code
-
-This deployment operates on two key assumptions:
-
-* The Model is Public: The fraud-detection model itself is not secret. It was pre-trained on public data and does not require protection.
-* The Data is Private: The credit card datasets contain sensitive customer information and must be protected. This data has been securely collected and encrypted before entering our untrusted cluster.
-
-A similar demonstration was shown at Red Hat Summit 2025, which used Confidential Virtual Machines (CVMs) instead of CoCo. You can learn more from this https://www.redhat.com/en/blog/rhel-confidential-virtual-machines-protect-ai-workloads-microsoft-azure[blogpost, window=blank] and https://www.youtube.com/watch?v=ty21OQhwgvk[video, window=blank].
-
-== Assumptions
-
-In this demo we are not going to show the steps done in the secure environment, to simplify the user experience and not confuse the secure env with the untrusted cluster.
-
-In the secure env we:
-
-* Generate, encrypt and upload the credit cards dataset to the Azure blob storage. In this workshop, it's a publicly accessible blob containing only the encrypted dataset.
-* Install and configure Trustee with the key used in the previous point. In this workshop, Trustee is running in the same untrusted cluster but it shouldn't.
-
-These two steps above are already prepared for you, no need to do anything at this point.
+This example focuses on the same use case as before, fraud-detection, but doesn't run the traditional image used so far. Instead, it runs the workload as Jupyter notebook or Openshift AI workbench.
 
 == The Confidential Workflow
 
-The entire process relies on remote attestation to securely release the decryption key to the running container. In this demo, we will run the whole workflow.
+The difference here is mainly that the jupyter notebook has two sealed secrets attached: one for the Azure storage access, and another for the dataset decryption key.
 
 . The fraud-detection container starts.
 . Two of the attached volumes in this pod are sealed secret (azure credentials and decryption key).
@@ -62,16 +40,12 @@ There are three main changes added to the podspec:
 
 Let's add the application secrets (decryption key and azure credentials) into the Trustee. Here we are in the **trusted** cluster.
 
+In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key and upload it into the Trustee. Remember that `FD_SECRET_NAME=fraud-dataset`.
+
+Now let's also add the Azure storage secret.
+
 [source,sh,role=execute]
 ----
-### dataset decryption key - application requires it
-curl -L https://people.redhat.com/eesposit/fd-workshop-key.bin -o fd.bin
-FD_SECRET_NAME=fraud-dataset-key
-oc create secret generic $FD_SECRET_NAME \
-  --from-file dataset_key=fd.bin \
-  -n trustee-operator-system
-rm -rf fd.bin
-
 ### Azure SAS - sealed secret
 AZURE_SAS_SECRET_NAME=fraud-azure-sas
 
@@ -94,7 +68,6 @@ oc patch kbsconfig trusteeconfig-kbs-config \
   -n trustee-operator-system \
   --type=json \
   -p="[
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$FD_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$AZURE_SAS_SECRET_NAME\"},
   ]"
 
@@ -107,6 +80,8 @@ oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 ----
 
+You should see a `fraud-azure-sas` and `fraud-dataset` secret in the KbsConfig.
+
 == Create the sealed secret
 
 Let's now create the sealed secret that contains the pointer to the actual secret in trustee. Here we move to the **untrusted** cluster.
@@ -115,6 +90,7 @@ Let's now create the sealed secret that contains the pointer to the actual secre
 ----
 AZ_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
 
+FD_SECRET_NAME=fraud-dataset
 KEY_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
 
 # namespace here is fraud-detection!
@@ -144,6 +120,8 @@ There are two ways to deploy the notebook:
 
 ==== Prerequisites
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
 First of all, we need to make sure we can install Openshift AI. The main requirement for OAI is to have big enough worker nodes, as they have to run OAI, OSC and Trustee.
 
 // RHDP workshop
@@ -167,6 +145,8 @@ endif::[]
 
 ==== Install OAI
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
 In order to simplify the installation of OAI and since it's not the focus of this workshop, we will provide a script to automatically handle that:
 
 [source,sh,role=execute]
@@ -179,6 +159,11 @@ chmod +x install-oai.sh
 ----
 
 Once completed, you will receive a link to access the RHOAI dashboard and also the notebook itself directly.
+
+[IMPORTANT]
+====
+The script also modifies the signature image verification policy. The OAI workbench is running other signed images from registry.redhat.io, therefore we can extend the policy to also allow them.
+====
 
 Now you can xref:fraud-detection.adoc#fd-run[go through the notebook].
 

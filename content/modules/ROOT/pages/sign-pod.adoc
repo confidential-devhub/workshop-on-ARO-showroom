@@ -28,7 +28,7 @@ chmod +x cosign
 +
 [source,sh,role=execute]
 ----
-SOURCE_IMAGE=quay.io/confidential-devhub/signed-hello-openshift
+SOURCE_IMAGE=<YOUR_IMAGE_HERE>
 podman pull $SOURCE_IMAGE
 ----
 
@@ -36,7 +36,7 @@ podman pull $SOURCE_IMAGE
 +
 [source,sh,role=execute]
 ----
-DEST_IMAGE=write/your/repo:here
+DEST_IMAGE=<YOUR_IMAGE_HERE>
 
 podman tag $SOURCE_IMAGE $DEST_IMAGE
 

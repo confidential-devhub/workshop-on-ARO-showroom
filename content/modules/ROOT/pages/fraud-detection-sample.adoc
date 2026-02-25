@@ -1,0 +1,89 @@
+= About the workload
+
+Throughout this workshop, we will mostly use the same workload to show the various CoCo feature. This section briefly explains what this workload is and why is it a good example.
+
+== Fraud detection
+
+This example demonstrates a typical Confidential Containers (CoCo) deployment using a fraud-detection application. The primary goal is to show how CoCo protects **data in use**, even when the application code itself is public.
+
+We will run a model to perform offline credit-card fraud detection, based on the following scenario. Offline credit-card fraud analysis means providing a batch of transactions to a fraud-detection model to find fraudolent operations, instead of doing it live on a one-by-one request.
+
+This is a simplified, pre-built and containerized version of the https://docs.redhat.com/en/documentation/red_hat_openshift_ai_cloud_service/1/html-single/openshift_ai_tutorial_-_fraud_detection_example/index[Openshift AI fraud detection tutorial, window=blank].
+Deploying and pushing a model in Openshift AI is not in the scope of this workshop, therefore we already provided a container image with the fraud detection model implemented and ready to use.
+
+The example is available on https://github.com/confidential-devhub/fraud-detection-model/tree/workshop[Github, window=blank], and on `quay.io/confidential-devhub/signed/fraud-detection:latest`.
+
+== Protecting Data, Not Code
+
+This deployment operates on two key assumptions:
+
+* The Model is Public: The fraud-detection model itself is not secret. It was pre-trained on public data and does not require protection.
+* The Data is Private: The credit card datasets contain sensitive customer information and must be protected. This data has been securely collected and encrypted before entering our untrusted cluster.
+
+A similar demonstration was shown at Red Hat Summit 2025, which used Confidential Virtual Machines (CVMs) instead of CoCo. You can learn more from this https://www.redhat.com/en/blog/rhel-confidential-virtual-machines-protect-ai-workloads-microsoft-azure[blogpost, window=blank] and https://www.youtube.com/watch?v=ty21OQhwgvk[video, window=blank].
+
+== Prerequisites
+
+In this demo we are not going to show the steps done in the secure environment, to simplify the user experience and not confuse the secure env with the untrusted cluster.
+
+In the secure env we:
+
+* Generate, encrypt and upload the credit cards dataset to the Azure blob storage. In this workshop, it's a publicly accessible blob containing only the encrypted dataset.
+* Install and configure Trustee with the key used in the previous point. In this workshop, Trustee is running in the same untrusted cluster but it shouldn't.
+
+These two steps above are already prepared for you, no need to do anything at this point.
+
+== The Workflow
+
+This is the sequence of operations that happen inside the container:
+
+. The fraud-detection container starts. The model is already part of the container image.
+. The container tries to understand, via env variables, if the dataset that it has to download is encrypted or not.
+.. If the right env is set, it will expect to find a decryption key and blob storage URL mounted somewhere to download & decrypt the dataset.
+.. Otherwise it goes into "default" mode, using pre-existing data.
+. Once the transactions data is downloaded and loaded into memory, the model inspects one by one each transaction and prints the likelyhood of a fraud.
+
+This is an example podspec for the fraud-detection example workload:
+
+[source,sh,role=execute]
+----
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fraud-detection
+  namespace: default
+spec:
+  initContainers:
+    - name: fetch-secret
+      image: quay.io/<INSERT_YOUR_IMAGE_HERE>:latest
+      command:
+      - /bin/sh
+      - -c
+      - |
+        curl -sf https://<INSERT_YOUR_URL_HERE>/dataset_key -o /app/downloaded_keys/dataset_key
+        echo "Downloaded decryption key"
+      volumeMounts:
+        - name: downloaded-keys-volume
+          mountPath: /app/downloaded_keys
+  containers:
+    - name: fraud-detection
+      image: quay.io/confidential-devhub/signed/fraud-detection:latest
+      env:
+        - name: DECRYPTION_KEY_PATH
+          value: /app/downloaded_keys/dataset_key
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+  volumes:
+    - name: downloaded-keys-volume
+      emptyDir: {}
+----
+
+Such application does not depend on CoCo, and it's not written to specifically run with Trustee. The difference will be on how such decryption key and Azure storage URL are available to the application.

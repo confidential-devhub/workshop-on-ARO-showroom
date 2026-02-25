@@ -1,0 +1,205 @@
+= Attestation: sealed secrets
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+Using initcontainer is a valid method to fetch a key, but it requires an additional sidecar to be loaded and additional unnecessary knowledge for the application developer, just to fetch the key.
+
+Fortunately, CoCo offers an alternative way to fetch secrets which is more abstract and simplifies the life of the developer: **sealed secrets**.
+
+In this example, we will replace the initcontainer with a sealed secret, so that the decryption key is automatically loaded at startup.
+
+[#sealed-secrets]
+== Sealed secrets
+
+A sealed secret is an Openshift Secret added into the untrusted cluster, where the CoCo application runs, that doesn't really contain any value but rather a "pointer" to the actual secret stored into Trustee, in the trusted cluster.
+
+Once the CoCo pod starts, this sealed is inspected by the internal CoCo components, and the corresponding attestation and secret retrieval is automatically initiated with Trustee. If attestation is successful, the content of this "pointer" secret will be replaced with the actual secret, and mounted just like any other secret into the container.
+
+The advantage of this approach is that:
+* the secret is loaded at startup time. No need of a sidecar or any special logic, the CoCo internal components take care of connecting with Trustee and fetching the actual value of the secret.
+* the secret is no different from a traditional openshift secret. While it requires an additional step to be created in the application namespace, this secret is no different from a traditional one, and can be accessed as volume by the pod.
+
+Sealed secrets are ideal to load credentials and sensitive data as traditional Secrets into the workload, without the need to add any sophisticated logic.
+
+== The Confidential Workflow
+
+Also in this case, the application is told to fetch a key using the `DECRYPTION_KEY_PATH` env variable.
+
+. The fraud-detection container starts. Default initdata is also inserted in the CVM.
+. CoCo internal components read the initdata, notice there is an `image_security_policy_uri` field in it and begins attestation to get the verification policy and verify that the image is allowed to run.
+. Before the container starts, all secrets are mounted.
+.. As we have a sealed secret, the CoCo internal components take care of performing attestation to fetch the actual secret value
+.. The current sealed secret content is just a "pointer" that stores the path of the actual secret inside Trustee
+.. Once attestation is successful and the actual secret is received, it's mounted in the defined secret mount.
+. The container then starts. It detects `DECRYPTION_KEY_PATH` and expects to find the key in the secret volume mount.
+. Once the key is found, it proceeds downloading the encrypted dataset from Azure
+. The encrypted dataset is then decrypted using the downloaded key
+. The model then consumes the dataset and evaluates the transactions.
+
+== Add the application secrets into Trustee
+
+In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key and upload it into the Trustee.
+
+== Create the sealed secret
+
+In order to create a sealed secret, we need to create this special secret into the untrusted cluster, in the namespace where the application will run.
+
+Since we want to add a secret referencing the `fraud-dataset/dataset_key` Trustee secret created before, we will need to create the pointer first and then the actual secret.
+
+Create the "pointer":
+[source,sh,role=execute]
+----
+SECRET_NAME=fraud-dataset
+KEY_NAME=dataset_key
+
+POINTER=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${SECRET_NAME}/${KEY_NAME} --provider kbs | grep -v "Warning")
+
+echo $POINTER
+----
+
+We can add this "pointer" to the CoCo container in multiple ways, either as secret/configmap, or as env variable. Since the application runs in the `default` namespace of the **untrusted** cluster, let's add the secret there.
+
+NOTE: Because this is stored/loaded in the untrusted OCP cluster, one might think that any attacker with cluster access could modify it. And while this is true, recall that this is just a pointer to the secret, and does not define the policy to access it nor the Trustee address. Which means that in the worst case this secret will point to a non-existing Trustee resource, or a valid but inaccessible resource, if Trustee policies are strict enough.
+
+[source,sh,role=execute]
+----
+# Note that the namespace here is "default"!
+oc create secret generic fraud-dataset-sealed --from-literal=dataset_key=$POINTER -n default
+----
+
+That's it! Now the application can load it as a normal Secret volume:
+
+[source,sh,role=execute]
+----
+cat > sealed-fd.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sealed-fraud-detection
+  namespace: default
+spec:
+  runtimeClassName: kata-remote
+  containers:
+    - name: fraud-detection
+      image: quay.io/confidential-devhub/signed/fraud-detection:latest
+      env:
+        - name: DECRYPTION_KEY_PATH
+          value: /app/downloaded_keys/dataset_key
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      volumeMounts:
+          - name: downloaded-keys-volume
+            mountPath: "/app/downloaded_keys"
+  volumes:
+    - name: downloaded-keys-volume
+      secret:
+        secretName: fraud-dataset-sealed
+EOF
+
+echo ""
+cat sealed-fd.yaml
+echo ""
+----
+
+And the container will find the content of `fraud-dataset/dataset_key` in `/app/downloaded_keys/dataset_key`!
+
+Alternatively, this pointer can also be also directly plugged in the podspec as environment variable:
+
+[source,sh,role=execute]
+----
+[...]
+env:
+   - name: MY_VARIABLE
+   - value: $POINTER
+[...]
+----
+
+And $MY_VARIABLE will contain the content of `fraud-dataset/dataset_key`!
+
+Let's run the pod.
+
+[source,sh,role=execute]
+----
+oc apply -f decryption-fd.yaml
+----
+
+Wait that the pod is created.
+
+[source,sh,role=execute]
+----
+watch oc get pods/sealed-fraud-detection -n default
+----
+
+The pod is ready when the `STATUS` is in `Running`.
+
+Because this pod also uses the default initdata, it will only be possible to inspect logs, but not to exec.
+
+== Verify the pod performed attestation
+
+The only way to check that the pod is running as intended is to watch its logs. This time, the application should have found the key and downloaded the default Azure storage blob with the encrypted file.
+
+[source,sh,role=execute]
+----
+oc logs pods/sealed-fraud-detection -n default
+----
+
+Notice how the log is exactly the same as in the xref:curl_pod.adoc[key retrieval pod], but this time we didn't need the initcontainer:
+
+[source,texinfo,subs="attributes"]
+----
+#### Decryption key path set; downloading encrypted blob
+  Downloading blob: data/dataset1.csv.enc
+  No SAS token path set; using default SAS token
+  Downloading Azure:///encrypteddatasets/data/dataset1.csv.enc -> /app/downloaded_datasets/dataset1.csv.enc
+  Download complete
+
+#### Loading data from /app/downloaded_datasets/
+  Found an encrypted file: dataset1.csv.enc
+  Decrypting: /app/downloaded_datasets/dataset1.csv.enc
+    Before (head -n 1): Salted__-@dï¿½dDbï¿½ï¿½ï¿½<...
+    After (head -n 1): distance_from_last_t...
+  Loaded: /app/downloaded_datasets/dataset1.csv
+
+Loaded 200000 transactions
+Inspecting credit card transactions:
+----
+
+And Trustee logs will also show the same story.
+
+[source,sh,role=execute]
+----
+POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
+
+echo ""
+oc logs -n trustee-operator-system "$POD_NAME"
+----
+
+[source,texinfo,subs="attributes"]
+----
+...
+[2025-11-28T18:52:33Z INFO attestation_service] AzTdxVtpm Verifier/endorsement check passed.
+...
+[2025-11-28T18:52:33Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/trustee-image-policy/policy HTTP/1.1" 200 850 "-" "attestation-agent-kbs-client/0.1.0" 0.001260
+
+[2025-11-28T18:52:35Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-signature/pub-key HTTP/1.1" 200 629 "-" "attestation-agent-kbs-client/0.1.0" 0.001174
+
+[2025-11-28T18:52:52Z INFO actix_web::middleware::logger] 10.128.2.73 "GET /kbs/v0/resource/default/fraud-dataset/dataset_key HTTP/1.1" 200 430 "-" "attestation-agent-kbs-client/0.1.0" 0.001094
+
+...
+----
+
+[#destroy]
+== Destroy the pod
+
+[source,sh,role=execute]
+----
+oc delete pods/decryption-fraud-detection -n default
+----
