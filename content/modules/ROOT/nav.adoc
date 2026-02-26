@@ -22,7 +22,7 @@
 * xref:deployment-settings.adoc[Deploy CoCo]
 ** xref:fraud-detection-sample.adoc[About the workload]
 ** xref:simple_pod.adoc[CoCo with default settings]
-** xref:curl_pod.adoc[Attestation: key retrieval]
+** xref:curl_pod.adoc[Attestation: initContainer]
 ** xref:sealed_pod.adoc[Attestation: sealed secrets]
 ** xref:custom_initdata.adoc[Customize initdata]
 ** xref:restrict-trustee.adoc[Restrict resource access in Trustee]

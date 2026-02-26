@@ -1,4 +1,4 @@
-= Attestation: key retrieval
+= Attestation: key retrieval via initContainer
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
