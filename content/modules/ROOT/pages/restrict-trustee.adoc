@@ -22,6 +22,8 @@ image::resource_access.png[link=self, window=blank]
 
 In the above image we see an example of resource access restriction. All three pods want to try and fetch the decryption key stored in Trustee (`fraud-dataset/dataset_key`), but only `pod1` manages to do so.
 
+Note that for this example, the actual workload is not really important, therefore to keep things as simple as possible, we will use the xref:simple_pod.adoc[CoCo pod with default settings] deployment example for all three pods, and fetch the secrets manually via exec.
+
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
 
 == Before we start

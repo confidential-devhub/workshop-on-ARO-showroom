@@ -144,7 +144,7 @@ oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
-Once that Trustee is completely set up, we can inject our custom initdata and see the pod running with a slightly relaxed but still secure policy.
+Once that Trustee is set up, we can inject our custom initdata and see the pod running with a slightly relaxed but still secure policy.
 
 To keep things as simple as possible, we will use the xref:simple_pod.adoc[CoCo pod with default settings] example.
 
