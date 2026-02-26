@@ -1,0 +1,241 @@
+= Run from a private registry
+
+Often the container images are not available in public, unauthenticated registries, but instead stored in private repositories, to restrict access to only authenticated users or robot.
+
+In an untrusted cluster scenario, exposing the pull secret as a traditional Secret means that anyone with admin access could potentially steal the credentials and be able to pull the container images.
+
+Fortunately, we can leverage again initdata and Trustee to make pull secrets only delivered to specific pods when they successfully pass attestation.
+
+In this example, we will proceed to run a private image (`quay.io/confidential-devhub/signed/private`) that not accessible without the right credentials.
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+== Add the pull secret into Trustee
+
+First of all, since the image is already provided, let's just pull the robot credentials to be able to pull the repo.
+
+[source,sh,role=execute]
+----
+PRIVATE_PULL_SECRET_NAME=confidential-devhub-private-pull-secret
+
+oc apply -f-<<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "$PRIVATE_PULL_SECRET_NAME"
+  namespace: trustee-operator-system
+data:
+  dockerconfigjson: ewogICJhdXRocyI6IHsKICAgICJxdWF5LmlvIjogewogICAgICAiYXV0aCI6ICJZMjl1Wm1sa1pXNTBhV0ZzTFdSbGRtaDFZaXQzYjNKcmMyaHZjRHBYU1VKUlRrZFhNRFpOVEUxVVVsVkxVVUZPT1RsR1ExcFhNVWxRVTBnNVdFdE1WVlpXVDBSUFVVVlJRemhaU0VKR1ZWQkRXRnBFT1ZOVVRrRkJWamxhIiwKICAgICAgImVtYWlsIjogIiIKICAgIH0KICB9Cn0=
+type: Opaque
+EOF
+----
+
+Now we need to add this secret to Trustee, as usual
+
+[source,sh,role=execute]
+----
+echo "Default Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+
+echo ""
+
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$PRIVATE_PULL_SECRET_NAME\"},
+  ]"
+
+echo ""
+
+echo "Updated Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
+----
+
+You should see `confidential-devhub-private-pull-secret` in the list of kbsSecretResources.
+
+== Create the initdata
+
+Now we need to extend initdata to fetch this pull secret. There is a special field for this, called `authenticated_registry_credentials_uri`.
+
+The easiest way to create a new initdata is to take the default one, and add this new field under `[image]`. That's all it needs to instruct the pod to be able to get the pull secret!
+
+[source,sh,role=execute]
+----
+oc get configmaps/peer-pods-cm -n openshift-sandboxed-containers-operator -o json | jq -r '.data.INITDATA' | base64 -d | gunzip > ps_initdata.toml
+
+PS_KBS_PATH="kbs:///default/$PRIVATE_PULL_SECRET_NAME/dockerconfigjson"
+
+sed -i "/^\[image\]$/a authenticated_registry_credentials_uri = \"$PS_KBS_PATH\"" ps_initdata.toml
+
+cat ps_initdata.toml | grep "\[image\]" -A 2
+----
+
+Now we need to measure the initdata and add it into the reference values. We'll do it in a single step as we assume at this point the user has understood the process.
+
+[source,sh,role=execute]
+----
+PS_INITDATA_B64=$(cat ps_initdata.toml | gzip | base64 -w0)
+echo ""
+echo "$PS_INITDATA_B64"
+
+initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
+hash=$(sha256sum ps_initdata.toml | cut -d' ' -f1)
+PCR8_PS_INITDATA=$(echo -n "$initial_pcr$hash" | xxd -r -p | sha256sum | cut -d' ' -f1)
+echo ""
+echo "PCR 8 PS_INITDATA:" $PCR8_PS_INITDATA
+echo ""
+
+rm ps_initdata.toml
+
+oc get configmap trusteeconfig-rvps-reference-values \
+  -n trustee-operator-system \
+  -o jsonpath='{.data.reference-values\.json}' \
+| jq --arg p1 "$PCR8_PS_INITDATA" '
+  map(
+    if .name == "snp_pcr08" or .name == "tdx_pcr08"
+    then .value += [$p1]
+    else .
+    end
+  )
+' \
+| jq --indent 2 . \
+| oc create configmap trusteeconfig-rvps-reference-values \
+    -n trustee-operator-system \
+    --from-file=reference-values.json=/dev/stdin \
+    --dry-run=client -o yaml \
+| oc apply -f -
+
+echo ""
+
+oc get configmap trusteeconfig-rvps-reference-values \
+  -n trustee-operator-system \
+  -o jsonpath='{.data.reference-values\.json}'
+----
+
+== Run the application
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+Once that Trustee is set up, we can inject our custom initdata and see the pod running with the private image.
+
+=== Verify that the image is actually private
+
+Just to be sure, let's see if this image is really private by running it as a normal pod.
+
+[source,sh,role=execute]
+----
+oc apply -f-<< EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-confidential-devhub-pod
+  namespace: default
+spec:
+  containers:
+    - name: private-confidential-devhub
+      image: quay.io/confidential-devhub/signed/private:latest
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+EOF
+----
+
+Let's look at the events in the pod:
+
+[source,sh,role=execute]
+----
+watch oc get events --field-selector involvedObject.name=private-confidential-devhub-pod -n default
+----
+[source,texinfo,subs="attributes"]
+----
+16s         Normal    Pulling          pod/private-confidential-devhub-pod   Pulling image "quay.io/confidential-devhub/signed/p
+rivate:latest"
+15s         Warning   Failed           pod/private-confidential-devhub-pod   Failed to pull image "quay.io/confidential-devhub/s
+igned/private:latest": initializing source docker://quay.io/confidential-devhub/signed/private:latest: reading manifest latest i
+n quay.io/confidential-devhub/signed/private: unauthorized: access to the requested resource is not authorized
+15s         Warning   Failed           pod/private-confidential-devhub-pod   Error: ErrImagePull
+5s          Normal    BackOff          pod/private-confidential-devhub-pod   Back-off pulling image "quay.io/confidential-devhub
+/signed/private:latest"
+5s          Warning   Failed           pod/private-confidential-devhub-pod   Error: ImagePullBackOff
+----
+
+As we can see, the image is really private!
+
+Let's destroy this pod.
+
+[source,sh,role=execute]
+----
+oc delete pods/private-confidential-devhub-pod -n default
+----
+
+=== Run with CoCo
+
+Let's see if by using our custom initdata and CoCo we manage to run the application:
+
+[source,sh,role=execute]
+----
+cat > private-confidential-devhub.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-confidential-devhub
+  namespace: default
+  annotations:
+    io.katacontainers.config.hypervisor.cc_init_data: "$PS_INITDATA_B64"
+spec:
+  runtimeClassName: kata-remote
+  containers:
+    - name: private-confidential-devhub
+      image: quay.io/confidential-devhub/signed/private:latest
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+EOF
+
+echo ""
+cat private-confidential-devhub.yaml
+echo ""
+----
+
+Let's run the pod.
+
+[source,sh,role=execute]
+----
+oc apply -f private-confidential-devhub.yaml
+----
+
+Wait that the pod is created.
+
+[source,sh,role=execute]
+----
+watch oc get pods/private-confidential-devhub -n default
+----
+
+And as you can see, the pod will run smoothly.
+
+== Destroy the pod
+
+[source,sh,role=execute]
+----
+oc delete pods/private-confidential-devhub -n default
+----
+
