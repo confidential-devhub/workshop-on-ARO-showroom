@@ -10,6 +10,10 @@ In this example, we will show:
 
 We will not perform any secret retrieval from Trustee, keeping the modifications to the bare minimum.
 
+image::blackbox.png[link=self, window=blank]
+
+In the above image we can see how the traditional pod is transformed into CoCo: this is the “blackbox” deployment, a very trivial example where the dataset is part of the fraud-detection container image. The dataset is simply loaded into the model and data analysis is performed. Transforming it into a CoCo deployments results in no change in the image, with the benefit of adding an additional layer of protection (memory encryption).
+
 == The Confidential Workflow
 
 For now, all Trustee does is to check if the image is allowed to run and was actually signed with the specified key.

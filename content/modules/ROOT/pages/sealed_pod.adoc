@@ -8,6 +8,10 @@ Fortunately, CoCo offers an alternative way to fetch secrets which is more abstr
 
 In this example, we will replace the initcontainer with a sealed secret, so that the decryption key is automatically loaded at startup.
 
+image::sealed.png[link=self, window=blank]
+
+In the above image we can see a similar example as above, with the main difference being that there is no init container, and the key is instead mounted via a secret. While the traditional pod relies on the cluster secrets, which are available to anyone with admin access, CoCo uses sealed secrets, which gets automatically replaced with the actual secret by fetching the secret from Trustee at startup time. Such a process is automatically started by the Linux guest components inside the confidential container.
+
 [#sealed-secrets]
 == Sealed secrets
 

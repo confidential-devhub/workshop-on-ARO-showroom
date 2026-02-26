@@ -6,6 +6,10 @@ In this example, we will improve the xref:simple_pod.adoc[sample-fraud-detection
 
 We will do it by making the pod download a specific Azure blob storage that contains a pre-encrypted dataset.
 
+image::initcontainer.png[link=self, window=blank]
+
+In the above image we can see a bit more advanced example of deployment. In the upper diagram, a pod is downloading an encrypted dataset from a remote Azure storage, and loading the decryption key via the init container from a separate remote server. The key is then used by the pod application to decrypt the dataset and feed it to the fraud detection model. The same deployment model also applies to CoCo, with the main difference being the introduction of the TEE stack to ensure data in use protection, and the remote server changing into the Red Hat build of Trustee. This ensures that the decryption key is only delivered to the fraud-detection pod if the environment is secure (attestation).
+
 == The Confidential Workflow
 
 In this case, the application is told to fetch a key using the `DECRYPTION_KEY_PATH` env variable.
