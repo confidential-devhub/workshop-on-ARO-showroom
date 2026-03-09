@@ -5,7 +5,7 @@
 ** xref:configure-trustee.adoc[2. OpSec: Configure Trustee]
 *** xref:configure-trustee.adoc#trustee-keys[Create the keys]
 *** xref:configure-trustee.adoc#trusteeconfig[Create the Trusteeconfig]
-*** xref:configure-trustee.adoc#trustee-route[Create the route]
+*** xref:configure-trustee.adoc#trustee-route[Get the route]
 *** xref:configure-trustee.adoc#trustee-cisvp[Container image signature verification policy]
 *** xref:configure-trustee.adoc#trustee-initdata[Create the initdata policy]
 *** xref:configure-trustee.adoc#trustee-refval[Reference values]

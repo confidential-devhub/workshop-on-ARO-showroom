@@ -77,18 +77,16 @@ cd trustee
 
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
-ROUTE_NAME=kbs-service
+ROUTE_NAME=kbs-route
 ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
 
 CN_NAME=kbs-trustee-operator-system
 ORG_NAME=my_org
 ----
 
-Choose which method you want to create the certs:
-[tabs]
-====
-Cert manager operator::
-+
+
+Create the certs via cert manager operator::
+
 [source,sh,role=execute]
 ----
 oc apply -f-<<EOF
@@ -139,7 +137,7 @@ metadata:
   namespace: trustee-operator-system
 spec:
   dnsNames:
-    - kbs-service
+    - kbs-route
   secretName: trustee-token-cert
   issuerRef:
     name: kbs-issuer
@@ -149,25 +147,6 @@ spec:
     size: 256
 EOF
 ----
-
-Manually::
-+
-[source,sh,role=execute]
-----
-openssl req -x509 -nodes -days 365 \
- -newkey rsa:2048 \
- -keyout tls.key \
- -out tls.crt \
- -subj "/CN=${CN_NAME}/O=${ORG_NAME}$" \
- -addext "subjectAltName=DNS:${ROUTE}"
-
- oc create secret generic trustee-tls-cert --from-file=tls.crt -n trustee-operator-system
-
-oc create secret generic trustee-token-cert --from-file=tls.key -n trustee-operator-system
-----
-====
-
-
 
 Let's see what it created:
 
@@ -227,10 +206,9 @@ oc get configmaps -n trustee-operator-system | grep trusteeconfig
 ----
 
 [#trustee-route]
-== Create a route for Trustee
+== Get the Trustee route
 
-Create a secure route with `passthrough` TLS termination for Trustee. External ingress traffic does not get decrypted by the router but forwarded directly to Trustee pod.
-It is also possible to create an `edge` route, but then the connection between Trustee and OCP router will be in plain text (http). In this workshop, we will use `passthrough`.
+When TrusteeConfig is created in "Restricted" mode, it creates a secure route with `passthrough` TLS termination for Trustee. External ingress traffic does not get decrypted by the router but forwarded directly to Trustee pod.
 
 Create the route and set `TRUSTEE_HOST`, which together with `TRUSTEE_CERT` will be used later when configuring the xref:configure-trustee.adoc#trustee-ip[initdata].
 
@@ -239,12 +217,7 @@ Create the route and set `TRUSTEE_HOST`, which together with `TRUSTEE_CERT` will
 # Get the HTTPS cert
 TRUSTEE_CERT=$(oc get secret trustee-tls-cert -n trustee-operator-system -o json | jq -r '.data."tls.crt"' | base64 --decode)
 
-oc create route passthrough kbs-service \
-  --service=kbs-service \
-  --port=kbs-port \
-  -n trustee-operator-system
-
-TRUSTEE_HOST="https://$(oc get route -n trustee-operator-system kbs-service \
+TRUSTEE_HOST="https://$(oc get route -n trustee-operator-system kbs-route \
   -o jsonpath={.spec.host})"
 
 echo $TRUSTEE_HOST
@@ -253,7 +226,7 @@ echo $TRUSTEE_HOST
 Example output:
 [source,texinfo,subs="attributes"]
 ----
-https://kbs-service-trustee-operator-system.apps.rs01nyk5.eastus.aroapp.io
+https://kbs-route-trustee-operator-system.apps.rs01nyk5.eastus.aroapp.io
 ----
 
 [#trustee-cisvp]
