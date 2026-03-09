@@ -6,17 +6,6 @@ This chapter focuses on setting up and configuring the trusted cluster. In this 
 == Log in into the environment
 
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-. Go into the terminal on the right and run the following commands:
-+
-[source,sh,role="execute",subs=attributes+]
-----
-# Log into azure CLI:
-az login --service-principal \
---username={azure_service_principal_id} \
---password={azure_service_principal_password} \
---tenant={azure_tenant_id}
-----
-
 . If you need to use the web UI (not necessary in this workshop):
 +
 * Navigate to the {aro_console}[Openshift Console, window=blank]
