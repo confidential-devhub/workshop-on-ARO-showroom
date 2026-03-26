@@ -76,7 +76,7 @@ You should see `fraud-dataset` and `p2-secret`.
 
 == Create the custom initdata policies
 
-The major difference here is that we will define a new custom variable in our initdata, namely `pod_name = `, to distinguish one initdata from the other. Adding such a simple change to differentiate the initdatas is enough as they are measured and part of the xref:configure-trustee.adoc#trustee-refval[reference values].
+The major difference here is that we will define a new custom variable in our initdata, namely `pod_name =`, to distinguish one initdata from the other. Adding such a simple change to differentiate the initdatas is enough as they are measured and part of the xref:configure-trustee.adoc#trustee-refval[reference values].
 
 === Pod 1
 
