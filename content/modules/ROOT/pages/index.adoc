@@ -47,9 +47,27 @@ The workshop will show the steps performed by the above users in two phases: set
 
 If you are mostly interested into the developer role and/or want to skip some persona step, at the beginning of each section of the setup phases we will provide a script that automates the steps, so you can also only focus on the deployment. What is important is to not skip any section, but rather execute the scripts to speedup the flow when available.
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 IMPORTANT: In this workshop, we will install Trustee in the **same cluster** that hosts OSC and therefore Confidential Containers. **This is not a suitable solution for production environments.**
 Because the Trustee operator contains the reference values and secrets that are necessary to establish if a Confidential Container is running in a truly safe environment, it should be installed in a separate cluster running in a trusted environment (on prem, for example). Because of the limitations of this ARO workshop, it is not possible to set up two clusters. You can assume that **every steps done in the setup phase 1, and in general everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
 
+Looking at the right side, you will notice that a `tmux` session has already been started. In the first window on top you can see the opsec persona user on top and the devel on bottom, and in the second one there's the untrusted cluster admin. Each persona is logged in his own Openshift user with a specific RBAC:
+
+* The `opsec` user is the only one capable of accessing the Trustee namespace
+
+* The `uadmin` user is only capable of accessing the OSC namespace
+
+* The `devel` admin is only capable of accessing the `fraud-detection` namespace
+
+[#panels]
+image::panels.png[link=self, window=blank]
+The above figure shows where each user is logged in.
+
+This is done to mimic a real scenario situation where different persona have different access levels.
+
+endif::[]
+
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 == Enable tmux
 
 Since many steps create and require environment variables, it is higly recommended to run the whole workshop on `tmux`.
@@ -72,3 +90,4 @@ And then access it:
 ----
 tmux a
 ----
+endif::[]

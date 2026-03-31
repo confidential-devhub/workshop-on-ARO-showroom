@@ -1,6 +1,10 @@
 = Attestation: key retrieval via initContainer
 
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert (trustee management)
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
+endif::[]
 
 In this example, we will improve the xref:simple_pod.adoc[sample-fraud-detection] pod to also perform attestation.
 
@@ -25,6 +29,12 @@ In this case, the application is told to fetch a key using the `DECRYPTION_KEY_P
 
 [#load-key-trustee]
 == Add the application secret into Trustee
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
 
 Let's add the decryption key into the Trustee. Here we are in the **trusted** cluster. As the encrypted dataset was already pre-uploaded and shared with you, we need to dowload the original key.
 
@@ -66,6 +76,12 @@ oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 ----
 
 == Run the application
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
 
 Let's now run the `decryption-fraud-detection` application in the untrusted cluster.
 
@@ -199,6 +215,22 @@ total 4
 -rw-r--r--. 1 root root 32 Feb 25 15:17 dataset_key
 ----
 
+[#destroy]
+== Destroy the pod
+
+[source,sh,role=execute]
+----
+oc delete pods/decryption-fraud-detection -n default
+----
+
+== Inspect Trustee
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
 It is also possible to inspect Trustee logs to understand how the process worked when the init container run.
 
 [source,sh,role=execute]
@@ -226,14 +258,6 @@ Expected output (filtering the important logs only):
 ----
 
 In this formatted log, we can see how the `AzSnpVtpm` Verifier check passed, how the `trustee-image-policy/policy` policy for the image signature was requested and how subsequently the `conf-devhub-signature/pub-key` public key was fetched to ensure the signature is correct. Lastly, `default/fraud-dataset/dataset_key` was requested by our custom intcontainer.
-
-[#destroy]
-== Destroy the pod
-
-[source,sh,role=execute]
-----
-oc delete pods/decryption-fraud-detection -n default
-----
 
 == Considerations
 

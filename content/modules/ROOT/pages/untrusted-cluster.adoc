@@ -2,6 +2,11 @@
 
 This chapter focuses on setting up and configuring the untrusted cluster. In this setup, we will act as the **untrusted cluster admin** persona that installs and configure OSC. For each configuration, we will explain the purpose and rationale behind it.
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+In order to use the admin user, click on the `[1:admin]` tmux window as illustrated in the xref:index.adoc#panels[picture].
+endif::[]
+
+
 [#credentials]
 == Log in into the environment
 
@@ -21,11 +26,11 @@ az login --service-principal \
 +
 * Navigate to the {aro_console}[Openshift Console, window=blank]
 +
-* Login as administrator:
+* Login as `uadmin`:
 +
-** *Username:* {aro_kube_username}
+** *Username:* uadmin
 +
-** *Password:* {aro_kube_password}
+** *Password:* uadmin
 endif::[]
 
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]

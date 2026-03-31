@@ -1,5 +1,11 @@
 = Restrict resource access in Trustee
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert (trustee management)
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
+endif::[]
+
 So far, for semplicity we always allowed all pods to be able to access the same Trustee resources.
 
 However, in a production environment, this is never the case. We want to restrict pods to be able to have their own their own secrets.
@@ -25,6 +31,10 @@ In the above image we see an example of resource access restriction. All three p
 Note that for this example, the actual workload is not really important, therefore to keep things as simple as possible, we will use the xref:simple_pod.adoc[CoCo pod with default settings] deployment example for all three pods, and fetch the secrets manually via exec.
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
 
 == Before we start
 
@@ -415,6 +425,10 @@ oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
 We will run 3 pods: `pod1`, `pod2` and a `pod3` that should not be allowed to access any of the two secrets. Again, the image is the usual fraud-detection, even though we don't really care about the workload now.
 
 [source,sh,role=execute]
@@ -565,6 +579,10 @@ rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource faile
 ----
 +
 In the Trustee logs, the policy deny error is visible:
++
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
 +
 [source,sh,role=execute]
 ----

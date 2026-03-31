@@ -1,5 +1,11 @@
 = Custom initdata
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert (trustee management)
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
+endif::[]
+
 Having such restrictive initdata policy is secure, but it's a bit inconvinient in some use cases.
 
 Suppose the developer wants to be able to debug or check some informations in a running CoCo pod. With the default restrictive policy, any exec command will be forbidden. On the other side, relaxing to allow exec is also not recommended, as it would allow anyone with cluster/namespace access to enter the pod and inspect data.
@@ -12,6 +18,10 @@ In general, using custom initdata is the preferred and safer way to define initd
 ====
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
 
 == A recap on initdata
 
@@ -88,6 +98,7 @@ echo "$CUSTOM_INITDATA" > custom-initdata.toml
 CUSTOM_INITDATA_B64=$(cat custom-initdata.toml | gzip | base64 -w0)
 echo ""
 echo "$CUSTOM_INITDATA_B64"
+echo "$CUSTOM_INITDATA_B64" > ~/custom-initdata-b64.toml
 
 initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
 hash=$(sha256sum custom-initdata.toml | cut -d' ' -f1)
@@ -144,9 +155,19 @@ oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
 Once that Trustee is set up, we can inject our custom initdata and see the pod running with a slightly relaxed but still secure policy.
 
 To keep things as simple as possible, we will use the xref:simple_pod.adoc[CoCo pod with default settings] example.
+
+[source,sh,role=execute]
+----
+# simulate Opsec -> developer handover of initdata
+CUSTOM_INITDATA_B64=$(cat ~/custom-initdata-b64.toml)
+----
 
 [source,sh,role=execute]
 ----

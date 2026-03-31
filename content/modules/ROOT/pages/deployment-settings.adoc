@@ -2,6 +2,10 @@
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform this step!
+endif::[]
+
 Now that the everything is ready, we can finally run a CoCo workload.
 Let's first see what we can and must add into an **existing** pod yaml to make it run in a confidential environment.
 

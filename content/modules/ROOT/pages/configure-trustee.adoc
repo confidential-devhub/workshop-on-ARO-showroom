@@ -5,6 +5,8 @@ pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security exp
 You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 Because of the limitations of this ARO workshop, it is not possible to set up two clusters.
+
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform this step!
 endif::[]
 
 [NOTE]

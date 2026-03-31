@@ -1,6 +1,10 @@
 = Fraud-detection with encrypted data
 
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert (trustee management)
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
+endif::[]
 
 This example focuses on the same use case as before, fraud-detection, but doesn't run the traditional image used so far. Instead, it runs the workload as Jupyter notebook or Openshift AI workbench.
 
@@ -37,6 +41,12 @@ There are three main changes added to the podspec:
 .. In this example, we will replace the PVCs with podvm storage, meaning the CVM encrypted disk will be used to store data. However, once the pod terminates, the data will be lost too.
 
 == Add the application secrets into Trustee
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
 
 Let's add the application secrets (decryption key and azure credentials) into the Trustee. Here we are in the **trusted** cluster.
 
@@ -84,6 +94,12 @@ You should see a `fraud-azure-sas` and `fraud-dataset` secret in the KbsConfig.
 
 == Create the sealed secret
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
 Let's now create the sealed secret that contains the pointer to the actual secret in trustee. Here we move to the **untrusted** cluster.
 
 [source,sh,role=execute]
@@ -122,6 +138,10 @@ There are two ways to deploy the notebook:
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
 First of all, we need to make sure we can install Openshift AI. The main requirement for OAI is to have big enough worker nodes, as they have to run OAI, OSC and Trustee.
 
 // RHDP workshop
@@ -145,7 +165,11 @@ endif::[]
 
 ==== **Install OAI**
 
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted admin
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `uadmin` (xref:index.adoc#panels[admin window]) user to perform these steps!
+endif::[]
 
 In order to simplify the installation of OAI and since it's not the focus of this workshop, we will provide a script to automatically handle that:
 
@@ -169,6 +193,12 @@ Now you can xref:fraud-detection.adoc#fd-run[go through the notebook].
 
 [#fd-plain]
 === Plain Jupyter notebook
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
 
 If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
 

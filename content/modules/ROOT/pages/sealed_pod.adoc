@@ -176,7 +176,24 @@ Loaded 200000 transactions
 Inspecting credit card transactions:
 ----
 
-And Trustee logs will also show the same story.
+[#destroy]
+== Destroy the pod
+
+[source,sh,role=execute]
+----
+oc delete pods/sealed-fraud-detection -n default
+----
+
+== Inspect Trustee
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
+
+Trustee logs will also show the same story as the workload:
 
 [source,sh,role=execute]
 ----
@@ -200,10 +217,4 @@ oc logs -n trustee-operator-system "$POD_NAME"
 ...
 ----
 
-[#destroy]
-== Destroy the pod
 
-[source,sh,role=execute]
-----
-oc delete pods/sealed-fraud-detection -n default
-----

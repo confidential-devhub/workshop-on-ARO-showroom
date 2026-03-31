@@ -2,6 +2,10 @@
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted cluster admin
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `uadmin` (xref:index.adoc#panels[admin window]) user to perform this step!
+endif::[]
+
 [NOTE]
 ====
 This whole section can be automated with the following command:
@@ -107,7 +111,14 @@ AZURE_NAT_ID=$(az network vnet subnet show --ids "${AZURE_SUBNET_ID}" \
 echo "AZURE_NAT_ID: \"$AZURE_NAT_ID\""
 ----
 
-. Create and apply the `peer-pods-configmap.yaml` ConfigMap. Note that at this point you must have already xref:configure-trustee.adoc#trustee-initdata[configured initdata] and exported `$INITDATA`.
+. Create and apply the `peer-pods-configmap.yaml` ConfigMap. Note that at this point you must have already xref:configure-trustee.adoc#trustee-initdata[configured initdata].
++
+[source,sh,role=execute]
+----
+# Simulate Opsec providing initdata to untrusted admin
+# remember: this is measured, so if the admin changes it, attestation will fail!
+export INITDATA=$(cat ~/trustee/initdata.toml | gzip | base64 -w0)
+----
 +
 [source,sh,role=execute]
 ----

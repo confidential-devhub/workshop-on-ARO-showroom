@@ -2,6 +2,10 @@
 
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
 In this example, we will show:
 
 * How easy is to modify an existing pod to make it run in CoCo
@@ -171,6 +175,12 @@ In this example, we will show how a pod fails when it doesn't meet the signature
 
 Let's recap the flow:
 
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
 When a confidential container starts, its component internally look at the configured initdata and see that for the image, it has to get the following policy from Trustee:
 [source,sh,role=execute]
 ----
@@ -221,6 +231,12 @@ The reason for this is to allow the user of the workshop to also run unsigned co
 So what happens when an image from `quay.io/confidential-devhub/signed` is not signed?
 
 === Unsigned image from confidential-devhub
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
 
 Let's find out! Let's run the following:
 
@@ -285,7 +301,26 @@ cached_size: CachedSize { size: 0 } } }...
 
 And the explanation is very clear: `error: Image policy rejected: Denied by policy: rejected by sigstoreSigned rule"`, meaning the signature policy detected the image is coming from `quay.io/confidential-devhub/signed`, but since it is not signed, it does not allow it to run.
 
-Just like in `sample-fraud-detection`, we can inspect Trustee and see in the logs how the CoCo pod fetched the image policy and the public key assigned to `quay.io/confidential-devhub/signed`, but because the internal signature check did not pass, the pod didn't ask for any secret.
+=== Destroy the pod
+
+Of course to clean up resources, make sure to delete the pod you just created.
+
+[source,sh,role=execute]
+----
+oc delete pods/unsigned-confidential-devhub -n default
+----
+
+In general, feel free to try any unsigned image, or signed with a different key from the one specified in the signature verification policy. No such image will be allowed to run.
+
+=== Inspect Trustee
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
+We can inspect Trustee and see in the logs how the CoCo pod fetched the image policy and the public key assigned to `quay.io/confidential-devhub/signed`, but because the internal signature check did not pass, the pod didn't ask for any secret.
 
 [source,sh,role=execute]
 ----
@@ -305,13 +340,3 @@ This is the expected output:
 [2025-11-28T20:09:47Z INFO actix_web::middleware::logger] 10.129.2.40 "GET /kbs/v0/resource/default/conf-devhub-signature/pub-key HTTP/1.1" 200 629 "-" "attestation-agent-kbs-client/0.1.0" 0.001067
 ----
 
-=== Destroy the pod
-
-Of course to clean up resources, make sure to delete the pod you just created.
-
-[source,sh,role=execute]
-----
-oc delete pods/unsigned-confidential-devhub -n default
-----
-
-In general, feel free to try any unsigned image, or signed with a different key from the one specified in the signature verification policy. No such image will be allowed to run.
