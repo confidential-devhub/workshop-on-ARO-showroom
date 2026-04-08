@@ -4,9 +4,9 @@ Red Hat https://docs.redhat.com/en/documentation/openshift_sandboxed_containers[
 
 Please refer to the https://www.redhat.com/en/blog/exploring-openshift-confidential-containers-solution[Exploring the OpenShift Confidential Containers solution, window=blank] blogpost for more information.
 
-In this workshop, we are also showing another operator, the **confidential compute attestation operator** (also known as `Trustee`), which can verify the trustworthiness of TEEs remotely. For more information, please refer to https://www.redhat.com/en/blog/introducing-confidential-containers-trustee-attestation-services-solution-overview-and-use-cases[this blogpost, window=blank].
+In this workshop, we are also showing another operator, the **Red Hat build of Trustee** (also known as **confidential compute attestation operator** and referred in this guide as `Trustee`), which can verify the trustworthiness of TEEs remotely. For more information, please refer to https://www.redhat.com/en/blog/introducing-confidential-containers-trustee-attestation-services-solution-overview-and-use-cases[this blogpost, window=blank].
 
-We will show how to set up the Trustee and OSC operator and run a simple hello-openshift **Confidential Container** running with the *kata-remote* runtime class (peer pods solution). This effectively means that the hello-openshift container runs in a **separate**, **confidential**, **independent** virtual machine, and not in the worker node. In another example, we will also show how **attestation** and **secure key retrieval** workflow happens between a CoCo pod and Trustee.
+We will show how to set up the Trustee and OSC operator and run a simple fraud-detection **Confidential Container** running with the peer pods solution. This effectively means that the fraud-detection container runs in a **separate**, **confidential**, **independent** virtual machine, and not in the worker node. In another example, we will also show how **attestation** and **secure key retrieval** workflow happens between a CoCo pod and Trustee.
 
 The goal of this workshop is to provide the user not only an environment and documentation to test CoCo, but also provide additional explanations on the design choices behind some options and the benefit they bring to the overall user experience. CoCo is designed to bring **confidential computing** at kubernetes level, making it **as simple as possible** while preserving all security benefits that confidential computing brings.
 
@@ -16,6 +16,7 @@ Before starting this workshop, we suggest to read the following blogposts to get
 * https://www.redhat.com/en/blog/exploring-openshift-confidential-containers-solution[Exploring the OpenShift Confidential Containers solution, window=blank]
 * https://www.redhat.com/en/blog/use-cases-and-ecosystem-openshift-confidential-containers[Use cases and ecosystem for OpenShift Confidential Containers, window=blank]
 * https://www.redhat.com/en/blog/understanding-confidential-containers-attestation-flow[Understanding the Confidential Containers Attestation Flow, window=blank]
+* xref:index-theory.adoc[This workshop's theory chapter]
 
 All blogposts are under this https://www.redhat.com/en/blog/learn-about-confidential-containers[blog series, window=blank].
 
@@ -36,7 +37,7 @@ The workshop will show the steps performed by the above users in two phases: set
 
 . Setup phase 1: install and configure the trusted cluster (Trustee and secrets)
   .. The *operational security* persona, responsible of the cluster(s) security, installs and configures Trustee in a **trusted and secure** cluster, by defining all security policies.
-  .. The *application developer* adds the application-specific secrets to Trustee, and creates the necessary sealed secres (more on this later). As mentioned before, this operation can also be performed by the operational security persona. In this workshop, we will delegate this to the developer, as always relying on the operational security persona could cause bottlenecks for developers.
+  .. The *application developer* provides the application-specific secrets to the OpSec persona that then uploads them in Trustee (or in a more relaxed env, uploads them directly), and creates the necessary sealed secres (more on this later).
 
 . Setup phase 2: install and configure the untrusted cluster (where CoCo runs)
   .. The *cluster admin* installs and configures OSC in the **untrusted** cluster, where the CoCo application will be first checked by Trustee and its policies, and then run.
