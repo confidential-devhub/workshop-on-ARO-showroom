@@ -23,6 +23,14 @@ if ! command -v skopeo >/dev/null 2>&1; then
   exit 1
 fi
 
+INITDATA_PATH=${INITDATA_PATH:-"$HOME/trustee/initdata.toml"}
+# Expand ~ to $HOME (handles ~/path)
+INITDATA_PATH="${INITDATA_PATH/#\~/$HOME}"
+# Resolve to absolute path
+if [[ "$INITDATA_PATH" != /* ]]; then
+  INITDATA_PATH="$(cd "$(dirname "$INITDATA_PATH")" && pwd)/$(basename "$INITDATA_PATH")"
+fi
+
 echo "################################################"
 echo "Starting the script..."
 echo "If this scripts completes successfully, you will"
@@ -193,7 +201,7 @@ oc create secret generic $POLICY_SECRET_NAME \
 ####################################################################
 echo "################################################"
 
-cat > initdata.toml <<EOF
+cat > $INITDATA_PATH <<EOF
 algorithm = "sha256"
 version = "0.1.0"
 
@@ -279,7 +287,7 @@ EOF
 echo "################################################"
 
 initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
-hash=$(sha256sum initdata.toml | cut -d' ' -f1)
+hash=$(sha256sum $INITDATA_PATH | cut -d' ' -f1)
 PCR8_HASH=$(echo -n "$initial_pcr$hash" | xxd -r -p | sha256sum | cut -d' ' -f1)
 echo ""
 echo "PCR 8:" $PCR8_HASH

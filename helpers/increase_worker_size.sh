@@ -70,6 +70,12 @@ if [ "$TOTAL_CPU" -lt "$MIN_TOTAL_CPU" ]; then
     # Start the VM again
     az vm start --resource-group $ARO_RESOURCE_GROUP --name $W1
 
+    echo "Waiting for node $W1 to become Ready..."
+    oc wait --for=condition=Ready "node/$W1" --timeout=600s
+
+    echo "Updating node label node.kubernetes.io/instance-type to $TARGET_SIZE..."
+    oc label node "$W1" "node.kubernetes.io/instance-type=${TARGET_SIZE}" --overwrite
+
     echo "Upgrade complete. $W1 is now $TARGET_SIZE."
 else
     echo "Total CPU ($TOTAL_CPU) is sufficient (>= $MIN_TOTAL_CPU). No action required."
