@@ -26,7 +26,10 @@
 ** xref:sealed_pod.adoc[Attestation: sealed secrets]
 ** xref:custom_initdata.adoc[Customize initdata]
 ** xref:restrict-trustee.adoc[Restrict resource access in Trustee]
-** xref:fraud-detection.adoc[Fraud-detection]
+** xref:fraud-detection.adoc[Fraud-detection in a notebook]
+*** xref:fd-oai.adoc[Deploy via Openshift AI]
+*** xref:fd-jupyter.adoc[Deploy via Jupyter notebook]
+*** xref:fd-run.adoc[Run the notebook]
 ** xref:troubleshooting.adoc[Troubleshooting]
 
 * xref:index-theory.adoc[Theory]

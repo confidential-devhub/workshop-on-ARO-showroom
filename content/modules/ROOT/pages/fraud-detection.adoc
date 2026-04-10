@@ -1,11 +1,5 @@
 = Fraud-detection with encrypted data
 
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert (trustee management)
-
-ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
-endif::[]
-
 This example focuses on the same use case as before, fraud-detection, but doesn't run the traditional image used so far. Instead, it runs the workload as Jupyter notebook or Openshift AI workbench.
 
 == The Confidential Workflow
@@ -50,7 +44,7 @@ endif::[]
 
 Let's add the application secrets (decryption key and azure credentials) into the Trustee. Here we are in the **trusted** cluster.
 
-In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key and upload it into the Trustee. Remember that `FD_SECRET_NAME=fraud-dataset`.
+In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key and upload it into the Trustee.
 
 Now let's also add the Azure storage secret.
 
@@ -110,7 +104,7 @@ FD_SECRET_NAME=fraud-dataset
 KEY_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
 
 # namespace here is fraud-detection!
-oc create namespace fraud-detection
+oc create namespace fraud-detection 2> /dev/null # skip if already present
 oc create secret generic sealed-azure-sas --from-literal=azure-sas=$AZ_SECRET -n fraud-detection
 oc create secret generic sealed-dataset-key --from-literal=key=$KEY_SECRET -n fraud-detection
 ----
@@ -128,136 +122,5 @@ Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:configu
 
 There are two ways to deploy the notebook:
 
-* Via a xref:fraud-detection.adoc#fd-oai[Openshift AI (OAI) workbench]: everything is handled by Openshift AI. A `Notebook` object is created, and OAI takes care of deploying it and exposing it for the user. In such way, we integrate CoCo with Openshift AI traditional workbenches, that take care of most of the work.
-* Via a xref:fraud-detection.adoc#fd-plain[plain Jupyter notebook]: a simple custom pod, with networking handled by a custom service and route. This is the simplest and fastest way to deploy.
-
-[#fd-oai]
-=== Openshift AI workbench
-
-==== **Prerequisites**
-
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
-
-ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
-endif::[]
-
-First of all, we need to make sure we can install Openshift AI. The main requirement for OAI is to have big enough worker nodes, as they have to run OAI, OSC and Trustee.
-
-// RHDP workshop
-ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-If you have deployed this workshop with the RHDP catalog, you can choose to have worker nodes as big as `Standard_D8s_v5`. This should be enough. If you haven't picked big enough nodes, there is no problem, as the script below takes care of increasing the worker node size automatically.
-
-[source,sh,role=execute]
-----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/increase_worker_size.sh -o increase_worker_size.sh
-
-chmod +x increase_worker_size.sh
-
-./increase_worker_size.sh
-----
-endif::[]
-
-// Github instructions
-ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
-Please ensure you have big enough worker nodes. In ARO, 3 workers with size `Standard_D8s_v5` should be enough. In case you don't have them, you can manually upgrade the worker node, deploy a new cluster with bigger workers or try to add more worker nodes.
-endif::[]
-
-==== **Install OAI**
-
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted admin
-
-ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-NOTE: Remember to use the `uadmin` (xref:index.adoc#panels[admin window]) user to perform these steps!
-endif::[]
-
-In order to simplify the installation of OAI and since it's not the focus of this workshop, we will provide a script to automatically handle that:
-
-[source,sh,role=execute]
-----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/install-oai.sh -o install-oai.sh
-
-chmod +x install-oai.sh
-
-./install-oai.sh
-----
-
-Once completed, you will receive a link to access the RHOAI dashboard and also the notebook itself directly.
-
-[IMPORTANT]
-====
-The script also creates a new signature image verification policy. The OAI workbench is running other signed images from registry.redhat.io, therefore we can create a new policy for them.
-====
-
-Now you can xref:fraud-detection.adoc#fd-run[go through the notebook].
-
-[#fd-plain]
-=== Plain Jupyter notebook
-
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
-
-ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
-endif::[]
-
-If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
-
-[source,sh,role=execute]
-----
-oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
-----
-
-Switch to the newly created `fraud-detection` namespace.
-
-[source,sh,role=execute]
-----
-oc project fraud-detection
-----
-
-Wait that the pod is created.
-[source,sh,role=execute]
-----
-watch oc get pods/fraud-encrypted-datasets
-----
-The pod is ready when the `STATUS` is in `Running`.
-
-The jupyter notebook will be available at the following URL and the login password is `aro_workshop123`:
-[source,sh,role=execute]
-----
-FD_ROUTE=$(oc get route fraud-encrypted-datasets-route -n fraud-detection -o jsonpath='{.spec.host}')
-echo ""
-
-echo "Click on the following URL to open the notebook in a new tab:"
-echo "https://${FD_ROUTE}"
-----
-
-[#fd-run]
-== Run the notebook
-
-Starting from `fraud-detection/1_download_data.ipynb`, go through the various notebooks. Specifically:
-
-* `fraud-detection/1_download_data.ipynb`: download encrypted datasets
-* `fraud-detection/2_decrypt_data.ipynb`: decrypt the datasets
-* `fraud-detection/3_run_model.ipynb`: run the model
-* `fraud-detection/4_cleanup.ipynb`: clean everything to restart the demo
-
-== Considerations
-
-Note for a second how a secret like `/sealed/azure-value/azure-sas` can be read and used in the jupyter notebook, but if you try to `oc exec` and read it, it won't work.
-
-The difference is that the notebook is running **within** the container, whereas `oc exec` is executed from outside. This shows exactly the CoCo threat model: an application/developer *inside* the CoCo pod is obviously allowed to read the secrets granted. However, a cluster/infra/platform admin is not trusted, therefore there is no way for him/her to access this data.
-
-== Delete the notebook
-
-[source,sh,role=execute]
-----
-oc delete pods/fraud-encrypted-datasets -n fraud-detection
-----
-
-Switch to the default ns again.
-
-[source,sh,role=execute]
-----
-oc project default
-----
-
+* Via a xref:fd-oai.adoc[Openshift AI (OAI) workbench]: everything is handled by Openshift AI. A `Notebook` object is created, and OAI takes care of deploying it and exposing it for the user. In such way, we integrate CoCo with Openshift AI traditional workbenches, that take care of most of the work.
+* Via a xref:fd-jupyter.adoc[plain Jupyter notebook]: a simple custom pod, with networking handled by a custom service and route. This is the simplest and fastest way to deploy.

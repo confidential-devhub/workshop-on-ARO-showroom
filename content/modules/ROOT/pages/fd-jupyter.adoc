@@ -1,0 +1,45 @@
+= Plain Jupyter notebook
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
+If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
+
+[source,sh,role=execute]
+----
+oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
+----
+
+Switch to the newly created `fraud-detection` namespace.
+
+[source,sh,role=execute]
+----
+oc project fraud-detection
+----
+
+Wait that the pod is created.
+[source,sh,role=execute]
+----
+watch oc get pods/fraud-encrypted-datasets
+----
+The pod is ready when the `STATUS` is in `Running`.
+
+The jupyter notebook will be available at the following URL and the login password is `aro_workshop123`:
+[source,sh,role=execute]
+----
+FD_ROUTE=$(oc get route fraud-encrypted-datasets-route -n fraud-detection -o jsonpath='{.spec.host}')
+echo ""
+
+echo "Click on the following URL to open the notebook in a new tab:"
+echo "https://${FD_ROUTE}"
+----
+
+Switch to the default ns again.
+
+[source,sh,role=execute]
+----
+oc project default
+----

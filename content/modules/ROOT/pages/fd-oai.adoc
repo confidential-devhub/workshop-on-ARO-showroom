@@ -1,0 +1,108 @@
+= Openshift AI workbench
+
+In this section, we will just install and configure Openshift AI.
+
+In order to do so, we will switch on all three users:
+
+* The cluster admin installs OAI operator and configures it
+* The opsec expert extends the Trustee image policy
+* The developer runs the workbench
+
+== Untrusted admin
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted admin
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `uadmin` (xref:index.adoc#panels[admin window]) user to perform these steps!
+endif::[]
+
+=== Prerequisites
+
+First of all, we need to make sure we can install Openshift AI. The main requirement for OAI is to have big enough worker nodes, as they have to run OAI, OSC and Trustee.
+
+// RHDP workshop
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+If you have deployed this workshop with the RHDP catalog, you can choose to have worker nodes as big as `Standard_D8s_v5`. This should be enough. If you haven't picked big enough nodes, there is no problem, as the script below takes care of increasing the worker node size automatically.
+
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/increase_worker_size.sh -o increase_worker_size.sh
+
+chmod +x increase_worker_size.sh
+
+./increase_worker_size.sh
+----
+endif::[]
+
+// Github instructions
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
+Please ensure you have big enough worker nodes. In ARO, 3 workers with size `Standard_D8s_v5` should be enough. In case you don't have them, you can manually upgrade the worker node, deploy a new cluster with bigger workers or try to add more worker nodes.
+endif::[]
+
+=== Install OAI
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `uadmin` (xref:index.adoc#panels[admin window]) user to perform these steps!
+endif::[]
+
+In order to simplify the installation of OAI and since it's not the focus of this workshop, we will provide a script to automatically handle that:
+
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/install-oai.sh -o install-oai.sh
+
+chmod +x install-oai.sh
+
+./install-oai.sh
+----
+
+Once completed, you will receive a link to access the RHOAI dashboard and also the notebook itself directly.
+
+== Operational security expert
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform this step!
+endif::[]
+
+=== Update the signature verification policy
+
+As we are now running other images, we need to extend the image signature verification policy to also support them.
+
+This is automatically handled by this script:
+
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/oai-opsec.sh -o oai-opsec.sh
+
+chmod +x oai-opsec.sh
+
+./oai-opsec.sh
+----
+
+== Developer
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
+At this point the developer starts the CoCo workbench.
+
+This is automatically handled by this script:
+
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/run-oai-devel.sh -o run-oai-devel.sh
+
+chmod +x run-oai-devel.sh
+
+./run-oai-devel.sh
+----
+
+
+== Run the application
+
+Now you can xref:fd-run.adoc[go through the notebook].
