@@ -56,7 +56,6 @@ echo "well."
 echo "This script will:"
 echo " - Check the podvm root disk size to ensure enough space for the notebook"
 echo " - Install Openshift AI, Servicemesh and Serverless in the cluster"
-echo " - Create a new namespace and deploy CoCo fraud-detection notebook"
 echo "################################################"
 
 echo ""
@@ -272,5 +271,6 @@ oc secrets link default pull-secret --for=pull -n ${OAI_NS}
 #   name: admin
 # EOF
 
-
-
+echo "################################################"
+echo "OAI installation complete!"
+echo "################################################"

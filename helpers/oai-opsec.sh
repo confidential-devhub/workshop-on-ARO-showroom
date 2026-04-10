@@ -9,6 +9,12 @@ if [[ "$INITDATA_PATH" != /* ]]; then
   INITDATA_PATH="$(cd "$(dirname "$INITDATA_PATH")" && pwd)/$(basename "$INITDATA_PATH")"
 fi
 
+echo "################################################"
+echo "Starting the script."
+
+echo "This script will update the Trustee image policy"
+echo "to allow running OAI images."
+echo "################################################"
 
 # IMAGE=registry.redhat.io/rhoai/odh-workbench-jupyter-minimal-cpu-py312-rhel9@sha256:a8cfef07ffc89d99acfde08ee879cc87aaa08e9a369e0cf7b36544b61b3ee3c7
 
@@ -130,3 +136,6 @@ oc get configmap trusteeconfig-rvps-reference-values \
 
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
+echo "################################################"
+echo "Trustee image policy updated successfully!"
+echo "################################################"

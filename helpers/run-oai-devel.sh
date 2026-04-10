@@ -38,6 +38,18 @@ if [[ ! -f "$INITDATA_PATH" ]]; then
   exit 1
 fi
 
+echo "################################################"
+echo "Starting the script. Many of the following commands"
+echo "will periodically check on OCP for operations to"
+echo "complete, so it's normal to see errors."
+echo "If this scripts completes successfully, you will"
+echo "see a final message confirming installation went"
+echo "well."
+
+echo "This script will deploy the CoCo fraud-detection"
+echo "notebook as an OAI workbench."
+echo "################################################"
+
 NEW_INIT=$(cat $INITDATA_PATH | gzip | base64 -w0)
 echo ""
 echo $NEW_INIT
@@ -238,7 +250,7 @@ wait_for_phase $OAI_NAME-0 Pod Ready || exit 1
 oc project default
 
 echo "################################################"
-echo "Configuration complete. Enjoy testing CoCo on OAI!"
+echo "Deployment complete. Enjoy testing CoCo on OAI!"
 echo ""
 echo "Access the RHOAI Dashboard at:"
 echo "https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}?section=workbenches"
