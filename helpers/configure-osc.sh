@@ -261,7 +261,7 @@ wait_for_runtimeclass kata-remote || exit 1
 if [[ "$OSC_ENV" == "rhdp" ]]; then
   echo "############################ Update kata rpm ########################"
 
-  curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+  curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
   chmod +x update-kata-rpm.sh
   ./update-kata-rpm.sh
 fi

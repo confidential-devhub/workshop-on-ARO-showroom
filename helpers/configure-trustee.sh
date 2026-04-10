@@ -405,7 +405,7 @@ oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
 # if [[ $TRUSTEE_ENV == "rhdp" ]]; then
   echo "Fixing attestation policy for Trustee 1.1.0"
-  curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fix-att-policy-trustee-1.1.0.sh -o fix-att-policy.sh
+  curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/fix-att-policy-trustee-1.1.0.sh -o fix-att-policy.sh
   chmod +x fix-att-policy.sh
   ./fix-att-policy.sh
 # fi

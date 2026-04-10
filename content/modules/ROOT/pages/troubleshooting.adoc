@@ -251,7 +251,7 @@ A simple way to delete everything is via this script. Note: this deletes all the
 
 [source,sh,role="execute",subs=attributes+]
 ----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/delete-vms.sh -o delete-vms.sh
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/delete-vms.sh -o delete-vms.sh
 
 chmod +x delete-vms.sh
 
