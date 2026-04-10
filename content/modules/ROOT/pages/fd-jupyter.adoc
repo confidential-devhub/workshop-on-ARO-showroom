@@ -6,11 +6,11 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
 endif::[]
 
-If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
+If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/fraud-encrypted-datasets/notebook.yaml[yaml code, window=blank] for the plain jupyter notebook, you will notice once again the only difference with a normal deployment is `runtimeClassName: kata-remote`.
 
 [source,sh,role=execute]
 ----
-oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
+oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/fraud-encrypted-datasets/notebook.yaml
 ----
 
 Wait that the pod is created.
