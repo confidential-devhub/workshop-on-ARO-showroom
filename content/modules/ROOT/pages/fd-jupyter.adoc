@@ -13,17 +13,10 @@ If you open the https://raw.githubusercontent.com/confidential-devhub/workshop-o
 oc apply -f https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fraud-encrypted-datasets/notebook.yaml
 ----
 
-Switch to the newly created `fraud-detection` namespace.
-
-[source,sh,role=execute]
-----
-oc project fraud-detection
-----
-
 Wait that the pod is created.
 [source,sh,role=execute]
 ----
-watch oc get pods/fraud-encrypted-datasets
+watch oc get pods/fraud-encrypted-datasets -n fraud-detection
 ----
 The pod is ready when the `STATUS` is in `Running`.
 
@@ -35,11 +28,4 @@ echo ""
 
 echo "Click on the following URL to open the notebook in a new tab:"
 echo "https://${FD_ROUTE}"
-----
-
-Switch to the default ns again.
-
-[source,sh,role=execute]
-----
-oc project default
 ----
