@@ -93,15 +93,15 @@ echo "############################ Wait for OSC ########################"
 wait_for_deployment controller-manager openshift-sandboxed-containers-operator || exit 1
 
 # echo "############################ Update kata rpm ########################"
-# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+# curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/next/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
 # chmod +x update-kata-rpm.sh
 # ./update-kata-rpm.sh
 
-# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/runtime-req-timetout.yaml -o kubelet-timeout.yaml
+# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/next/runtime-req-timetout.yaml -o kubelet-timeout.yaml
 # oc apply -f kubelet-timeout.yaml
 # sleep 5
 
-# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/crio-setup.yaml -o crio-setup.yaml
+# curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/next/crio-setup.yaml -o crio-setup.yaml
 # oc apply -f crio-setup.yaml
 # sleep 5
 # wait_for_mcp kata-oc || exit 1
