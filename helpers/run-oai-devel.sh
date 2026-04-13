@@ -55,15 +55,9 @@ echo ""
 echo $NEW_INIT
 echo ""
 
-# ARO_RESOURCE_GROUP=$(oc get infrastructure/cluster -o jsonpath='{.status.platformStatus.azure.resourceGroupName}')
-# CLUSTER_ID=${ARO_RESOURCE_GROUP#aro-}
-CLUSTER_ID="fd-cluster"
-
-# CLOUD_CONF=$(oc get configmap cloud-conf \
-#   -n openshift-cloud-controller-manager \
-#   -o jsonpath='{.data.cloud\.conf}')
-# ARO_REGION=$(echo "$CLOUD_CONF" | jq -r '.location')
-ARO_REGION="cluster-reg"
+ARO_LIST_JSON=$(az aro list -o json)
+CLUSTER_ID=$(echo "$ARO_LIST_JSON" | jq -r '.[0].clusterProfile.domain')
+ARO_REGION=$(echo "$ARO_LIST_JSON" | jq -r '.[0].location')
 OAI_NS=fraud-detection
 OAI_NAME=fraud-detection
 BRANCH_NAME=coco_workshop_aro
