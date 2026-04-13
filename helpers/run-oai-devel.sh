@@ -56,8 +56,8 @@ echo $NEW_INIT
 echo ""
 
 ARO_LIST_JSON=$(az aro list -o json)
-CLUSTER_ID=$(echo "$ARO_LIST_JSON" | jq -r '.[0].clusterProfile.domain')
-ARO_REGION=$(echo "$ARO_LIST_JSON" | jq -r '.[0].location')
+CLUSTER_ID=${CLUSTER_ID:-$(echo "$ARO_LIST_JSON" | jq -r '.[0].clusterProfile.domain')}
+ARO_REGION=${ARO_REGION:-$(echo "$ARO_LIST_JSON" | jq -r '.[0].location')}
 OAI_NS=fraud-detection
 OAI_NAME=fraud-detection
 BRANCH_NAME=coco_workshop_aro

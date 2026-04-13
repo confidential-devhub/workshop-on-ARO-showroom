@@ -89,6 +89,12 @@ At this point the developer starts the CoCo workbench.
 
 This is automatically handled by this script:
 
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
+NOTE: Before running this script, ensure you set `CLUSTER_ID` (domain name) and `ARO_REGION` correctly otherwise the workbench generated url in the script will point to an invalid url.
++
+In any case you can always find the right workbench url by going via the web UI.
+endif::[]
+
 [source,sh,role=execute]
 ----
 curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/run-oai-devel.sh -o run-oai-devel.sh
