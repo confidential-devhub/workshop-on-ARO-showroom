@@ -515,9 +515,9 @@ oc get -n openshift-config secret/pull-secret -o json \
 # podman login registry.redhat.io
 
 # Pick the latest podvm image, as we freshly installed the cluster
-OSC_VERSION=latest
+# OSC_VERSION=latest
 # alternatively, use the operator-version tag.
-# OSC_VERSION=1.11.1
+OSC_VERSION=1.11.1
 VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
 
 TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)
