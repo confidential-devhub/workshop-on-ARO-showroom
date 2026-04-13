@@ -41,10 +41,6 @@ endif::[]
 
 === Install OAI
 
-ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-NOTE: Remember to use the `uadmin` (xref:index.adoc#panels[admin window]) user to perform these steps!
-endif::[]
-
 In order to simplify the installation of OAI and since it's not the focus of this workshop, we will provide a script to automatically handle that:
 
 [source,sh,role=execute]
