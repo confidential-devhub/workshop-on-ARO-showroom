@@ -98,6 +98,7 @@ Let's now create the sealed secret that contains the pointer to the actual secre
 
 [source,sh,role=execute]
 ----
+AZURE_SAS_SECRET_NAME=fraud-azure-sas
 AZ_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
 
 FD_SECRET_NAME=fraud-dataset
