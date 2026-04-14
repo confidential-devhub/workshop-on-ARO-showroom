@@ -21,6 +21,8 @@ Let's install OSC to enable CoCo.
 [#cmdline]
 == Install via command line
 
+We will install and stick to OSC 1.11.1 for the time being.
+
 [source,sh,role=execute]
 ----
 oc apply -f-<<EOF
@@ -46,11 +48,19 @@ metadata:
   namespace: openshift-sandboxed-containers-operator
 spec:
   channel: stable
-  installPlanApproval: Automatic
+  installPlanApproval: Manual
   name: sandboxed-containers-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
+  startingCSV:     sandboxed-containers-operator.v1.11.1
 EOF
+----
+
+Approve the operator install (since it's manual upgrade).
+
+[source,sh,role=execute]
+----
+oc get installplan -n openshift-sandboxed-containers-operator -o jsonpath='{.items[?(@.spec.approved==false)].metadata.name}' | xargs -r oc patch -n openshift-sandboxed-containers-operator --type merge -p '{"spec":{"approved":true}}'
 ----
 
 === Verification
@@ -64,5 +74,5 @@ watch oc get csv -n openshift-sandboxed-containers-operator
 [source,texinfo,subs="attributes"]
 ----
 NAME                             DISPLAY                                  VERSION             REPLACES                   PHASE
-openshift-sandboxed-containers   openshift-sandboxed-containers-operator  1.10.1                                          Succeeded
+openshift-sandboxed-containers   openshift-sandboxed-containers-operator  1.11.1                                          Succeeded
 ----
