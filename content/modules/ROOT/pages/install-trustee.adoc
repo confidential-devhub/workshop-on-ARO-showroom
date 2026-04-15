@@ -63,7 +63,7 @@ spec:
 EOF
 ----
 
-Approve the operator install (since it's manual upgrade).
+Approve the operator install (since it's manual install plan).
 
 [source,sh,role=execute]
 ----
