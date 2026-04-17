@@ -67,7 +67,7 @@ Approve the operator install (since it's manual install plan).
 
 [source,sh,role=execute]
 ----
-oc get installplan -n trustee-operator-system -o jsonpath='{.items[?(@.spec.approved==false)].metadata.name}' | xargs -r oc patch -n trustee-operator-system --type merge -p '{"spec":{"approved":true}}'
+oc get installplan -n trustee-operator-system -o jsonpath='{.items[?(@.spec.approved==false)].metadata.name}' | xargs -r oc patch installplan -n trustee-operator-system --type merge -p '{"spec":{"approved":true}}'
 ----
 
 
