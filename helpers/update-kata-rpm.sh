@@ -1,5 +1,8 @@
 #! /bin/bash
 
+RPM_URL=${RPM_URL:-"https://people.redhat.com/eesposit/kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm"}
+echo "RPM_URL: $RPM_URL"
+
 NODE_NAME=$(oc get nodes -l workerType=kataWorker -o jsonpath='{.items[0].metadata.name}')
 DEBUG_POD_NAMESPACE=default
 
@@ -14,8 +17,8 @@ if ! oc get node "$NODE_NAME" &> /dev/null; then
 fi
 
 TEMP_PATH_IN_POD="/host/tmp/$FILENAME"
-FILE_TO_COPY=kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm
-curl -L https://people.redhat.com/eesposit/kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm  -o $FILE_TO_COPY
+FILE_TO_COPY=kata-containers.rpm
+curl -L $RPM_URL  -o $FILE_TO_COPY
 
 echo "###### Start debug pod ######"
 oc debug node/"$NODE_NAME" -n $DEBUG_POD_NAMESPACE -- sleep infinity &> /dev/null &
