@@ -23,6 +23,27 @@ function wait_for_deployment() {
     return 1
 }
 
+function wait_for_installplan() {
+    local namespace=$1
+    local timeout=300
+    local interval=5
+    local elapsed=0
+    local count=0
+
+    while [ $elapsed -lt $timeout ]; do
+        count=$(oc get installplan -n "$namespace" --no-headers 2>/dev/null | wc -l | tr -d ' ')
+        if [ "${count:-0}" -gt 0 ]; then
+            echo "InstallPlan available in $namespace"
+            return 0
+        fi
+        echo "Waiting for InstallPlan in $namespace..."
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
+    echo "No InstallPlan found in $namespace after $timeout seconds"
+    return 1
+}
+
 echo "################################################"
 echo "Starting the script. Many of the following commands"
 echo "will periodically check on OCP for operations to"
@@ -64,6 +85,8 @@ spec:
   sourceNamespace: openshift-marketplace
   startingCSV: trustee-operator.v1.0.0
 EOF
+
+wait_for_installplan trustee-operator-system || exit 1
 
 oc get installplan -n trustee-operator-system -o jsonpath='{.items[?(@.spec.approved==false)].metadata.name}' | xargs -r oc patch installplan -n trustee-operator-system --type merge -p '{"spec":{"approved":true}}'
 
