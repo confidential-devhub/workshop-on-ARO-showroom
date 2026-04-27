@@ -1,7 +1,26 @@
 #! /bin/bash
 
-RPM_URL=${RPM_URL:-"https://people.redhat.com/eesposit/kata-containers-3.21.0-3.rhaos4.17.el9.x86_64.rpm"}
+RPM_URL=${RPM_URL:-""}
+GDRIVE_ID=${GDRIVE_ID:-"1kYV-CIAMCafxGYDVwc5z7yGrbbMbaxXq"}
+
+if [[ -z "$RPM_URL" && -z "$GDRIVE_ID" ]]; then
+    echo "RPM_URL or GDRIVE_ID is not set"
+    exit 1
+fi
+
 echo "RPM_URL: $RPM_URL"
+echo "GDRIVE_ID: $GDRIVE_ID"
+
+FILE_TO_COPY=/tmp/kata-containers.rpm
+
+if [[ -n "$RPM_URL" ]]; then
+    curl -L $RPM_URL  -o $FILE_TO_COPY
+fi
+
+if [[ -n "$GDRIVE_ID" ]]; then
+    pip install gdown
+    gdown $GDRIVE_ID -O $FILE_TO_COPY
+fi
 
 NODE_NAME=$(oc get nodes -l workerType=kataWorker -o jsonpath='{.items[0].metadata.name}')
 DEBUG_POD_NAMESPACE=default
@@ -17,8 +36,6 @@ if ! oc get node "$NODE_NAME" &> /dev/null; then
 fi
 
 TEMP_PATH_IN_POD="/host/tmp/$FILENAME"
-FILE_TO_COPY=kata-containers.rpm
-curl -L $RPM_URL  -o $FILE_TO_COPY
 
 echo "###### Start debug pod ######"
 oc debug node/"$NODE_NAME" -n $DEBUG_POD_NAMESPACE -- sleep infinity &> /dev/null &
@@ -55,7 +72,7 @@ oc cp "$FILE_TO_COPY" "${DEBUG_POD_NAMESPACE}/${DEBUG_POD_NAME}:${TEMP_PATH_IN_P
 echo "###### Installing the rpm... ######"
 # oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host mount -o remount,rw /usr
 oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host ostree admin unlock --hotfix
-oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -Uvh "/tmp/$FILE_TO_COPY"
+oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -Uvh "$TEMP_PATH_IN_POD"
 echo ""
 
 echo "Kata containers rpm version installed:"
