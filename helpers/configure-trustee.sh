@@ -147,12 +147,7 @@ echo "################################################"
 
 TRUSTEE_CERT=$(oc get secret trustee-tls-cert -n trustee-operator-system -o json | jq -r '.data."tls.crt"' | base64 --decode)
 
-oc create route passthrough kbs-service \
-  --service=kbs-service \
-  --port=kbs-port \
-  -n trustee-operator-system
-
-TRUSTEE_HOST="https://$(oc get route -n trustee-operator-system kbs-service \
+TRUSTEE_HOST="https://$(oc get route -n trustee-operator-system kbs-route \
   -o jsonpath={.spec.host})"
 
 echo $TRUSTEE_HOST
