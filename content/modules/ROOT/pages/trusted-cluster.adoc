@@ -15,12 +15,6 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 ** *Username:* {aro_kube_username}
 +
 ** *Password:* {aro_kube_password}
-+
-* Login as devel:
-+
-** *Username:* devel
-+
-** *Password:* devel
 endif::[]
 
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]

@@ -31,6 +31,12 @@ az login --service-principal \
 ** *Username:* uadmin
 +
 ** *Password:* uadmin
++
+* Login as devel:
++
+** *Username:* devel
++
+** *Password:* devel
 endif::[]
 
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
