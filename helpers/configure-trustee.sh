@@ -96,7 +96,7 @@ metadata:
   namespace: trustee-operator-system
 spec:
   dnsNames:
-    - kbs-service
+    - ${ROUTE}
   secretName: trustee-token-cert
   issuerRef:
     name: kbs-issuer
