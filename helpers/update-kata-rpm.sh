@@ -35,7 +35,7 @@ if ! oc get node "$NODE_NAME" &> /dev/null; then
     exit 1
 fi
 
-TEMP_PATH_IN_POD="/host/tmp/$FILENAME"
+TEMP_PATH_IN_POD="/host$FILE_TO_COPY"
 
 echo "###### Start debug pod ######"
 oc debug node/"$NODE_NAME" -n $DEBUG_POD_NAMESPACE -- sleep infinity &> /dev/null &
@@ -72,7 +72,7 @@ oc cp "$FILE_TO_COPY" "${DEBUG_POD_NAMESPACE}/${DEBUG_POD_NAME}:${TEMP_PATH_IN_P
 echo "###### Installing the rpm... ######"
 # oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host mount -o remount,rw /usr
 oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host ostree admin unlock --hotfix
-oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -Uvh "$TEMP_PATH_IN_POD"
+oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -Uvh "$FILE_TO_COPY"
 echo ""
 
 echo "Kata containers rpm version installed:"

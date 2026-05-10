@@ -51,11 +51,11 @@ cd trustee
 
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
-ROUTE_NAME=kbs-service
+ROUTE_NAME=kbs-route
 ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
 
 CN_NAME=kbs-trustee-operator-system
-ORG_NAME=my_org
+ORG_NAME=RedHat
 
 oc apply -f-<<EOF
 apiVersion: cert-manager.io/v1
@@ -80,7 +80,7 @@ spec:
     - ${ROUTE}
   privateKey:
     algorithm: RSA
-    encoding: PKCS1
+    encoding: PKCS8
     size: 2048
   duration: 8760h
   renewBefore: 360h # Standard practice: renew 15 days before expiry
@@ -122,12 +122,6 @@ oc apply -f-<<EOF
 apiVersion: confidentialcontainers.org/v1alpha1
 kind: TrusteeConfig
 metadata:
-  labels:
-    app.kubernetes.io/name: trusteeconfig
-    app.kubernetes.io/instance: trusteeconfig
-    app.kubernetes.io/part-of: trustee-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: trustee-operator
   name: trusteeconfig
   namespace: trustee-operator-system
 spec:
@@ -303,9 +297,9 @@ oc get -n openshift-config secret/pull-secret -o json \
 | jq '.' > cluster-pull-secret.json
 
 # Pick the latest podvm image, as we freshly installed the cluster
-# OSC_VERSION=latest
+OSC_VERSION=latest
 # alternatively, use the operator-version tag:
-OSC_VERSION=1.11.1
+# OSC_VERSION=1.11.1
 VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
 
 TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)

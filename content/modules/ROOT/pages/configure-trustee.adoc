@@ -83,7 +83,7 @@ ROUTE_NAME=kbs-route
 ROUTE="${ROUTE_NAME}-${NS}.${DOMAIN}"
 
 CN_NAME=kbs-trustee-operator-system
-ORG_NAME=my_org
+ORG_NAME=RedHat
 ----
 
 
@@ -120,7 +120,7 @@ spec:
   # 4. Matches -newkey rsa:2048
   privateKey:
     algorithm: RSA
-    encoding: PKCS1
+    encoding: PKCS8
     size: 2048
   # 5. Matches -days 365 (8760 hours)
   duration: 8760h
@@ -170,12 +170,6 @@ cat > trusteeconfig-restricted.yaml <<EOF
 apiVersion: confidentialcontainers.org/v1alpha1
 kind: TrusteeConfig
 metadata:
-  labels:
-    app.kubernetes.io/name: trusteeconfig
-    app.kubernetes.io/instance: trusteeconfig
-    app.kubernetes.io/part-of: trustee-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: trustee-operator
   name: trusteeconfig
   namespace: trustee-operator-system
 spec:
@@ -515,9 +509,9 @@ oc get -n openshift-config secret/pull-secret -o json \
 # podman login registry.redhat.io
 
 # Pick the latest podvm image, as we freshly installed the cluster
-# OSC_VERSION=latest
+OSC_VERSION=latest
 # alternatively, use the operator-version tag.
-OSC_VERSION=1.11.1
+# OSC_VERSION=1.11.1
 VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
 
 TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)
