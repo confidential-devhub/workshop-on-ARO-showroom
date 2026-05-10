@@ -27,8 +27,6 @@ Let's start with installing Trustee. In addition to the Trustee operator, we als
 [#tcmdline]
 == Install via command line
 
-We will install and stick to Trustee 1.0 for the time being.
-
 Trustee:
 [source,sh,role=execute]
 ----
@@ -59,17 +57,8 @@ spec:
   name: trustee-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: trustee-operator.v1.0.0
 EOF
 ----
-
-Approve the operator install (since it's manual install plan).
-
-[source,sh,role=execute]
-----
-oc get installplan -n trustee-operator-system -o jsonpath='{.items[?(@.spec.approved==false)].metadata.name}' | xargs -r oc patch installplan -n trustee-operator-system --type merge -p '{"spec":{"approved":true}}'
-----
-
 
 Cert-manager operator:
 [source,sh,role=execute]
@@ -112,7 +101,7 @@ watch oc get csv -n trustee-operator-system
 [source,texinfo,subs="attributes"]
 ----
 NAME                      DISPLAY                            VERSION   REPLACES   PHASE
-trustee-operator.v1.0.0   Red Hat build of Trustee           1.0.0                Succeeded
+trustee-operator.v1.1.0   Red Hat build of Trustee           1.1.0                Succeeded
 ----
 
 Same applies to the cert-manager operator:

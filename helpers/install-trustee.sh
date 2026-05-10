@@ -83,12 +83,12 @@ spec:
   name: trustee-operator
   source: redhat-operators
   sourceNamespace: openshift-marketplace
-  startingCSV: trustee-operator.v1.0.0
+  # startingCSV: trustee-operator.v1.0.0
 EOF
 
-wait_for_installplan trustee-operator-system || exit 1
+# wait_for_installplan trustee-operator-system || exit 1
 
-oc get installplan -n trustee-operator-system -o jsonpath='{.items[?(@.spec.approved==false)].metadata.name}' | xargs -r oc patch installplan -n trustee-operator-system --type merge -p '{"spec":{"approved":true}}'
+# oc get installplan -n trustee-operator-system -o jsonpath='{.items[?(@.spec.approved==false)].metadata.name}' | xargs -r oc patch installplan -n trustee-operator-system --type merge -p '{"spec":{"approved":true}}'
 
 echo "############################ Install cert-manager ########################"
 oc new-project cert-manager-operator || oc project cert-manager-operator
