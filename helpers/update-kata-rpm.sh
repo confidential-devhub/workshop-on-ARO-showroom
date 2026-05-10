@@ -14,12 +14,10 @@ echo "GDRIVE_ID: $GDRIVE_ID"
 FILE_TO_COPY=/tmp/kata-containers.rpm
 
 if [[ -n "$RPM_URL" ]]; then
-    curl -L $RPM_URL  -o $FILE_TO_COPY
-fi
-
-if [[ -n "$GDRIVE_ID" ]]; then
+    curl -L "$RPM_URL"  -o $FILE_TO_COPY
+elif [[ -n "$GDRIVE_ID" ]]; then
     pip install gdown
-    gdown $GDRIVE_ID -O $FILE_TO_COPY
+    gdown "$GDRIVE_ID" -O $FILE_TO_COPY
 fi
 
 NODE_NAME=$(oc get nodes -l workerType=kataWorker -o jsonpath='{.items[0].metadata.name}')
@@ -82,6 +80,6 @@ oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host systemctl re
 echo "###### Install succesful ######"
 
 oc delete pod "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" --ignore-not-found=true
-rm -f $FILE_TO_COPY
+rm -f "$FILE_TO_COPY"
 
 echo "###### Completed! ######"
