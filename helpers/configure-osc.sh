@@ -257,6 +257,15 @@ echo "############################ Wait for kata-remote + job ##################
 # Wait for runtimeclass kata-remote to be ready
 wait_for_runtimeclass kata-remote || exit 1
 
+# ONLY FOR RHDP. THIS IS A TEMPORARY FIX FOR THE KATA RPM. IT IS NOT OFFICIALLY SUPPORTED BY RED HAT.
+if [[ "$OSC_ENV" == "rhdp" ]]; then
+  echo "############################ Update kata rpm ########################"
+
+  curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+  chmod +x update-kata-rpm.sh
+  ./update-kata-rpm.sh
+fi
+
 # curl -L https://raw.githubusercontent.com/snir911/workshop-scripts/refs/heads/main/runtime-req-timetout.yaml -o kubelet-timeout.yaml
 # oc apply -f kubelet-timeout.yaml
 # sleep 5
