@@ -314,6 +314,19 @@ oc create secret generic $POLICY_SECRET_NAME \
 
 Note that this `$POLICY_SECRET_NAME` secret will be later added in the generated xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and referred (together with `$POLICY_SECRET_FILE`) by the CoCo pod xref:configure-trustee.adoc#trustee-initdata[initdata]
 
+== [Trustee 1.1.0 fix]
+
+In Trustee `1.1.0` there is currently a bug in the default attestation policy shipped with the Trusteeconfig.
+
+Run the following script to fix it:
+
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fix-att-policy-trustee-1.1.0.sh -o fix-att-policy.sh
+chmod +x fix-att-policy.sh
+./fix-att-policy.sh
+----
+
 [#trustee-initdata]
 == Create the initdata policy
 
