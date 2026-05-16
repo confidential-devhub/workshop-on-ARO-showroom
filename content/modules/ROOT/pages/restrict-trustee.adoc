@@ -47,7 +47,7 @@ If you lost these variables, they can be fetched using the following command:
 POLICY_SECRET_NAME=trustee-image-policy
 POLICY_SECRET_FILE=policy
 
-TRUSTEE_HOST="https://$(oc get route -n trustee-operator-system kbs-service \
+TRUSTEE_HOST="https://$(oc get route -n trustee-operator-system kbs-route \
   -o jsonpath={.spec.host})"
 
 TRUSTEE_CERT=$(oc get secret trustee-tls-cert -n trustee-operator-system -o json | jq -r '.data."tls.crt"' | base64 --decode)
@@ -204,6 +204,13 @@ echo ""
 
 As mentioned above, we are introducing the `pod_name = "pod1"` variable.
 
+[source,texinfo,subs="attributes"]
+----
+algorithm = "sha256"
+version = "0.1.0"
+pod_name = "pod1"
+----
+
 [source,sh,role=execute]
 ----
 cat initdata-pod1.toml | tail -n 23
@@ -212,14 +219,36 @@ echo ""
 
 Second, we enabled logs, and restricted exec to just try to pull `fraud-dataset`, `p2-secret` and the default `kbsres1`.
 
-Now, let's calculate the base64 of this policy and the pcr8:
+[source,texinfo,subs="attributes"]
+----
+# Enable logs
+default ReadStreamRequest := true
+
+# Restrict exec
+default ExecProcessRequest := false
+
+ExecProcessRequest if {
+    input_command = concat(" ", input.process.Args)
+    some allowed_command in policy_data.allowed_commands
+    input_command == allowed_command
+}
+
+# Add allowed commands for exec
+policy_data := {
+  "allowed_commands": [
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
+  ]
+}
+
+'''
+----
+
+Now, let's calculate the pcr8 for this policy:
 
 [source,sh,role=execute]
 ----
-INITDATA_POD1=$(cat initdata-pod1.toml | gzip | base64 -w0)
-echo ""
-echo $INITDATA_POD1
-
 initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
 hash=$(sha256sum initdata-pod1.toml | cut -d' ' -f1)
 PCR8_HASH_P1=$(echo -n "$initial_pcr$hash" | xxd -r -p | sha256sum | cut -d' ' -f1)
@@ -245,13 +274,16 @@ diff initdata-pod1.toml initdata-pod2.toml
 
 We can see the only difference between the two initdata is the pod name variable.
 
-Let's get the base64 and pcr8 of this policy too:
+[source,texinfo,subs="attributes"]
+----
+< pod_name = "pod1"
+---
+> pod_name = "pod2"
+----
+
+Let's get the pcr8 of this policy too:
 [source,sh,role=execute]
 ----
-INITDATA_POD2=$(cat initdata-pod2.toml | gzip | base64 -w0)
-echo ""
-echo $INITDATA_POD2
-
 initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
 hash=$(sha256sum initdata-pod2.toml | cut -d' ' -f1)
 PCR8_HASH_P2=$(echo -n "$initial_pcr$hash" | xxd -r -p | sha256sum | cut -d' ' -f1)
@@ -277,13 +309,16 @@ diff initdata-pod1.toml initdata-pod3.toml
 
 We can see the only difference between the two initdata is the pod name variable.
 
-Let's get the base64 of this policy too (we don't need the pcr8):
+[source,texinfo,subs="attributes"]
+----
+< pod_name = "pod1"
+---
+> pod_name = "pod3"
+----
+
+Let's get the pcr8 of this policy too:
 [source,sh,role=execute]
 ----
-INITDATA_POD3=$(cat initdata-pod3.toml | gzip | base64 -w0)
-echo ""
-echo $INITDATA_POD3
-
 initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
 hash=$(sha256sum initdata-pod3.toml | cut -d' ' -f1)
 PCR8_HASH_P3=$(echo -n "$initial_pcr$hash" | xxd -r -p | sha256sum | cut -d' ' -f1)
@@ -317,37 +352,76 @@ cat > custom-resourcepolicy.rego <<EOF
 package policy
 import future.keywords.if
 default allow = false
+default hardware_failing = false
 
-    init_data_pod1 := "$PCR8_HASH_P1"
-    init_data_pod2 := "$PCR8_HASH_P2"
+basic_checks if {
+    count(input.submods) > 0
+    not executable_failing
+    not configuration_failing
+    not hardware_failing
+}
 
-    path := split(data["resource-path"], "/")
+executable_failing if {
+    some _, submod in input.submods
+    executables := submod["ear.trustworthiness-vector"]["executables"]
+    not in_affirming_range(executables)
+}
 
-    is_p1 {
-      count(path) > 2
-      path[2] == "fraud-dataset"
-    }
+configuration_failing if {
+    some _, submod in input.submods
+    configuration := submod["ear.trustworthiness-vector"]["configuration"]
+    not in_affirming_range(configuration)
+}
 
-    is_p2 {
-      count(path) > 2
-      path[2] == "p2-secret"
-    }
+# Hardware trust claims are enforced by default. For TDX, no additional
+# RVPS values are needed. For SNP, you must provide hardware-specific
+# RVPS values (tcb_bootloader, tcb_microcode, tcb_snp, tcb_tee) from
+# your environment. If these values are not available, comment out
+# the following block.
+hardware_failing if {
+   some _, submod in input.submods
+   hardware := submod["ear.trustworthiness-vector"]["hardware"]
+   not in_affirming_range(hardware)
+}
 
-    allow if {
-      is_p1
-      input["submods"]["cpu0"]["ear.status"] == "affirming"
-      input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["init_data"] == init_data_pod1
-    }
-    allow if {
-      is_p2
-      input["submods"]["cpu0"]["ear.status"] == "affirming"
-      input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["init_data"] == init_data_pod2
-    }
-    allow if {
-      not is_p1
-      not is_p2
-      input["submods"]["cpu0"]["ear.status"] == "affirming"
-    }
+in_affirming_range(val) if {
+    val >= 2
+    val <= 31
+}
+
+init_data_pod1 := "$PCR8_HASH_P1"
+init_data_pod2 := "$PCR8_HASH_P2"
+
+path := data["resource-path"]
+
+is_ps1 if {
+  count(path) > 2
+  path[1] == "fraud-dataset"
+}
+
+is_ps2 if {
+  count(path) > 2
+  path[1] == "p2-secret"
+}
+
+allow if {
+  is_ps1
+  basic_checks
+  input["submods"]["cpu0"]["ear.status"] == "affirming"
+  input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["init_data"] == init_data_pod1
+}
+allow if {
+  is_ps2
+  basic_checks
+  input["submods"]["cpu0"]["ear.status"] == "affirming"
+  input["submods"]["cpu0"]["ear.veraison.annotated-evidence"]["init_data"] == init_data_pod2
+}
+allow if {
+  not is_ps1
+  not is_ps2
+  basic_checks
+  input["submods"]["cpu0"]["ear.status"] == "affirming"
+}
 EOF
 
 echo ""
@@ -433,6 +507,10 @@ We will run 3 pods: `pod1`, `pod2` and a `pod3` that should not be allowed to ac
 
 [source,sh,role=execute]
 ----
+INITDATA_POD1=$(cat initdata-pod1.toml | gzip | base64 -w0)
+echo ""
+echo $INITDATA_POD1
+
 cat > pod1.yaml << EOF
 apiVersion: v1
 kind: Pod
@@ -466,6 +544,10 @@ echo ""
 
 [source,sh,role=execute]
 ----
+INITDATA_POD2=$(cat initdata-pod2.toml | gzip | base64 -w0)
+echo ""
+echo $INITDATA_POD2
+
 cat > pod2.yaml << EOF
 apiVersion: v1
 kind: Pod
@@ -500,6 +582,10 @@ echo ""
 
 [source,sh,role=execute]
 ----
+INITDATA_POD3=$(cat initdata-pod3.toml | gzip | base64 -w0)
+echo ""
+echo $INITDATA_POD3
+
 cat > pod3.yaml << EOF
 apiVersion: v1
 kind: Pod
@@ -552,6 +638,8 @@ watch -n 2 "oc get pod pod1 pod2 pod3 -n default"
 ----
 
 Let's now try if the policies are enforced:
+
+image::p1.png[link=self, window=blank]
 
 * `pod1` **can** access `fraud-dataset/dataset_key`
 +
@@ -616,18 +704,8 @@ resval1
 
 Same logic applies to `pod2`
 
-* `pod2` **can** access `p2-secret/secret`
-+
-[source,sh,role=execute]
-----
-oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
-----
-+
-[source,texinfo,subs="attributes"]
-----
-[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
-Pod 2 secret!
-----
+image::p2.png[link=self, window=blank]
+
 * `pod2` **cannot** access `fraud-dataset/dataset_key`
 +
 [source,sh,role=execute]
@@ -639,6 +717,18 @@ oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/d
 ----
 [azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
+----
+* `pod2` **can** access `p2-secret/secret`
++
+[source,sh,role=execute]
+----
+oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+----
++
+[source,texinfo,subs="attributes"]
+----
+[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
+Pod 2 secret!
 ----
 * `pod2` **can** access `kbsres1/key1`
 +
@@ -654,6 +744,8 @@ resval1
 ----
 
 The interesting part comes with `pod3`
+
+image::p3.png[link=self, window=blank]
 
 * `pod3` **cannot** access `fraud-dataset/dataset_key`
 +

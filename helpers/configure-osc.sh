@@ -34,7 +34,7 @@ fi
 function wait_for_runtimeclass() {
 
     local runtimeclass=$1
-    local timeout=900
+    local timeout=1200
     local interval=60
     local elapsed=0
     local ready=0
