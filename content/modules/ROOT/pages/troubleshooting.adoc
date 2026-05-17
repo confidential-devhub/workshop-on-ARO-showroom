@@ -215,6 +215,25 @@ Check the `policy.rego` section.
 
 If you update the INITDATA, remember to update the xref:configure-trustee.adoc#pcr8[PCR8] in the xref:configure-trustee.adoc#trustee-refval[reference values] and xref:configure-trustee.adoc#trustee-restart[restart the Trustee deployment]! Also if INITDATA is added/updated in xref:configure-osc.adoc#pp-cm[peer-pods-cm], remember to xref:configure-osc.adoc#pp-restart[restart the OSC deployment]!
 
+// RHDP workshop
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+== CoCo pod stuck on deleting
+
+If the pod is stuck after being deleted, it could be because the underlying VM is failing to be deleted.
+A simple way to delete everything is via this script. Note: this deletes all the running VMs!
+
+[source,sh,role="execute",subs=attributes+]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/delete-vms.sh -o delete-vms.sh
+
+chmod +x delete-vms.sh
+
+./delete-vms.sh
+----
+
+endif::[]
+
+
 == Facing an error that is not listed here?
 
 If you have access to the Red Hat workspace on Slack, feel free to post the error on `#forum-sandboxed-containers`! If you don't, contact a Red Hat representative and forward your question to him/her.
