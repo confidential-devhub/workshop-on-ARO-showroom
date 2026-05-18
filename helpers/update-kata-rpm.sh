@@ -79,6 +79,20 @@ oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -q kata-
 oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host systemctl restart crio
 echo "###### Install succesful ######"
 
+echo "###### Rebooting node... ######"
+oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host reboot || true
+
+echo "###### Waiting for node $NODE_NAME to be ready again... ######"
+if ! oc wait --for=condition=Ready "node/$NODE_NAME" --timeout=1200s; then
+    echo -e "ERROR: Timed out waiting for node '$NODE_NAME' to become ready after reboot." >&2
+    exit 1
+fi
+echo "###### Node is ready ######"
+
+echo "Kata containers rpm version installed:"
+oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -q kata-containers
+
+echo "###### Deleting debug pod and cleaning up... ######"
 oc delete pod "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" --ignore-not-found=true
 rm -f "$FILE_TO_COPY"
 
