@@ -2,6 +2,33 @@
 
 Here you can find the solution to most of the common errors.
 
+== Debug with a Cursor Agent Skill
+
+If you use https://cursor.com[Cursor, window=blank], you can install an optional Agent Skill that walks through systematic CoCo checks on your cluster (Trustee and OSC operators, PCR8 consistency, attestation policies, sealed secrets, and failing pods).
+
+The skill and a companion diagnostic script live in the https://github.com/confidential-devhub/workshop-skill[workshop-skill repository, window=blank].
+
+To install it for Cursor:
+
+. Clone the repository and copy the skill into your personal skills directory:
++
+[source,sh]
+----
+git clone https://github.com/confidential-devhub/workshop-skill.git
+cd workshop-skill
+mkdir -p ~/.cursor/skills/coco-aro-diagnostics
+cp coco-aro-diagnostics.md ~/.cursor/skills/coco-aro-diagnostics/SKILL.md
+----
+
+. Optional: install the `coco-diagnostics` helper script (requires `oc` and `jq`, and an active `oc login`):
++
+[source,sh]
+----
+./install.sh
+----
+
+In Cursor, open a chat and ask the agent to help debug your workshop deployment (for example: "Diagnose why my CoCo pod is stuck"). The agent applies the skill when relevant. You can also run `./coco-diagnostics.sh --full` from the cloned repository for a quick command-line health report.
+
 == Follow the order
 
 Order is very important. If you install OSC and insert an empty/incomplete INITDATA in it (for example empty trustee URL), the CoCo pod will not start because it will try to connect to a non-existing service, getting 404 and therefore preventing the pod from creating.
