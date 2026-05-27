@@ -106,3 +106,10 @@ chmod +x run-oai-devel.sh
 == Run the application
 
 Now you can xref:fd-run.adoc[go through the notebook].
+
+== Delete the application
+
+[source,sh,role=execute]
+----
+oc delete notebooks/fraud-detection -n fraud-detection
+----

@@ -29,3 +29,10 @@ echo ""
 echo "Click on the following URL to open the notebook in a new tab:"
 echo "https://${FD_ROUTE}"
 ----
+
+== Delete the notebook
+
+[source,sh,role=execute]
+----
+oc delete pods/fraud-encrypted-datasets -n fraud-detection
+----
