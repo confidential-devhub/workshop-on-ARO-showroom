@@ -788,7 +788,5 @@ resval1
 
 [source,sh,role=execute]
 ----
-oc delete pods/pod1 -n default
-oc delete pods/pod2 -n default
-oc delete pods/pod3 -n default
+oc delete pod pod1 pod2 pod3
 ----
