@@ -266,7 +266,7 @@ default WriteStreamRequest := false
 # Enable logs, to see the output of curl
 default ReadStreamRequest := true
 
-# Forbid exec
+# Disable exec
 default ExecProcessRequest := false
 
 '''
