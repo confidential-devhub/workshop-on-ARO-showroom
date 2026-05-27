@@ -67,28 +67,3 @@ The above figure shows where each user is logged in.
 This is done to mimic a real scenario situation where different persona have different access levels.
 
 endif::[]
-
-ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
-== Enable tmux
-
-Since many steps create and require environment variables, it is higly recommended to run the whole workshop on `tmux`.
-
-If you are running this workshop for the first time, run
-[source,sh,role=execute]
-----
-tmux
-----
-
-To enter the console. If you are entering again, first list all the existing sessions and ensure there is the one you previously opened:
-
-[source,sh,role=execute]
-----
-tmux ls
-----
-
-And then access it:
-[source,sh,role=execute]
-----
-tmux a
-----
-endif::[]
