@@ -1,6 +1,6 @@
 = Restrict resource access in Trustee
 
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert (trustee management)
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert
 
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
@@ -651,7 +651,7 @@ oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/d
 [source,texinfo,subs="attributes"]
 ----
 [azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
-<binary content of the key>
+# binary content of the key
 ----
 * `pod1` **cannot** access `p2-secret/secret`
 +
@@ -667,7 +667,6 @@ rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource faile
 ----
 +
 In the Trustee logs, the policy deny error is visible:
-+
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
 endif::[]

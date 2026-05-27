@@ -1,6 +1,6 @@
 = Attestation: key retrieval via initContainer
 
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert (trustee management)
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer & Operational security expert
 
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
