@@ -16,17 +16,17 @@ In order to achieve that we will again leverage custom xref:configure-trustee.ad
 
 In this example, we will have three example pods:
 
-* `pod1` can only access the secret `fraud-dataset/dataset_key`
+* `pod1` can only access the secret `p1-secret/dataset_key`
 * `pod2` can only access the secret `p2-secret/secret`
-* `pod3` can access any other secret except for `fraud-dataset` and `p2-secret`.
+* `pod3` can access any other secret except for `p1-secret` and `p2-secret`.
 
-All three pods will have the same restrictions: logs enabled, exec restricted to only `curl fraud-dataset/dataset_key`, `curl p2-secret/secret` and `curl kbsres1/key1`.
+All three pods will have the same restrictions: logs enabled, exec restricted to only `curl p1-secret/dataset_key`, `curl p2-secret/secret` and `curl kbsres1/key1`.
 
-After Trustee is configured, we will see that if we try to access `fraud-dataset` with `pod2` or `pod3`, the attestation check will be succesful but the xref:configure-trustee.adoc#trustee-rap[resource access policy] will deny its access.
+After Trustee is configured, we will see that if we try to access `p1-secret` with `pod2` or `pod3`, the attestation check will be succesful but the xref:configure-trustee.adoc#trustee-rap[resource access policy] will deny its access.
 
 image::resource_access.png[link=self, window=blank]
 
-In the above image we see an example of resource access restriction. All three pods want to try and fetch the decryption key stored in Trustee (`fraud-dataset/dataset_key`), but only `pod1` manages to do so.
+In the above image we see an example of resource access restriction. All three pods want to try and fetch the decryption key stored in Trustee (`p1-secret/dataset_key`), but only `pod1` manages to do so.
 
 Note that for this example, the actual workload is not really important, therefore to keep things as simple as possible, we will use the xref:simple_pod.adoc[CoCo pod with default settings] deployment example for all three pods, and fetch the secrets manually via exec.
 
@@ -55,11 +55,15 @@ TRUSTEE_CERT=$(oc get secret trustee-tls-cert -n trustee-operator-system -o json
 
 == Create the pod secrets
 
-In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key for `pod1` and upload it into the Trustee (`fraud-dataset/dataset_key`).
+In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key for `pod1` and upload it into the Trustee (`p1-secret/dataset_key`).
 
-Let's create these dummy secret for `pod2`:
+Let's create these dummy secret for `pod1` and `pod2`:
 [source,sh,role=execute]
 ----
+oc create secret generic p1-secret \
+  --from-literal secret="Pod 1 secret!" \
+  -n trustee-operator-system
+
 oc create secret generic p2-secret \
   --from-literal secret="Pod 2 secret!" \
   -n trustee-operator-system
@@ -72,6 +76,7 @@ oc patch kbsconfig trusteeconfig-kbs-config \
   -n trustee-operator-system \
   --type=json \
   -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"p1-secret\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"p2-secret\"},
   ]"
 
@@ -82,7 +87,7 @@ oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
   | jq '.spec.kbsSecretResources'
 ----
 
-You should see `fraud-dataset` and `p2-secret`.
+You should see `p1-secret` and `p2-secret`.
 
 == Create the custom initdata policies
 
@@ -183,7 +188,7 @@ ExecProcessRequest if {
 # Add allowed commands for exec
 policy_data := {
   "allowed_commands": [
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key",
         "curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret",
         "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
   ]
@@ -217,7 +222,7 @@ cat initdata-pod1.toml | tail -n 23
 echo ""
 ----
 
-Second, we enabled logs, and restricted exec to just try to pull `fraud-dataset`, `p2-secret` and the default `kbsres1`.
+Second, we enabled logs, and restricted exec to just try to pull `p1-secret`, `p2-secret` and the default `kbsres1`.
 
 [source,texinfo,subs="attributes"]
 ----
@@ -236,7 +241,7 @@ ExecProcessRequest if {
 # Add allowed commands for exec
 policy_data := {
   "allowed_commands": [
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key",
         "curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret",
         "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
   ]
@@ -328,7 +333,7 @@ echo "PCR 8 POD3:" $PCR8_HASH_P3
 
 == Update the resource access policy
 
-Now we need to tell Trustee to "return fraud-dataset to this (pod1) initdata, p2-secret to this other (pod2) initdata, and none of them to any other initdata".
+Now we need to tell Trustee to "return p1-secret to this (pod1) initdata, p2-secret to this other (pod2) initdata, and none of them to any other initdata".
 
 We will use a custom xref:configure-trustee.adoc#trustee-rap[resource access policy] to do so. A default resource policy is already created by the xref:configure-trustee.adoc#trusteeconfig[Trusteeconfig], and it simply allows any pod to access any secret. Therefore we need to extend it with a more complex logic.
 
@@ -396,7 +401,7 @@ path := data["resource-path"]
 
 is_ps1 if {
   count(path) > 2
-  path[1] == "fraud-dataset"
+  path[1] == "p1-secret"
 }
 
 is_ps2 if {
@@ -641,16 +646,16 @@ Let's now try if the policies are enforced:
 
 image::p1.png[link=self, window=blank]
 
-* `pod1` **can** access `fraud-dataset/dataset_key`
+* `pod1` **can** access `p1-secret/dataset_key`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
+oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
+[azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key && echo ""
 # binary content of the key
 ----
 * `pod1` **cannot** access `p2-secret/secret`
@@ -705,16 +710,16 @@ Same logic applies to `pod2`
 
 image::p2.png[link=self, window=blank]
 
-* `pod2` **cannot** access `fraud-dataset/dataset_key`
+* `pod2` **cannot** access `p1-secret/dataset_key`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
+oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
+[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
 ----
 * `pod2` **can** access `p2-secret/secret`
@@ -746,16 +751,16 @@ The interesting part comes with `pod3`
 
 image::p3.png[link=self, window=blank]
 
-* `pod3` **cannot** access `fraud-dataset/dataset_key`
+* `pod3` **cannot** access `p1-secret/dataset_key`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
+oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/fraud-dataset/dataset_key && echo ""
+[azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
 ----
 * `pod3` **cannot** access `p2-secret/secret`
