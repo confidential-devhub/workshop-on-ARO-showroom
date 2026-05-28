@@ -36,35 +36,35 @@ fi
 TEMP_PATH_IN_POD="/host$FILE_TO_COPY"
 
 function create_debug_pod() {
-    echo "###### Start debug pod ######"
+    local debug_pod_name=""
+    local timeout=60
+    local elapsed=0
+    local interval=2
+
+    echo "###### Start debug pod ######" >&2
     oc debug node/"$NODE_NAME" -n $DEBUG_POD_NAMESPACE -- sleep infinity &> /dev/null &
 
-    DEBUG_POD_NAME=""
-    TIMEOUT=60 # seconds
-    ELAPSED=0
-    INTERVAL=2
-
-    while [[ -z "$DEBUG_POD_NAME" && $ELAPSED -lt $TIMEOUT ]]; do
-        DEBUG_POD_NAME=$(oc get pods -n $DEBUG_POD_NAMESPACE --field-selector spec.nodeName="$NODE_NAME" --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)
-        [[ -z "$DEBUG_POD_NAME" ]] && sleep $INTERVAL
-        ELAPSED=$((ELAPSED + INTERVAL))
+    while [[ -z "$debug_pod_name" && $elapsed -lt $timeout ]]; do
+        debug_pod_name=$(oc get pods -n $DEBUG_POD_NAMESPACE --field-selector spec.nodeName="$NODE_NAME" --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)
+        [[ -z "$debug_pod_name" ]] && sleep $interval
+        elapsed=$((elapsed + interval))
     done
 
-    if [[ -z "$DEBUG_POD_NAME" ]]; then
+    if [[ -z "$debug_pod_name" ]]; then
         echo -e "ERROR: Timed out waiting for debug pod to be created on node '$NODE_NAME'." >&2
         exit 1
     fi
 
-    echo "###### Found debug pod: $DEBUG_POD_NAME in namespace $DEBUG_POD_NAMESPACE ######"
+    echo "###### Found debug pod: $debug_pod_name in namespace $DEBUG_POD_NAMESPACE ######" >&2
 
-    echo "###### Waiting for pod to be ready... ######"
-    if ! oc wait --for=condition=Ready "pod/$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" --timeout=120s; then
-        echo -e "ERROR: Timed out waiting for pod '$DEBUG_POD_NAME' to become ready." >&2
-        oc logs "pod/$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" >&2
+    echo "###### Waiting for pod to be ready... ######" >&2
+    if ! oc wait --for=condition=Ready "pod/$debug_pod_name" -n "$DEBUG_POD_NAMESPACE" --timeout=120s; then
+        echo -e "ERROR: Timed out waiting for pod '$debug_pod_name' to become ready." >&2
+        oc logs "pod/$debug_pod_name" -n "$DEBUG_POD_NAMESPACE" >&2
         exit 1
     fi
-    echo "###### Pod is running and ready ######"
-    return $DEBUG_POD_NAME
+    echo "###### Pod is running and ready ######" >&2
+    echo "$debug_pod_name"
 }
 
 DEBUG_POD_NAME=$(create_debug_pod)
