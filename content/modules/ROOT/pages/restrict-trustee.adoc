@@ -61,7 +61,7 @@ Let's create these dummy secret for `pod1` and `pod2`:
 [source,sh,role=execute]
 ----
 oc create secret generic p1-secret \
-  --from-literal secret="Pod 1 secret!" \
+  --from-literal dataset_key="Pod 1 secret!" \
   -n trustee-operator-system
 
 oc create secret generic p2-secret \
@@ -656,7 +656,7 @@ oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/d
 [source,texinfo,subs="attributes"]
 ----
 [azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key && echo ""
-# binary content of the key
+Pod 1 secret!
 ----
 * `pod1` **cannot** access `p2-secret/secret`
 +
