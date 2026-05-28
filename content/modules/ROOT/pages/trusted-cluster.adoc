@@ -6,14 +6,11 @@ This chapter focuses on setting up and configuring the trusted cluster. In this 
 == Log in into the environment
 
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-. If you need to use the web UI (not necessary in this workshop):
-+
+If you need to use the web UI (not necessary in this workshop):
+
 * Navigate to the {aro_console}[Openshift Console, window=blank]
-+
 * Login as opsec:
-+
 ** *Username:* {aro_kube_username}
-+
 ** *Password:* {aro_kube_password}
 endif::[]
 
