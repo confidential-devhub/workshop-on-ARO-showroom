@@ -55,9 +55,7 @@ TRUSTEE_CERT=$(oc get secret trustee-tls-cert -n trustee-operator-system -o json
 
 == Create the pod secrets
 
-In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key for `pod1` and upload it into the Trustee (`p1-secret/dataset_key`).
-
-Let's create these dummy secret for `pod1` and `pod2`:
+Let's create a dummy secret for `pod1` and `pod2`:
 [source,sh,role=execute]
 ----
 oc create secret generic p1-secret \
