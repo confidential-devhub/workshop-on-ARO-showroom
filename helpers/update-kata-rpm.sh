@@ -58,7 +58,7 @@ function create_debug_pod() {
     echo "###### Found debug pod: $debug_pod_name in namespace $DEBUG_POD_NAMESPACE ######" >&2
 
     echo "###### Waiting for pod to be ready... ######" >&2
-    if ! oc wait --for=condition=Ready "pod/$debug_pod_name" -n "$DEBUG_POD_NAMESPACE" --timeout=120s; then
+    if ! oc wait --for=condition=Ready "pod/$debug_pod_name" -n "$DEBUG_POD_NAMESPACE" --timeout=120s >&2; then
         echo -e "ERROR: Timed out waiting for pod '$debug_pod_name' to become ready." >&2
         oc logs "pod/$debug_pod_name" -n "$DEBUG_POD_NAMESPACE" >&2
         exit 1
@@ -68,6 +68,7 @@ function create_debug_pod() {
 }
 
 DEBUG_POD_NAME=$(create_debug_pod)
+echo "######## DEBUG_POD_NAME: $DEBUG_POD_NAME ########"
 
 echo "###### Copying rpm in debug pod ######"
 oc cp "$FILE_TO_COPY" "${DEBUG_POD_NAMESPACE}/${DEBUG_POD_NAME}:${TEMP_PATH_IN_POD}"
@@ -85,9 +86,13 @@ oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host rpm -q kata-
 echo "###### Install succesful ######"
 
 echo "###### Rebooting node... ######"
-oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host reboot || true
+oc exec "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" -- chroot /host reboot
+
+echo "###### Deleting debug pod... ######"
+oc delete pod "$DEBUG_POD_NAME" -n "$DEBUG_POD_NAMESPACE" --ignore-not-found=true
 
 echo "###### Waiting for node $NODE_NAME to be ready again... ######"
+sleep 20
 if ! oc wait --for=condition=Ready "node/$NODE_NAME" --timeout=1200s; then
     echo -e "ERROR: Timed out waiting for node '$NODE_NAME' to become ready after reboot." >&2
     exit 1
