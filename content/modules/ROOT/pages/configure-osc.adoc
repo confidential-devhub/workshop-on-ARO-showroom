@@ -244,6 +244,24 @@ NAME      CONFIG                                              UPDATED   UPDATING
 kata-oc   rendered-kata-oc-894630a1c9cdf3ebef8bd98c72e26608   True      False      False      1              1                   1                     0                      13m
 ----
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+
+=== Update the kata rpm
+
+Currently this OCP ARO cluster version is not supported by OSC. Therefore we will need to manually update the RPM installed in the worker node.
+This is just a temporary fix specific for this workshop. It is not officially supported by Red Hat.
+
+[source,sh,role=execute]
+----
+curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
+
+chmod +x update-kata-rpm.sh
+
+./update-kata-rpm.sh
+----
+
+endif::[]
+
 === Verification
 . Make sure that the `AZURE_IMAGE_ID` in the `ConfigMap` is populated. If it isn't, make sure there is a job running called `osc-podvm-image-creation-<random-letters>`.
 +
