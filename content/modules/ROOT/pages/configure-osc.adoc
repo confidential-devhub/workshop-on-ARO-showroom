@@ -245,22 +245,12 @@ kata-oc   rendered-kata-oc-894630a1c9cdf3ebef8bd98c72e26608   True      False   
 ----
 
 === Verification
-. Make sure that the `AZURE_IMAGE_ID` in the `ConfigMap` is populated. If it isn't, make sure there is a job running called `osc-podvm-image-creation-<random-letters>`.
+. Make sure that the `AZURE_IMAGE_ID` in the `ConfigMap` is populated. If it isn't, wait that the job called `osc-podvm-image-creation-<random-letters>` finishes. In this ARO setup, it should take around 10 minutes.
 +
 [source,sh,role=execute]
 ----
 oc get configmap peer-pods-cm -n openshift-sandboxed-containers-operator -o yaml | grep -m 1 AZURE_IMAGE_ID
 ----
-+
-If `AZURE_IMAGE_ID:` is still empty, check the job:
-+
-[source,sh,role=execute]
-----
-watch oc get jobs -n openshift-sandboxed-containers-operator
-----
-+
-Wait till the job `COMPLETIONS` doesn't change to `1/1`. In this ARO setup, it should take around 20 minutes.
-
 
 . Make sure that the required daemonset is created.
 +
