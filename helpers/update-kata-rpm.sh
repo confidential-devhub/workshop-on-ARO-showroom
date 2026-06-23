@@ -16,7 +16,10 @@ FILE_TO_COPY=/tmp/kata-containers.rpm
 if [[ -n "$RPM_URL" ]]; then
     curl -L "$RPM_URL"  -o $FILE_TO_COPY
 elif [[ -n "$GDRIVE_ID" ]]; then
-    pip install gdown
+    if ! command -v gdown &> /dev/null; then
+        echo -e "ERROR: gdown is required to download from Google Drive. Install it with: pip install gdown" >&2
+        exit 1
+    fi
     gdown "$GDRIVE_ID" -O $FILE_TO_COPY
 fi
 
