@@ -263,6 +263,7 @@ if [[ "$OSC_ENV" == "rhdp" ]]; then
 
   curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/update-kata-rpm.sh -o update-kata-rpm.sh
   chmod +x update-kata-rpm.sh
+  pip install gdown
   ./update-kata-rpm.sh
 fi
 
