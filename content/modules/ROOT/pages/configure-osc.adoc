@@ -317,6 +317,8 @@ curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-sh
 
 chmod +x update-kata-rpm.sh
 
+pip install gdown
+
 ./update-kata-rpm.sh
 ----
 
