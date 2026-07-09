@@ -21,7 +21,7 @@ Once the CoCo pod starts, this sealed is inspected by the internal CoCo componen
 
 The advantage of this approach is that:
 * the secret is loaded at startup time. No need of a sidecar or any special logic, the CoCo internal components take care of connecting with Trustee and fetching the actual value of the secret.
-* the secret is no different from a traditional openshift secret. While it requires an additional step to be created in the application namespace, this secret is no different from a traditional one, and can be accessed as volume by the pod.
+* the secret is no different from a traditional openshift secret. While it requires an additional step to be created in the application namespace, this secret is no different from a traditional one, and can be accessed as volume by the pod. Trustee also supports loading secrets from Vault, using the External secrets operator, as explained in this https://developers.redhat.com/articles/2025/07/28/integrate-red-hat-build-trustee-external-secrets-operator[blogpost]
 
 Sealed secrets are ideal to load credentials and sensitive data as traditional Secrets into the workload, without the need to add any sophisticated logic.
 
