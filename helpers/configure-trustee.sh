@@ -315,7 +315,7 @@ curl -L https://security.access.redhat.com/data/63405576.txt -o cosign-pub-key.p
 # Verify the image
 export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
 export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
-# ./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
+./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
 
 PODDIR=podvm
 PROOTF=""
