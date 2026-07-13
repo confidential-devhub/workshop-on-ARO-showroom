@@ -213,14 +213,16 @@ You can see all available tags with the following command:
 podman search --list-tags registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image --authfile ./cluster-pull-secret.json
 ----
 
-Once you found the right tag, replace `OSC_VERSION` with the right tag and repeat the reference values creation step.
-
 [NOTE]
 ====
+Why looking the tag into the `osc-dm-verity-image` repo if we have the operator installed locally?
 It could be very easy to think that a quick way to get the right image is to directly ask the OSC operator, as it is stored in the CSV under `RELATED_IMAGE_PODVM_OCI`.
 
 However, this is highly unsafe, especially in production environments! The OSC operator runs in the **untrusted** cluster, therefore queying anything from it is against the CoCo Threath model. The CSV could be easily compromised and point to a malicious image, leading to Trustee downloading and using reference values that successfully attest it, causing a compromised image to access Trustee secrets.
 ====
+
+Once you found the right tag, add `--image-tag 1.11.1` to the veritas command and apply again the reference values configmap.
+
 
 === Sealed secret contains gibberish
 

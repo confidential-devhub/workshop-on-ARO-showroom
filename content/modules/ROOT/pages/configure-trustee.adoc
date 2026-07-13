@@ -495,9 +495,9 @@ Red Hat currently ships an official CoCo podVM image (Confidential VM disk pre-i
 
 A dummy reference value config is created by `Trusteeconfig` as `trusteeconfig-rvps-reference-values` ConfigMap, and given to the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] in the `kbsRvpsRefValuesConfigMapName` field.
 
-Before downloading any reference value from Red Hat, we need to be sure that they are actually coming from there, and the artifacts are signed by RH.
+We developed a tool that is able to automatically pull the RH artifact (podVM image), verify that it's signed by RH, and extract the reference values: it's called https://github.com/confidential-devhub/veritas[veritas].
 
-Let's first get the image we are going to download:
+Let's use it:
 
 [IMPORTANT]
 ====
@@ -505,65 +505,6 @@ Note that if the downloaded reference values do not match with the actual image 
 If you are not using the latest OSC release, or are unsure which version to use, please refer xref:troubleshooting.adoc#trouble-refvals[here].
 ====
 
-[source,sh,role=execute]
-----
-# Prepare required binaries
-sudo dnf install -y skopeo
-curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
-mv cosign-linux-amd64 cosign
-chmod +x cosign
-
-# Download the pull secret from openshift
-oc get -n openshift-config secret/pull-secret -o json \
-| jq -r '.data.".dockerconfigjson"' \
-| base64 -d \
-| jq '.' > cluster-pull-secret.json
-# alternatively if you don't have access to the pull-secret:
-# podman login registry.redhat.io
-
-# Pick the latest podvm image, as we freshly installed the cluster
-OSC_VERSION=latest
-# alternatively, use the operator-version tag.
-# OSC_VERSION=1.11.1
-VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
-
-TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)
-
-IMAGE=${VERITY_IMAGE}@${TAG}
-----
-
-Then, let's check if the image is signed by RH, by firstly getting the official keys, and then using `cosign` to verify:
-
-[source,sh,role=execute]
-----
-# Fetch the rekor public key
-curl -L https://tuf-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com/targets/rekor.pub -o rekor.pub
-
-# Fetch RH cosign public key
-curl -L https://security.access.redhat.com/data/63405576.txt -o cosign-pub-key.pem
-
-# Verify the image
-export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
-export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
-./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
-----
-
-The expected output is:
-
-[source,texinfo,subs="attributes"]
-----
-Verification for registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image@sha256:e633bc27853f811d919e64461d0c917e659f5430458abe2304a4c85b0d871c80 --
-The following checks were performed on each of these signatures:
-  - The cosign claims were validated
-  - Existence of the claims in the transparency log was verified offline
-  - The signatures were verified against the specified public key
-----
-
-Feel free to inspect the `cosign_verify.log` log
-
-Now that we are sure the image is the right one, let's download the measurements from Redhat to then convert them into a reference value configmap.
-
-Pull the measurements from the RH image:
 [#refval-fetch]
 // RHDP workshop
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
@@ -574,14 +515,21 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 sudo mkdir -p /podvm
 sudo chown azure:azure /podvm
 
-# Download the measurements
-podman pull --root /podvm --authfile cluster-pull-secret.json $IMAGE
-
-cid=$(podman create --root /podvm --entrypoint /bin/true $IMAGE)
-echo "CID: ${cid}"
-podman cp --root /podvm $cid:/image/measurements.json /podvm
-podman rm --root /podvm $cid
-JSON_DATA=$(cat /podvm/measurements.json)
+podman run \
+  --root /podvm  \
+  --security-opt label=disable \
+  -v /podvm:/workdir:Z \
+  -w /workdir \
+  -v /home/azure/trustee/cluster-pull-secret.json:/pull-secret.json \
+  -v /home/azure/trustee/initdata.toml:/initdata.toml \
+  -e REGISTRY_AUTH_FILE=/pull-secret.json \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0-rc2 \
+    veritas \
+    --platform azure \
+    --tee snp \
+    --authfile /pull-secret.json \
+    --initdata /initdata.toml \
+    --bot-version 1.1
 ----
 endif::[]
 
@@ -589,83 +537,70 @@ endif::[]
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
+PULL_SECRET=/path/to/your/pull-secret.json
+INITDATA=/path/to/your/initdata.toml
+
 mkdir -p podvm
 
-# Download the measurements
-podman pull --authfile cluster-pull-secret.json $IMAGE
-
-cid=$(podman create --entrypoint /bin/true $IMAGE)
-echo "CID: ${cid}"
-podman cp $cid:/image/measurements.json /podvm
-podman rm $cid
-JSON_DATA=$(cat podvm/measurements.json)
+podman run \
+  --security-opt label=disable \
+  -v podvm:/workdir:Z \
+  -w /workdir \
+  -v $PULL_SECRET \
+  -v $INITDATA \
+  -e REGISTRY_AUTH_FILE=/pull-secret.json \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0-rc2 \
+    veritas \
+    --platform azure \
+    --tee snp \
+    --authfile /pull-secret.json \
+    --initdata /initdata.toml \
+    --bot-version 1.1
 ----
 endif::[]
 
 
-Now, let's format the reference values correctly:
-[source,sh,role=execute]
+The expected output is:
+
+[source,texinfo,subs="attributes"]
 ----
-# Prepare reference-values.json
-REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
-  --arg pcr8_val "$PCR8_HASH" '
-  (
-    (.measurements.sha256 | to_entries)
-    +
-    [{"key": "pcr08", "value": $pcr8_val}]
-  )
-  | map(
-      # Clean the hex value
-      ([ (.value | ltrimstr("0x")) ]) as $val |
-
-      # Extract number for sorting
-      (.key | ltrimstr("pcr") | tonumber) as $idx |
-
-      # Generate both SNP and TDX entries with fixed expiration
-      [
-        {
-          "name": ("snp_" + .key),
-          "expiration": "2027-12-12T00:00:00Z",
-          "value": $val,
-          "sort_idx": $idx
-        },
-        {
-          "name": ("tdx_" + .key),
-          "expiration": "2027-12-12T00:00:00Z",
-          "value": $val,
-          "sort_idx": $idx
-        }
-      ]
-  )
-  | flatten
-  | sort_by(.sort_idx, .name)
-  | map(del(.sort_idx))
-' | sed 's/^/    /')
-
-
-# Build the final ConfigMap
-cat > rvps-configmap.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: trusteeconfig-rvps-reference-values
-  namespace: trustee-operator-system
-data:
-  reference-values.json: |
-$REFERENCE_VALUES_JSON
-EOF
-
-echo ""
-cat rvps-configmap.yaml
-echo ""
+INFO: Processing OSC latest
+INFO: Image: registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image@sha256:57ceb3ca2025b414fb5921acd77307fa5cad853fcadca8299fbd6fbb6e4e85d9
+INFO: Verifying image signature...
+INFO: Signature verified.
+INFO: Written rvps-reference-values.yaml
 ----
 
-Once the reference values have been added, update the ConfigMap.
+// RHDP workshop
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+The reference values configmap is generated in `/podvm/rvps-reference-values.yaml`.
+
+Let's now update the ConfigMap.
 
 [source,sh,role=execute]
 ----
-oc apply -f rvps-configmap.yaml
+# rename configmap to replace the right trusteeconfig-generated one
+sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' /podvm/rvps-reference-values.yaml
+
+oc apply -f /podvm/rvps-reference-values.yaml
 ----
+endif::[]
+
+// Github instructions
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
+The reference values configmap is generated in `podvm/rvps-reference-values.yaml`.
+
+Let's now update the ConfigMap.
+
+[source,sh,role=execute]
+----
+# rename configmap to replace the right trusteeconfig-generated one
+sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' podvm/rvps-reference-values.yaml
+
+oc apply -f podvm/rvps-reference-values.yaml
+----
+endif::[]
+
 
 [#trustee-kbsconfig]
 == The KbsConfig
