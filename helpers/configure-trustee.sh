@@ -284,38 +284,11 @@ echo "PCR 8:" $PCR8_HASH
 ####################################################################
 echo "################################################"
 
-# Prepare required files
-# sudo dnf install -y skopeo
-curl -O -L "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64"
-mv cosign-linux-amd64 cosign
-chmod +x cosign
-
 # Download the pull secret from openshift
 oc get -n openshift-config secret/pull-secret -o json \
 | jq -r '.data.".dockerconfigjson"' \
 | base64 -d \
 | jq '.' > cluster-pull-secret.json
-
-# Pick the latest podvm image, as we freshly installed the cluster
-OSC_VERSION=latest
-# alternatively, use the operator-version tag:
-# OSC_VERSION=1.11.1
-VERITY_IMAGE=registry.redhat.io/openshift-sandboxed-containers/osc-dm-verity-image
-
-TAG=$(skopeo inspect --authfile ./cluster-pull-secret.json docker://${VERITY_IMAGE}:${OSC_VERSION} | jq -r .Digest)
-
-IMAGE=${VERITY_IMAGE}@${TAG}
-
-# Fetch the rekor public key
-curl -L https://tuf-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com/targets/rekor.pub -o rekor.pub
-
-# Fetch RH cosign public key
-curl -L https://security.access.redhat.com/data/63405576.txt -o cosign-pub-key.pem
-
-# Verify the image
-export REGISTRY_AUTH_FILE=./cluster-pull-secret.json
-export SIGSTORE_REKOR_PUBLIC_KEY=rekor.pub
-./cosign verify --key cosign-pub-key.pem --output json  --rekor-url=https://rekor-server-default.apps.rosa.rekor-prod.2jng.p3.openshiftapps.com $IMAGE > cosign_verify.log
 
 PODDIR=podvm
 PROOTF=""
@@ -329,65 +302,26 @@ else
   mkdir -p $PODDIR
 fi
 
-# Download the measurements
-podman pull $PROOTF --authfile cluster-pull-secret.json $IMAGE
+podman run \
+  $PROOTF  \
+  --security-opt label=disable \
+  -v $PODDIR:/workdir:Z \
+  -w /workdir \
+  -v ./cluster-pull-secret.json:/pull-secret.json \
+  -v $INITDATA_PATH:/initdata.toml \
+  -e REGISTRY_AUTH_FILE=/pull-secret.json \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0-rc2 \
+    veritas \
+    --platform azure \
+    --tee snp \
+    --authfile /pull-secret.json \
+    --initdata /initdata.toml \
+    --bot-version 1.1
 
-cid=$(podman create $PROOTF --entrypoint /bin/true $IMAGE)
-echo "CID: ${cid}"
-podman cp $PROOTF $cid:/image/measurements.json $PODDIR
-podman rm $PROOTF $cid
-JSON_DATA=$(cat $PODDIR/measurements.json)
+sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' $PODDIR/rvps-reference-values.yaml
 
-# Prepare reference-values.json
-REFERENCE_VALUES_JSON=$(echo "$JSON_DATA" | jq \
-  --arg pcr8_val "$PCR8_HASH" '
-  (
-    (.measurements.sha256 | to_entries)
-    +
-    [{"key": "pcr08", "value": $pcr8_val}]
-  )
-  | map(
-      # Clean the hex value
-      ([ (.value | ltrimstr("0x")) ]) as $val |
-
-      # Extract number for sorting
-      (.key | ltrimstr("pcr") | tonumber) as $idx |
-
-      # Generate both SNP and TDX entries with fixed expiration
-      [
-        {
-          "name": ("snp_" + .key),
-          "expiration": "2027-12-12T00:00:00Z",
-          "value": $val,
-          "sort_idx": $idx
-        },
-        {
-          "name": ("tdx_" + .key),
-          "expiration": "2027-12-12T00:00:00Z",
-          "value": $val,
-          "sort_idx": $idx
-        }
-      ]
-  )
-  | flatten
-  | sort_by(.sort_idx, .name)
-  | map(del(.sort_idx))
-' | sed 's/^/    /')
-
-# Build the final ConfigMap
-cat > rvps-configmap.yaml <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: trusteeconfig-rvps-reference-values
-  namespace: trustee-operator-system
-data:
-  reference-values.json: |
-$REFERENCE_VALUES_JSON
-EOF
-
-cat rvps-configmap.yaml
-oc apply -f rvps-configmap.yaml
+cat $PODDIR/rvps-reference-values.yaml
+oc apply -f $PODDIR/rvps-reference-values.yaml
 
 oc patch kbsconfig trusteeconfig-kbs-config \
   -n trustee-operator-system \

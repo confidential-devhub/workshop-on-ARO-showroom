@@ -515,6 +515,12 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 sudo mkdir -p /podvm
 sudo chown azure:azure /podvm
 
+# Download the pull secret from openshift
+oc get -n openshift-config secret/pull-secret -o json \
+| jq -r '.data.".dockerconfigjson"' \
+| base64 -d \
+| jq '.' > cluster-pull-secret.json
+
 podman run \
   --root /podvm  \
   --security-opt label=disable \
@@ -535,10 +541,19 @@ endif::[]
 
 // Github instructions
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
+Define where your initdata is:
 [source,sh,role=execute]
 ----
-PULL_SECRET=/path/to/your/pull-secret.json
 INITDATA=/path/to/your/initdata.toml
+----
+
+[source,sh,role=execute]
+----
+# Download the pull secret from openshift
+oc get -n openshift-config secret/pull-secret -o json \
+| jq -r '.data.".dockerconfigjson"' \
+| base64 -d \
+| jq '.' > cluster-pull-secret.json
 
 mkdir -p podvm
 
@@ -546,8 +561,8 @@ podman run \
   --security-opt label=disable \
   -v podvm:/workdir:Z \
   -w /workdir \
-  -v $PULL_SECRET \
-  -v $INITDATA \
+  -v ./cluster-pull-secret.json:/pull-secret.json \
+  -v $INITDATA:/initdata.toml \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
   quay.io/openshift_sandboxed_containers/coco-tools:0.5.0-rc2 \
     veritas \
