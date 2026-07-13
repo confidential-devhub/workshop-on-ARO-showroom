@@ -1,0 +1,491 @@
+= Deploy CoCo with cococtl
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert & Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) and `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
+In the previous examples, we manually added `runtimeClassName: kata-remote`, initdata annotations, and sidecar containers to our pod specs. While this works, it requires knowledge of CoCo internals and is error-prone.
+
+https://github.com/confidential-devhub/cococtl[cococtl] is a command-line tool that automates all of this: it takes an existing pod YAML and produces a CoCo-ready manifest, handling the runtime class, initdata, sidecar injection, and port forwarding configuration for you.
+
+This is expecially useful for the developer persona, as it allows to abstract the CoCo concept completely and removes the burden to have the developer persona understanding this technology.
+
+In this example, we will show how to transform an existing pod manifest into a CoCo deployment using `cococtl apply`.
+
+== Install cococtl
+
+First, let's install `cococtl`: this has to be installed in both opsec and developer persona.
+
+[source,sh,role=execute]
+----
+mkdir -p ~/cococtl
+cd ~/cococtl
+
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi
+curl -LO "https://github.com/confidential-devhub/cococtl/releases/latest/download/cococtl-${OS}-${ARCH}"
+chmod +x cococtl-linux-amd64
+sudo cp cococtl-linux-amd64 /usr/local/bin/cococtl
+cococtl --version
+----
+
+== Initialize cococtl
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
+Before transforming any pod manifest, `cococtl` needs to be initialized with the Trustee and runtime configuration. This tells `cococtl` where Trustee lives, which runtime class to use, and whether to enable sidecar mode.
+
+First, get the Trustee route and CA certificates:
+
+[source,sh,role=execute]
+----
+ROUTE=$(oc get route -n trustee-operator-system kbs-route -o jsonpath='{.spec.host}')
+echo "Trustee route: https://$ROUTE"
+
+
+oc get secret trustee-tls-cert -n trustee-operator-system \
+  -o jsonpath='{.data.tls\.crt}' | base64 -d > cacert.pem
+
+CACERT_PATH=$(realpath cacert.pem)
+----
+
+Now initialize `cococtl`:
+
+[source,sh,role=execute]
+----
+cd ~/cococtl
+
+cococtl init \
+  --enable-sidecar \
+  --runtime-class kata-remote \
+  --trustee-namespace trustee-operator-system \
+  --trustee-url https://$ROUTE
+
+# add the cacert into the cococtl config
+sed -i -E "s@trustee_ca_cert = (''|\"\")@trustee_ca_cert = \"$CACERT_PATH\"@" ~/.kube/coco-config.toml
+----
+
+Let's break down the flags:
+
+* `--enable-sidecar`: enables the sidecar injection mode, which adds a proxy container that handles attestation and secret retrieval on behalf of the main application
+* `--runtime-class kata-remote`: specifies the CoCo runtime class (same as manually setting `runtimeClassName` in the pod spec)
+* `--trustee-namespace trustee-operator-system`: the namespace where Trustee is deployed
+* `--trustee-url`: the URL of the Trustee endpoint
+
+Expected output:
+
+[source,texinfo,subs="attributes"]
+----
+[azure@bastion-gbnlf cococtl]$ cococtl init \
+  --enable-sidecar \
+  --runtime-class kata-remote \
+  --trustee-namespace trustee-operator-system \
+  --trustee-url https://$ROUTE
+
+Setting up sidecar certificates...
+  - Generating Client CA...
+  - Generating client certificate...
+  - Skipping Client CA upload (--upload-client-ca flag not set)
+  - Saving certificates to /home/azure/.kube/coco-sidecar...
+
+Sidecar certificates configured successfully!
+  - Client CA saved to: /home/azure/.kube/coco-sidecar/ca-cert.pem (for signing server certs)
+  - Client certificate saved to: /home/azure/.kube/coco-sidecar/client-cert.pem
+  - Client key saved to: /home/azure/.kube/coco-sidecar/client-key.pem
+  - Client PKCS#12 bundle saved to: /home/azure/.kube/coco-sidecar/client.p12 (coco mTLS client)
+
+Using RuntimeClass: kata-remote
+
+Configuration saved to: /home/azure/.kube/coco-config.toml
+----
+
+This creates a local configuration (`~/.kube/coco-config.toml`) that `cococtl` will use for all subsequent operations together with the sidecar certificates (`~/.kube/coco-sidecar`).
+
+== Create the application manifest
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
+Let's create a simple HTTP server pod that reads a secret from a Kubernetes Secret. This is a standard pod spec with no CoCo-specific configuration:
+
+[source,sh,role=execute]
+----
+cd ~/cococtl
+
+cat > app.yaml << 'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-http-server
+  namespace: default
+  labels:
+    app: hello-server
+spec:
+  containers:
+  - name: http-echo
+    image: quay.io/confidential-devhub/signed/ubi9:latest
+    command:
+    - "python3"
+    - "-c"
+    - |
+      import socket
+      import os
+
+      secret_val = os.environ.get('MY_SECRET', 'NOT_FOUND')
+      print(f"Server started. Loading the secret value: {secret_val}")
+
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+      s.bind(('0.0.0.0', 8080))
+      s.listen(5)
+      while True:
+          conn, addr = s.accept()
+          request = conn.recv(1024)
+          response = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 7\r\n\r\nhello!\n"
+          conn.sendall(response)
+          conn.close()
+    env:
+    - name: MY_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: my-app-secret
+          key: secret-value
+    ports:
+    - containerPort: 8080
+      name: http
+EOF
+
+echo ""
+cat app.yaml
+echo ""
+----
+
+This pod has a main container (`http-echo`) that reference the `my-app-secret` and runs a simple Python HTTP server on port 8080.
+
+Note that we don't run this pod yet.
+
+== Create the Kubernetes Secret
+
+Before deploying, let's create the secret that the pod references:
+
+[source,sh,role=execute]
+----
+cat > my-app-secret.yaml << 'EOF'
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-app-secret
+  namespace: default
+type: Opaque
+stringData:
+  secret-value: "my-confidential-data"
+EOF
+
+echo ""
+cat my-app-secret.yaml
+echo ""
+----
+
+Note that we don't apply this secret yet.
+
+== What does it mean to "CoCo-fy" a pod?
+
+Our `app.yaml` above is a perfectly normal Kubernetes pod. To run it as a Confidential Container, several things need to change. Let's walk through what `cococtl` will do and **why**.
+
+=== The cluster is untrusted
+
+The fundamental premise of CoCo is that the cluster where the workload runs is **untrusted**. A cluster administrator, or anyone with access to the cluster, can read Kubernetes Secrets, inspect pod memory, and intercept network traffic.
+
+This has direct consequences for our pod:
+
+* **The secret cannot stay as a plain Kubernetes Secret.** Right now, `my-app-secret` is a standard Openshift Secret sitting in the untrusted cluster. Any cluster admin can read it with `oc get secret my-app-secret -o jsonpath='{.data.secret-value}'`. In CoCo, this secret must be replaced with a xref:sealed_pod.adoc#sealed-secrets[sealed secret]: a "pointer" that references the actual value stored in Trustee (the trusted cluster). At pod startup, the CoCo internal components perform attestation with Trustee and transparently replace the pointer with the real secret value. The application code does not change — it still reads `MY_SECRET` from the environment — but the secret never touches the untrusted cluster in plaintext.
+
+* **Network traffic must be encrypted.** Our HTTP server listens on port 8080 in plaintext. Anyone on the cluster network can sniff the traffic, and this is a typical networking security issue. The CoCo angle in this is that if we simply load certificates in the container, they must either be hardcoded or they are loaded as secret in the trusted cluster, which means an internal attacker can simply copy them and impersonate the application. `cococtl` solves this by injecting an **mTLS sidecar** that wraps the HTTP server: external clients connect to the sidecar over mutual TLS, and the sidecar forwards traffic to the application over localhost inside the CVM. The TLS certificates used by the sidecar are themselves stored in Trustee and retrieved via attestation, so they are never exposed to the untrusted cluster either.
+
+=== The runtime must change
+
+A normal pod runs directly on the worker node's container runtime. To run inside a Confidential VM (CVM), the pod spec needs `runtimeClassName: kata-remote`. This tells Openshift to schedule the pod into an isolated, hardware-encrypted virtual machine instead of a regular container sandbox. This is what provides the memory encryption and hardware attestation guarantees.
+
+=== Initdata must be injected
+
+The underlying CVM guest components need to know how to connect to Trustee, which image signature policy to enforce, and what operations are allowed (exec, logs, etc.). This configuration is called **initdata** and is injected as a base64-encoded annotation in the pod spec (`io.katacontainers.config.hypervisor.cc_init_data`). Without it, the CoCo internal components inside the CVM would not know where Trustee lives or what policies to enforce.
+
+== Transform the manifest with cococtl
+
+Now let's use `cococtl apply` to transform the standard pod manifest into a CoCo-ready one:
+
+[source,sh,role=execute]
+----
+cococtl apply \
+  -f app.yaml \
+  --skip-apply \
+  --enable-initdata \
+  --sidecar \
+  --sidecar-port-forward 8080 \
+  --init-container \
+  --init-container-img quay.io/confidential-devhub/signed/fedora:44 \
+  --init-container-cmd "curl http://localhost:8006/cdh/resource/default/kbsres1/key1"
+----
+
+Let's break down the flags:
+
+* `-f app.yaml`: the input manifest to transform
+* `--skip-apply`: only generate the transformed manifest, don't apply it to the cluster yet (useful for review)
+* `--enable-initdata`: inject the default initdata annotation into the pod spec. This default initdata enables logs, and disables exec.
+* `--sidecar`: inject a sidecar container that handles attestation and proxies requests to Trustee
+* `--sidecar-port-forward`: configure the sidecar to forward port 8080 from the main container, making it accessible from outside the CoCo VM
+* `--init-container`: add an initcontainer that just performs attestation
+* `--init-container-img`: the image to use in the initcontainer. In this example we change it since we have a tight signature image policy.
+* `--init-container-cmd`: the secret the initcontainer has to fetch. In this example, we use a default secret shipped with Trustee operator.
+
+The output is a new manifest `app-coco.yaml` with all the CoCo-specific modifications applied. This comes also with the necessary supporting resources (sealed secret, certificates secret, service and so on).
+
+Expected output:
+
+[source,texinfo,subs="attributes"]
+----
+[azure@bastion-gbnlf cococtl]$ cococtl apply \
+  -f app.yaml \
+  --skip-apply \
+  --enable-initdata \
+  --sidecar \
+  --sidecar-port-forward 8080 \
+  --init-container \
+  --init-container-img quay.io/confidential-devhub/signed/fedora:44 \
+  --init-container-cmd "curl http://localhost:8006/cdh/resource/default/kbsres1/key1"
+Loading manifest: app.yaml
+Transforming Pod 'hello-http-server' for CoCo...
+  - Setting runtimeClassName: kata-remote
+  - Found 1 K8s secret(s) to convert
+  - Resolving 1 secret(s) offline (explicit keys in manifest)
+  - Generated 1 sealed secret(s)
+  - Generating sealed secret manifests
+  - Sealed secrets saved to: app-sealed-secrets.yaml
+  - Updating manifest to use sealed secrets
+    my-app-secret → my-app-secret-sealed
+
+Trustee KBS Configuration
+═════════════════════════════════════════════════════════
+The following 1 sealed secret(s) must be uploaded to your Trustee KBS:
+
+1. kbs:///default/my-app-secret/secret-value
+   Sealed: sealed.fakejwsheader.eyJ2ZXJzaW9uIjoiMC4xLjAiLCJ0eXBlIjoidmF1bHQiLCJuYW1lIjoia2J
+           zOi8vL2RlZmF1bHQvbXktYXBwLXNlY3JldC9zZWNyZXQtdmFsdWUiLCJwcm92aWRlciI6ImticyIsInB
+           yb3ZpZGVyX3NldHRpbmdzIjp7fSwiYW5ub3RhdGlvbnMiOnt9fQ.fakesignature
+
+Secrets file: app-trustee-secrets.yaml
+
+Upload to KBS:
+  kubectl coco kbs populate -f app-trustee-secrets.yaml
+
+  - Found 1 imagePullSecret(s)
+  - Adding initContainer 'get-attn-status' (image: quay.io/confidential-devhub/signed/fedora:44)
+  - Setting up sidecar server certificate
+  - Generating server certificate for hello-http-server with SANs:
+    IPs: [10.0.0.10 10.0.0.7 10.0.0.9 10.0.2.4 10.0.2.6 10.0.2.5]
+    DNS: [hello-http-server.default.svc.cluster.local]
+  - Sidecar certificate saved to: app-sidecar-certs.yaml (Trustee upload skipped)
+  - KBS resource paths: kbs:///default/sidecar-tls-hello-http-server/server-cert and kbs:///default/sidecar-tls-hello-http-server/server-key
+  - Injecting secure access sidecar container
+  - Generating initdata annotation
+  - Adding custom annotations from config
+Backup saved to: /home/azure/cococtl/app-coco.yaml
+Generating Service manifest for sidecar...
+Sidecar Service manifest saved to: /home/azure/cococtl/app-sidecar-service.yaml
+Skipping kubectl apply (use --skip-apply=false to apply)
+----
+
+== Run the CoCo workload
+
+Let's see what `cococtl` added:
+
+[source,texinfo,subs="attributes"]
+----
+[azure@bastion-gbnlf ~]$ ls
+app.yaml
+my-app-secret.yaml
+app-coco.yaml
+app-sidecar-certs.yaml
+app-sealed-secrets.yaml
+app-sidecar-service.yaml
+app-trustee-secrets.yaml
+----
+
+* `app.yaml` is the original yaml manifest
+* `my-app-secret.yaml` is the original plain-text secret
+* `app-coco.yaml` is the coco-fyed version of the original file. It contains:
+  ** `runtimeClassName: kata-remote` in the pod spec
+  ** The initdata annotation under `metadata.annotations`
+  ** An initcontainer `get-attn-status` that fetches a secret before loading the main container
+  ** A sidecar container `coco-secure-access` for handling attestation and port forwarding
+* `app-sidecar-certs.yaml` are the mTLS certificates used by the sidecar, will be stored in Trustee
+* `app-sealed-certs.yaml` is the sealed secret that will be deployed together with the application in the untrusted cluster
+* `app-sidecar-service.yaml` is the sidecar service to expose the mTLS proxy
+* `app-trustee-secrets.yaml` is not relevant for this example
+
+
+=== Add the secrets into Trustee
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
+endif::[]
+
+The generated `app-coco.yaml` manifest will have custom initdata. Let's add it into the PCR8 of the Trustee reference values.
+
+Get the PCR8:
+
+[source,sh,role=execute]
+----
+initdata=$(grep 'io.katacontainers.config.hypervisor.cc_init_data:' app-coco.yaml | sed 's/.*cc_init_data: //')
+echo "$initdata" | base64 -d | gunzip > /tmp/initdata.toml
+initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
+hash=$(sha256sum /tmp/initdata.toml | cut -d' ' -f1)
+PCR8_HASH_COCOCTL=$(echo -n "$initial_pcr$hash" | xxd -r -p | sha256sum | cut -d' ' -f1)
+echo ""
+echo "PCR 8:" $PCR8_HASH_COCOCTL
+rm /tmp/initdata.toml
+----
+
+Add it to the refvals:
+[source,sh,role=execute]
+----
+oc get configmap trusteeconfig-rvps-reference-values \
+  -n trustee-operator-system \
+  -o jsonpath='{.data.reference-values\.json}' \
+| jq --arg p1 "$PCR8_HASH_COCOCTL" '
+  map(
+    if .name == "snp_pcr08" or .name == "tdx_pcr08"
+    then .value += [$p1]
+    else .
+    end
+  )
+' \
+| jq --indent 2 . \
+| oc create configmap trusteeconfig-rvps-reference-values \
+    -n trustee-operator-system \
+    --from-file=reference-values.json=/dev/stdin \
+    --dry-run=client -o yaml \
+| oc apply -f -
+
+echo ""
+
+oc get configmap trusteeconfig-rvps-reference-values \
+  -n trustee-operator-system \
+  -o jsonpath='{.data.reference-values\.json}'
+
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
+----
+
+Let's add the secrets into Trustee. We need to add:
+
+* The actual secret used by the application (`my-app-secret`)
+* The 2 secrets needed by the coco sidecar: `app-sidecar-certs.pem` and also the `client-ca.pem` that was generated with `cococtl init`.
+
+Note that we need to first rename the namespace of `my-app-secret.yaml` and `app-sidecar-certs.yaml` in `trustee-operator-system`, which is the Trustee namespace in Openshift:
+
+[source,sh,role=execute]
+----
+sed -i 's/namespace: default/namespace: trustee-operator-system/' my-app-secret.yaml
+sed -i 's/namespace: default/namespace: trustee-operator-system/' app-sidecar-certs.yaml
+
+oc apply -f my-app-secret.yaml -f app-sidecar-certs.yaml
+
+oc create secret generic sidecar-tls \
+  --from-file=client-ca="$HOME/.kube/coco-sidecar/ca-cert.pem" \
+  -n trustee-operator-system
+
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"my-app-secret\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"sidecar-tls\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"sidecar-tls-hello-http-server\"},
+  ]"
+
+echo ""
+
+echo "Updated Kbsconfig - kbsSecretResources:"
+oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq '.spec.kbsSecretResources'
+----
+
+=== Deploy the CoCo pod
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
+
+Let's now apply the rest of the generated files in the developer namespace, `default`:
+
+[source,sh,role=execute]
+----
+oc apply -f app-coco.yaml -f app-sidecar-service.yaml -f app-sealed-secrets.yaml
+----
+
+Wait for the pod to be created.
+
+[source,sh,role=execute]
+----
+watch oc get pods/hello-http-server -n default
+----
+
+The pod is ready when the `STATUS` is in `Running`.
+
+== Verify the pod is running
+
+Once the pod is running, let's verify the sidecar ran successfully:
+
+[source,sh,role=execute]
+----
+oc logs pods/hello-http-server -c coco-secure-access -n default
+----
+
+All other containers don't really print anything.
+
+And now let's test the HTTP server.
+
+Let's first create a route to access the service:
+
+[source,sh,role=execute]
+----
+oc create route passthrough hello-route --service=hello-http-server-sidecar --port=https -n default
+----
+
+Since the sidecar enforces mTLS, we need to provide the client certificate and key. These are the same certificates that `cococtl` generated during `cococtl init` and stored in Trustee for the sidecar:
+
+[source,sh,role=execute]
+----
+ROUTE_HOST=$(oc get route hello-route -n default -o jsonpath='{.spec.host}')
+
+curl -s \
+  --cert ~/.kube/coco-sidecar/client-cert.pem \
+  --key ~/.kube/coco-sidecar/client-key.pem \
+  -k \
+  https://$ROUTE_HOST/
+----
+
+Expected output:
+
+[source,texinfo,subs="attributes"]
+----
+hello!
+----
+
+NOTE: Notice we are using `https://` instead of `http://`. The passthrough Route forwards encrypted traffic to the sidecar without terminating TLS at the router. The mTLS sidecar terminates TLS and forwards the plaintext request to the application over localhost inside the CVM. Without the correct client certificate, the connection is refused — this is exactly the protection we wanted. We pass `-k` because the sidecar server certificate is issued for internal cluster addresses, not the Route hostname; the client certificate is still required for mTLS.
+
+[#destroy]
+== Clean up
+
+Delete the coco pod:
+
+[source,sh,role=execute]
+----
+oc delete -f app-coco.yaml -f app-sidecar-service.yaml -f app-sealed-secrets.yaml
+----
