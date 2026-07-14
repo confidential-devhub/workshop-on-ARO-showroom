@@ -91,14 +91,11 @@ In this section, we cover the cases where the pod or at least the VM has started
 
 This is usually happening because the CoCo internal components are not able to connect back to the worker node.
 
-Upon inspection of the OSC operator `osc-caa-ds` deployment, you should see it is stuck printing the following logs:
+Upon inspection of the OSC operator `osc-caa-ds` daemonset, you should see it is stuck printing the following logs:
 
 [source,sh,role=execute]
 ----
-POD_NAME=$(oc get pods -n trustee-operator-system -l app=kbs -o jsonpath='{.items[0].metadata.name}')
-
-echo ""
-oc logs -n trustee-operator-system "$POD_NAME"
+oc logs ds/osc-caa-ds -n openshift-sandboxed-containers-operator
 ----
 
 [source,texinfo,subs="attributes"]

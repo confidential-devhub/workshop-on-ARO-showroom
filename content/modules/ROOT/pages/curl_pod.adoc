@@ -36,7 +36,7 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform these steps!
 endif::[]
 
-Let's add the decryption key into the Trustee. Here we are in the **trusted** cluster. As the encrypted dataset was already pre-uploaded and shared with you, we need to dowload the original key.
+Let's add the decryption key into the Trustee. Here we are in the **trusted** cluster. As the encrypted dataset was already pre-uploaded and shared with you, we need to download the original key.
 
 [source,sh,role=execute]
 ----
