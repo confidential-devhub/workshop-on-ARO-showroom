@@ -134,7 +134,8 @@ echo ""
 
 oc get configmap trusteeconfig-rvps-reference-values \
   -n trustee-operator-system \
-  -o jsonpath='{.data.reference_value}'
+  -o jsonpath='{.data.reference_value}' \
+| jq 'map_values(@base64d | fromjson)'
 
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
