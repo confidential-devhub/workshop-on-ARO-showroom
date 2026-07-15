@@ -310,15 +310,12 @@ podman run \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
   -v $INITDATA_PATH:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
-  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0 \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
     veritas \
     --platform azure \
     --tee snp \
     --authfile /pull-secret.json \
     --initdata /initdata.toml
-
-sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' $PODDIR/rvps-reference-values.yaml
-sed -i 's/reference-values\.json/reference-value/g' $PODDIR/rvps-reference-values.yaml
 
 cat $PODDIR/rvps-reference-values.yaml
 oc apply -f $PODDIR/rvps-reference-values.yaml

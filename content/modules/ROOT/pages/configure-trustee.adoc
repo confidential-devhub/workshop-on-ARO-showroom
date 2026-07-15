@@ -513,7 +513,7 @@ podman run \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
   -v /home/azure/trustee/initdata.toml:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
-  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0 \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
     veritas \
     --platform azure \
     --tee snp \
@@ -547,7 +547,7 @@ podman run \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
   -v $INITDATA:/initdata.tom:Zl \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
-  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0 \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
     veritas \
     --platform azure \
     --tee snp \
@@ -576,9 +576,6 @@ Let's now update the ConfigMap.
 
 [source,sh,role=execute]
 ----
-sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' /podvm/rvps-reference-values.yaml
-sed -i 's/reference-values\.json/reference-value/g' /podvm/rvps-reference-values.yaml
-
 oc apply -f /podvm/rvps-reference-values.yaml
 ----
 endif::[]
@@ -591,9 +588,6 @@ Let's now update the ConfigMap.
 
 [source,sh,role=execute]
 ----
-sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' podvm/rvps-reference-values.yaml
-sed -i 's/reference-values\.json/reference-value/g' podvm/rvps-reference-values.yaml
-
 oc apply -f podvm/rvps-reference-values.yaml
 ----
 endif::[]
