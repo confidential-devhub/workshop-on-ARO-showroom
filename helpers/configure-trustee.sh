@@ -307,10 +307,10 @@ podman run \
   --security-opt label=disable \
   -v $PODDIR:/workdir:Z \
   -w /workdir \
-  -v ./cluster-pull-secret.json:/pull-secret.json \
-  -v $INITDATA_PATH:/initdata.toml \
+  -v ./cluster-pull-secret.json:/pull-secret.json:Z \
+  -v $INITDATA_PATH:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
-  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0-rc2 \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.0 \
     veritas \
     --platform azure \
     --tee snp \

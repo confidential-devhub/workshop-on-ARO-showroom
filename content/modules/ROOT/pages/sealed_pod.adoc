@@ -51,6 +51,19 @@ In order to create a sealed secret, we need to create this special secret into t
 Since we want to add a secret referencing the `fraud-dataset/dataset_key` Trustee secret created before, we will need to create the pointer first and then the actual secret.
 
 Create the "pointer":
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+[source,sh,role=execute]
+----
+SECRET_NAME=fraud-dataset
+KEY_NAME=dataset_key
+
+POINTER=$(podman run --root /podvm --security-opt label=disable -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${SECRET_NAME}/${KEY_NAME} --provider kbs | grep -v "Warning")
+
+echo $POINTER
+----
+endif::[]
+
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
 SECRET_NAME=fraud-dataset
@@ -60,6 +73,7 @@ POINTER=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/sec
 
 echo $POINTER
 ----
+endif::[]
 
 We can add this "pointer" to the CoCo container in multiple ways, either as secret/configmap, or as env variable. Since the application runs in the `default` namespace of the **untrusted** cluster, let's add the secret there.
 

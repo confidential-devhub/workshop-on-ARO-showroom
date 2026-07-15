@@ -96,6 +96,23 @@ endif::[]
 
 Let's now create the sealed secret that contains the pointer to the actual secret in trustee. Here we move to the **untrusted** cluster.
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+[source,sh,role=execute]
+----
+AZURE_SAS_SECRET_NAME=fraud-azure-sas
+AZ_SECRET=$(podman run --root /podvm --security-opt label=disable -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
+
+FD_SECRET_NAME=fraud-dataset
+KEY_SECRET=$(podman run --root /podvm --security-opt label=disable -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
+
+# namespace here is fraud-detection!
+oc create namespace fraud-detection 2> /dev/null # skip if already present
+oc create secret generic sealed-azure-sas --from-literal=azure-sas=$AZ_SECRET -n fraud-detection
+oc create secret generic sealed-dataset-key --from-literal=key=$KEY_SECRET -n fraud-detection
+----
+endif::[]
+
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
 AZURE_SAS_SECRET_NAME=fraud-azure-sas
@@ -109,6 +126,7 @@ oc create namespace fraud-detection 2> /dev/null # skip if already present
 oc create secret generic sealed-azure-sas --from-literal=azure-sas=$AZ_SECRET -n fraud-detection
 oc create secret generic sealed-dataset-key --from-literal=key=$KEY_SECRET -n fraud-detection
 ----
+endif::[]
 
 == Deploy the notebook
 
