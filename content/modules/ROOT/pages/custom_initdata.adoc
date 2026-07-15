@@ -70,7 +70,7 @@ ExecProcessRequest if {
 # Add allowed commands for exec
 policy_data := {
   "allowed_commands": [
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status",
         "uname -r"
   ]
 }
@@ -87,7 +87,7 @@ echo "$CUSTOM_INITDATA"
 
 In order to securely allow the user to manually perform some commands, we restrict the `exec` commands to only allow the secret fetching, and nothing else. `allowed_commands` defines the only commands allowed to be exec'ed into the CoCo pod.
 
-What the above means is that the defined commands to `curl kbsres1/key1` and `uname -r` will work, but **any** other command will fail. Even `oc exec -it pods/your_pod -- curl http://127.0.0.1:8006/cdh/resource/default/kbsres1/key2` will not work.
+What the above means is that the defined commands to `curl attestation-status/status` and `uname -r` will work, but **any** other command will fail. Even `oc exec -it pods/your_pod -- curl http://127.0.0.1:8006/cdh/resource/default/attestation-status/status2` will not work.
 
 Let's now translate it into base64 and calculate the PCR8 for the reference values.
 
@@ -118,28 +118,31 @@ In order to do so, all we need to do is to add the new PCR8 to the reference val
 [source,sh,role=execute]
 ----
 oc get configmap trusteeconfig-rvps-reference-values \
-  -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}' \
+  -n trustee-operator-system -o json \
 | jq --arg p1 "$PCR8_HASH_CI" '
-  map(
-    if .name == "snp_pcr08" or .name == "tdx_pcr08"
-    then .value += [$p1]
-    else .
-    end
+  .data.reference_value |= (
+    fromjson
+    | with_entries(
+        if (.key | test("^(snp|tdx)_pcr08$"))
+        then .value |= (
+          @base64d | fromjson
+          | .value += [$p1]
+          | tojson | @base64
+        )
+        else .
+        end
+      )
+    | tojson
   )
+  | del(.metadata.resourceVersion)
 ' \
-| jq --indent 2 . \
-| oc create configmap trusteeconfig-rvps-reference-values \
-    -n trustee-operator-system \
-    --from-file=reference-values.json=/dev/stdin \
-    --dry-run=client -o yaml \
-| oc apply -f -
+| oc replace -f -
 
 echo ""
 
 oc get configmap trusteeconfig-rvps-reference-values \
   -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}'
+  -o jsonpath='{.data.reference_value}'
 ----
 
 The PCR8 should be added to the `snp_pcr08` and `tdx_pcr08` list.
@@ -237,19 +240,19 @@ And notice how an error is returned:
 error: Internal error occurred: error executing command in container: cannot enter container ba883405d94b151886307518daa04171716edcb410e8b4ff556a76ca951fbfa9, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
 ----
 
-Since this is one of the only commands allowed, let's try to `exec` to get the example Trustee secret `kbsres/key1` into the pod.
+Since this is one of the only commands allowed, let's try to `exec` to get the example Trustee secret `attestation-status/status` into the pod.
 
 [source,sh,role=execute]
 ----
-oc exec -it pods/initdata-fraud-detection -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/initdata-fraud-detection -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
 ----
 
 And as expected, the secret is returned successfully.
 
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
-resval1
+[azure@bastion ~]# oc exec -it pods/initdata-fraud-detection -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
+success
 ----
 
 Trying any other command in `exec` will fail.
@@ -270,6 +273,6 @@ error: Internal error occurred: error executing command in container: cannot ent
 
 [source,sh,role=execute]
 ----
-oc delete pods/initdata-fraud-detection -n default
+oc delete pods/initdata-fraud-detection -n default --wait=false
 ----
 

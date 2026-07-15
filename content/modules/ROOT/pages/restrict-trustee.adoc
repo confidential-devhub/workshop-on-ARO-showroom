@@ -20,7 +20,7 @@ In this example, we will have three example pods:
 * `pod2` can only access the secret `p2-secret/secret`
 * `pod3` can access any other secret except for `p1-secret` and `p2-secret`.
 
-All three pods will have the same restrictions: logs enabled, exec restricted to only `curl p1-secret/dataset_key`, `curl p2-secret/secret` and `curl kbsres1/key1`.
+All three pods will have the same restrictions: logs enabled, exec restricted to only `curl p1-secret/dataset_key`, `curl p2-secret/secret` and `curl attestation-status/status`.
 
 After Trustee is configured, we will see that if we try to access `p1-secret` with `pod2` or `pod3`, the attestation check will be succesful but the xref:configure-trustee.adoc#trustee-rap[resource access policy] will deny its access.
 
@@ -188,7 +188,7 @@ policy_data := {
   "allowed_commands": [
         "curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key",
         "curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret",
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status",
   ]
 }
 
@@ -220,7 +220,7 @@ cat initdata-pod1.toml | tail -n 23
 echo ""
 ----
 
-Second, we enabled logs, and restricted exec to just try to pull `p1-secret`, `p2-secret` and the default `kbsres1`.
+Second, we enabled logs, and restricted exec to just try to pull `p1-secret`, `p2-secret` and the default `attestation-status`.
 
 [source,texinfo,subs="attributes"]
 ----
@@ -241,7 +241,7 @@ policy_data := {
   "allowed_commands": [
         "curl -s http://127.0.0.1:8006/cdh/resource/default/p1-secret/dataset_key",
         "curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret",
-        "curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1",
+        "curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status",
   ]
 }
 
@@ -342,7 +342,7 @@ Let's inspect what is currently there:
 ----
 oc get configmap trusteeconfig-resource-policy \
   -n trustee-operator-system \
-  -o jsonpath='{.data.policy\.rego}'
+  -o jsonpath='{.data.resource-policy\.rego}'
 ----
 
 As you can see, it just checks that the pod to attest has a TEE.
@@ -453,7 +453,7 @@ echo ""
 
 oc get configmap trusteeconfig-resource-policy \
   -n trustee-operator-system \
-  -o jsonpath='{.data.policy\.rego}'
+  -o jsonpath='{.data.resource-policy\.rego}'
 ----
 
 == Update the reference values
@@ -463,30 +463,33 @@ As last step, we need to update the xref:configure-trustee.adoc#trustee-refval[r
 [source,sh,role=execute]
 ----
 oc get configmap trusteeconfig-rvps-reference-values \
-  -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}' \
+  -n trustee-operator-system -o json \
 | jq --arg p1 "$PCR8_HASH_P1" \
      --arg p2 "$PCR8_HASH_P2" \
      --arg p3 "$PCR8_HASH_P3" '
-  map(
-    if .name == "snp_pcr08" or .name == "tdx_pcr08"
-    then .value += [$p1, $p2, $p3]
-    else .
-    end
+  .data.reference_value |= (
+    fromjson
+    | with_entries(
+        if (.key | test("^(snp|tdx)_pcr08$"))
+        then .value |= (
+          @base64d | fromjson
+          | .value += [$p1, $p2, $p3]
+          | tojson | @base64
+        )
+        else .
+        end
+      )
+    | tojson
   )
+  | del(.metadata.resourceVersion)
 ' \
-| jq --indent 2 . \
-| oc create configmap trusteeconfig-rvps-reference-values \
-    -n trustee-operator-system \
-    --from-file=reference-values.json=/dev/stdin \
-    --dry-run=client -o yaml \
-| oc apply -f -
+| oc replace -f -
 
 echo ""
 
 oc get configmap trusteeconfig-rvps-reference-values \
   -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}'
+  -o jsonpath='{.data.reference_value}'
 ----
 
 == Apply the changes by restarting the Trustee deployment
@@ -691,16 +694,16 @@ oc logs -n trustee-operator-system "$POD_NAME"
 [2026-02-25T11:02:03Z INFO attestation_service] AzSnpVtpm Verifier/endorsement check passed.
 [2026-02-25T11:02:03Z INFO actix_web::middleware::logger] 10.129.2.9 "POST /kbs/v0/attest HTTP/1.1" 200 5077 "-" "attestation-agent-kbs-client/0.1.0" 0.002771
 ----
-* `pod1` **can** access `kbsres1/key1`
+* `pod1` **can** access `attestation-status/status`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+[azure@bastion ~]# oc exec -it pods/pod1 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
 resval1
 ----
 
@@ -732,16 +735,16 @@ oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/d
 [azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 Pod 2 secret!
 ----
-* `pod2` **can** access `kbsres1/key1`
+* `pod2` **can** access `attestation-status/status`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+[azure@bastion ~]# oc exec -it pods/pod2 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
 resval1
 ----
 
@@ -773,16 +776,16 @@ oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/d
 [azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/p2-secret/secret && echo ""
 rpc status: Status { code: INTERNAL, message: "[CDH] [ERROR]: Get Resource failed", details: [], special_fields: SpecialFields { unknown_fields: UnknownFields { fields: None }, cached_size: CachedSize { size: 0 } } }
 ----
-* `pod3` **can** access `kbsres1/key1`
+* `pod3` **can** access `attestation-status/status`
 +
 [source,sh,role=execute]
 ----
-oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
 ----
 +
 [source,texinfo,subs="attributes"]
 ----
-[azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/kbsres1/key1 && echo ""
+[azure@bastion ~]# oc exec -it pods/pod3 -n default -- curl -s http://127.0.0.1:8006/cdh/resource/default/attestation-status/status && echo ""
 resval1
 ----
 
@@ -791,5 +794,5 @@ resval1
 
 [source,sh,role=execute]
 ----
-oc delete pod pod1 pod2 pod3
+oc delete pod pod1 pod2 pod3 --wait=false
 ----

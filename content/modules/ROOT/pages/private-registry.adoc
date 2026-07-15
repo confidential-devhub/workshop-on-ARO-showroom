@@ -93,28 +93,31 @@ echo ""
 rm ps_initdata.toml
 
 oc get configmap trusteeconfig-rvps-reference-values \
-  -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}' \
+  -n trustee-operator-system -o json \
 | jq --arg p1 "$PCR8_PS_INITDATA" '
-  map(
-    if .name == "snp_pcr08" or .name == "tdx_pcr08"
-    then .value += [$p1]
-    else .
-    end
+  .data.reference_value |= (
+    fromjson
+    | with_entries(
+        if (.key | test("^(snp|tdx)_pcr08$"))
+        then .value |= (
+          @base64d | fromjson
+          | .value += [$p1]
+          | tojson | @base64
+        )
+        else .
+        end
+      )
+    | tojson
   )
+  | del(.metadata.resourceVersion)
 ' \
-| jq --indent 2 . \
-| oc create configmap trusteeconfig-rvps-reference-values \
-    -n trustee-operator-system \
-    --from-file=reference-values.json=/dev/stdin \
-    --dry-run=client -o yaml \
-| oc apply -f -
+| oc replace -f -
 
 echo ""
 
 oc get configmap trusteeconfig-rvps-reference-values \
   -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}'
+  -o jsonpath='{.data.reference_value}'
 ----
 
 == Run the application
@@ -177,7 +180,7 @@ Let's destroy this pod.
 
 [source,sh,role=execute]
 ----
-oc delete pods/private-confidential-devhub-pod -n default
+oc delete pods/private-confidential-devhub-pod -n default --wait=false
 ----
 
 === Run with CoCo
@@ -236,6 +239,6 @@ And as you can see, the pod will run smoothly.
 
 [source,sh,role=execute]
 ----
-oc delete pods/private-confidential-devhub -n default
+oc delete pods/private-confidential-devhub -n default --wait=false
 ----
 

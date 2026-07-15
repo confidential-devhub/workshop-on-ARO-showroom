@@ -34,5 +34,5 @@ echo "https://${FD_ROUTE}"
 
 [source,sh,role=execute]
 ----
-oc delete pods/fraud-encrypted-datasets -n fraud-detection
+oc delete pods/fraud-encrypted-datasets -n fraud-detection --wait=false
 ----

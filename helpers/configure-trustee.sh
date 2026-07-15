@@ -315,10 +315,10 @@ podman run \
     --platform azure \
     --tee snp \
     --authfile /pull-secret.json \
-    --initdata /initdata.toml \
-    --bot-version 1.1
+    --initdata /initdata.toml
 
 sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' $PODDIR/rvps-reference-values.yaml
+sed -i 's/reference-values\.json/reference-value/g' $PODDIR/rvps-reference-values.yaml
 
 cat $PODDIR/rvps-reference-values.yaml
 oc apply -f $PODDIR/rvps-reference-values.yaml
@@ -338,10 +338,6 @@ oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
 # if [[ $TRUSTEE_ENV == "rhdp" ]]; then
-  echo "Fixing attestation policy for Trustee 1.1.0"
-  curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fix-att-policy-trustee-1.1.0.sh -o fix-att-policy.sh
-  chmod +x fix-att-policy.sh
-  ./fix-att-policy.sh
 # fi
 
 echo ""

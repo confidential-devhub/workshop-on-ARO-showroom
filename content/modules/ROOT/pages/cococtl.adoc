@@ -64,10 +64,8 @@ cococtl init \
   --enable-sidecar \
   --runtime-class kata-remote \
   --trustee-namespace trustee-operator-system \
+  --trustee-ca-cert $CACERT_PATH \
   --trustee-url https://$ROUTE
-
-# add the cacert into the cococtl config
-sed -i -E "s@trustee_ca_cert = (''|\"\")@trustee_ca_cert = \"$CACERT_PATH\"@" ~/.kube/coco-config.toml
 ----
 
 Let's break down the flags:
@@ -75,6 +73,7 @@ Let's break down the flags:
 * `--enable-sidecar`: enables the sidecar injection mode, which adds a proxy container that handles attestation and secret retrieval on behalf of the main application
 * `--runtime-class kata-remote`: specifies the CoCo runtime class (same as manually setting `runtimeClassName` in the pod spec)
 * `--trustee-namespace trustee-operator-system`: the namespace where Trustee is deployed
+* `--trustee-ca-cert`: path where the Trustee CA certificate is
 * `--trustee-url`: the URL of the Trustee endpoint
 
 Expected output:
@@ -228,9 +227,7 @@ cococtl apply \
   --enable-initdata \
   --sidecar \
   --sidecar-port-forward 8080 \
-  --init-container \
-  --init-container-img quay.io/confidential-devhub/signed/fedora:44 \
-  --init-container-cmd "curl http://localhost:8006/cdh/resource/default/kbsres1/key1"
+  --init-container
 ----
 
 Let's break down the flags:
@@ -241,8 +238,6 @@ Let's break down the flags:
 * `--sidecar`: inject a sidecar container that handles attestation and proxies requests to Trustee
 * `--sidecar-port-forward`: configure the sidecar to forward port 8080 from the main container, making it accessible from outside the CoCo VM
 * `--init-container`: add an initcontainer that just performs attestation
-* `--init-container-img`: the image to use in the initcontainer. In this example we change it since we have a tight signature image policy.
-* `--init-container-cmd`: the secret the initcontainer has to fetch. In this example, we use a default secret shipped with Trustee operator.
 
 The output is a new manifest `app-coco.yaml` with all the CoCo-specific modifications applied. This comes also with the necessary supporting resources (sealed secret, certificates secret, service and so on).
 
@@ -256,9 +251,7 @@ Expected output:
   --enable-initdata \
   --sidecar \
   --sidecar-port-forward 8080 \
-  --init-container \
-  --init-container-img quay.io/confidential-devhub/signed/fedora:44 \
-  --init-container-cmd "curl http://localhost:8006/cdh/resource/default/kbsres1/key1"
+  --init-container
 Loading manifest: app.yaml
 Transforming Pod 'hello-http-server' for CoCo...
   - Setting runtimeClassName: kata-remote
@@ -356,28 +349,31 @@ Add it to the refvals:
 [source,sh,role=execute]
 ----
 oc get configmap trusteeconfig-rvps-reference-values \
-  -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}' \
+  -n trustee-operator-system -o json \
 | jq --arg p1 "$PCR8_HASH_COCOCTL" '
-  map(
-    if .name == "snp_pcr08" or .name == "tdx_pcr08"
-    then .value += [$p1]
-    else .
-    end
+  .data.reference_value |= (
+    fromjson
+    | with_entries(
+        if (.key | test("^(snp|tdx)_pcr08$"))
+        then .value |= (
+          @base64d | fromjson
+          | .value += [$p1]
+          | tojson | @base64
+        )
+        else .
+        end
+      )
+    | tojson
   )
+  | del(.metadata.resourceVersion)
 ' \
-| jq --indent 2 . \
-| oc create configmap trusteeconfig-rvps-reference-values \
-    -n trustee-operator-system \
-    --from-file=reference-values.json=/dev/stdin \
-    --dry-run=client -o yaml \
-| oc apply -f -
+| oc replace -f -
 
 echo ""
 
 oc get configmap trusteeconfig-rvps-reference-values \
   -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}'
+  -o jsonpath='{.data.reference_value}'
 
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 ----
@@ -487,5 +483,5 @@ Delete the coco pod:
 
 [source,sh,role=execute]
 ----
-oc delete -f app-coco.yaml -f app-sidecar-service.yaml -f app-sealed-secrets.yaml
+oc delete -f app-coco.yaml -f app-sidecar-service.yaml -f app-sealed-secrets.yaml --wait=false
 ----

@@ -195,7 +195,7 @@ Inspecting credit card transactions:
 
 [source,sh,role=execute]
 ----
-oc delete pods/sealed-fraud-detection -n default
+oc delete pods/sealed-fraud-detection -n default --wait=false
 ----
 
 == Inspect Trustee

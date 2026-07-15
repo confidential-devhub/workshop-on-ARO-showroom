@@ -220,7 +220,7 @@ total 4
 
 [source,sh,role=execute]
 ----
-oc delete pods/decryption-fraud-detection -n default
+oc delete pods/decryption-fraud-detection -n default --wait=false
 ----
 
 == Inspect Trustee

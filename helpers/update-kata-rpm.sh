@@ -2,7 +2,7 @@
 set -euo pipefail
 
 RPM_URL=${RPM_URL:-""}
-GDRIVE_ID=${GDRIVE_ID:-"1kYV-CIAMCafxGYDVwc5z7yGrbbMbaxXq"}
+GDRIVE_ID=${GDRIVE_ID:-"1iX66gdZOFm5HRwZFJYfoOfNKGcRYmbQf"}
 LOCAL_RPM=""
 
 if [[ -z "$RPM_URL" && -z "$GDRIVE_ID" ]]; then

@@ -109,30 +109,32 @@ echo "PCR 8 OAI:" $PCR8_HASH_OAI
 
 # rm $INITDATA_PATH
 
-
 oc get configmap trusteeconfig-rvps-reference-values \
-  -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}' \
+  -n trustee-operator-system -o json \
 | jq --arg p1 "$PCR8_HASH_OAI" '
-  map(
-    if .name == "snp_pcr08" or .name == "tdx_pcr08"
-    then .value += [$p1]
-    else .
-    end
+  .data.reference_value |= (
+    fromjson
+    | with_entries(
+        if (.key | test("^(snp|tdx)_pcr08$"))
+        then .value |= (
+          @base64d | fromjson
+          | .value += [$p1]
+          | tojson | @base64
+        )
+        else .
+        end
+      )
+    | tojson
   )
+  | del(.metadata.resourceVersion)
 ' \
-| jq --indent 2 . \
-| oc create configmap trusteeconfig-rvps-reference-values \
-    -n trustee-operator-system \
-    --from-file=reference-values.json=/dev/stdin \
-    --dry-run=client -o yaml \
-| oc apply -f -
+| oc replace -f -
 
 echo ""
 
 oc get configmap trusteeconfig-rvps-reference-values \
   -n trustee-operator-system \
-  -o jsonpath='{.data.reference-values\.json}'
+  -o jsonpath='{.data.reference_value}'
 
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 

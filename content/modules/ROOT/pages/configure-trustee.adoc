@@ -314,19 +314,6 @@ oc create secret generic $POLICY_SECRET_NAME \
 
 Note that this `$POLICY_SECRET_NAME` secret will be later added in the generated xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig] and referred (together with `$POLICY_SECRET_FILE`) by the CoCo pod xref:configure-trustee.adoc#trustee-initdata[initdata]
 
-== [Trustee 1.1.0 fix]
-
-In Trustee `1.1.0` there is currently a bug in the default attestation policy shipped with the Trusteeconfig.
-
-Run the following script to fix it:
-
-[source,sh,role=execute]
-----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/fix-att-policy-trustee-1.1.0.sh -o fix-att-policy.sh
-chmod +x fix-att-policy.sh
-./fix-att-policy.sh
-----
-
 [#trustee-initdata]
 == Create the initdata policy
 
@@ -510,17 +497,14 @@ If you are not using the latest OSC release, or are unsure which version to use,
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
-# On the ARO workshop, we don't have enough space for podman.
-# Use a different folder.
-sudo mkdir -p /podvm
-sudo chown azure:azure /podvm
-
 # Download the pull secret from openshift
 oc get -n openshift-config secret/pull-secret -o json \
 | jq -r '.data.".dockerconfigjson"' \
 | base64 -d \
 | jq '.' > cluster-pull-secret.json
 
+# On the ARO workshop, we don't have enough space for podman.
+# Use /podvm as podman root
 podman run \
   --root /podvm  \
   --security-opt label=disable \
@@ -534,8 +518,7 @@ podman run \
     --platform azure \
     --tee snp \
     --authfile /pull-secret.json \
-    --initdata /initdata.toml \
-    --bot-version 1.1
+    --initdata /initdata.toml
 ----
 endif::[]
 
@@ -569,8 +552,7 @@ podman run \
     --platform azure \
     --tee snp \
     --authfile /pull-secret.json \
-    --initdata /initdata.toml \
-    --bot-version 1.1
+    --initdata /initdata.toml
 ----
 endif::[]
 
@@ -594,8 +576,8 @@ Let's now update the ConfigMap.
 
 [source,sh,role=execute]
 ----
-# rename configmap to replace the right trusteeconfig-generated one
 sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' /podvm/rvps-reference-values.yaml
+sed -i 's/reference-values\.json/reference-value/g' /podvm/rvps-reference-values.yaml
 
 oc apply -f /podvm/rvps-reference-values.yaml
 ----
@@ -609,8 +591,8 @@ Let's now update the ConfigMap.
 
 [source,sh,role=execute]
 ----
-# rename configmap to replace the right trusteeconfig-generated one
 sed -i 's/rvps-reference-values/trusteeconfig-rvps-reference-values/g' podvm/rvps-reference-values.yaml
+sed -i 's/reference-values\.json/reference-value/g' podvm/rvps-reference-values.yaml
 
 oc apply -f podvm/rvps-reference-values.yaml
 ----

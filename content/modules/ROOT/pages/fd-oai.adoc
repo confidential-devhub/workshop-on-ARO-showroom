@@ -111,5 +111,5 @@ Now you can xref:fd-run.adoc[go through the notebook].
 
 [source,sh,role=execute]
 ----
-oc delete notebooks/fraud-detection -n fraud-detection
+oc delete notebooks/fraud-detection -n fraud-detection --wait=false
 ----
