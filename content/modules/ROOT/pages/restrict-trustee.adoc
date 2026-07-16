@@ -353,7 +353,7 @@ Let's implement a better policy:
 ----
 cat > custom-resourcepolicy.rego <<EOF
 package policy
-import future.keywords.if
+import rego.v1
 default allow = false
 default hardware_failing = false
 
@@ -445,7 +445,7 @@ And now let's apply the policy:
 ----
 oc create configmap trusteeconfig-resource-policy \
   -n trustee-operator-system \
-  --from-file=policy.rego=custom-resourcepolicy.rego \
+  --from-file=resource-policy.rego=custom-resourcepolicy.rego \
   --dry-run=client -o yaml \
 | oc apply -f -
 
