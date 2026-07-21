@@ -2,10 +2,9 @@
 
 In this section, we will just install and configure Openshift AI.
 
-In order to do so, we will switch on all three users:
+In order to do so, we will switch between the two persona:
 
 * The cluster admin installs OAI operator and configures it
-* The opsec expert extends the Trustee image policy
 * The developer runs the workbench
 
 == Untrusted admin
@@ -53,29 +52,6 @@ chmod +x install-oai.sh
 ----
 
 Once completed, you will receive a link to access the RHOAI dashboard and also the notebook itself directly.
-
-== Operational security expert
-
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
-
-ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform this step!
-endif::[]
-
-=== Update the signature verification policy
-
-As we are now running other images, we need to extend the image signature verification policy to also support them.
-
-This is automatically handled by this script:
-
-[source,sh,role=execute]
-----
-curl -L https://raw.githubusercontent.com/confidential-devhub/workshop-on-ARO-showroom/refs/heads/main/helpers/oai-opsec.sh -o oai-opsec.sh
-
-chmod +x oai-opsec.sh
-
-./oai-opsec.sh
-----
 
 == Developer
 

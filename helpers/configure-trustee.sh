@@ -157,7 +157,18 @@ oc create secret generic $SIGNATURE_SECRET_NAME \
     --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
     -n trustee-operator-system
 
+curl -L https://security.access.redhat.com/data/63405576.txt -o redhat-cosign-pub-key.pem
+
+RH_SIGNATURE_SECRET_NAME=redhat-signature
+RH_SIGNATURE_SECRET_FILE=pub-key
+
+oc create secret generic $RH_SIGNATURE_SECRET_NAME \
+    --from-file=$RH_SIGNATURE_SECRET_FILE=./redhat-cosign-pub-key.pem \
+    -n trustee-operator-system
+
 SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed
+RH_SECURITY_POLICY_IMAGE=registry.access.redhat.com
+RH_SECURITY_POLICY_IMAGE2=registry.redhat.io
 
 cat > verification-policy.json <<EOF
 {
@@ -173,6 +184,20 @@ cat > verification-policy.json <<EOF
               {
                   "type": "sigstoreSigned",
                   "keyPath": "kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE"
+              }
+          ],
+          "$RH_SECURITY_POLICY_IMAGE":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/$RH_SIGNATURE_SECRET_NAME/$RH_SIGNATURE_SECRET_FILE"
+              }
+          ],
+          "$RH_SECURITY_POLICY_IMAGE2":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/$RH_SIGNATURE_SECRET_NAME/$RH_SIGNATURE_SECRET_FILE"
               }
           ]
       }
@@ -327,6 +352,7 @@ oc patch kbsconfig trusteeconfig-kbs-config \
   --type=json \
   -p="[
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$RH_SIGNATURE_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
   ]"
 

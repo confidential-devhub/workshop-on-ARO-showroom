@@ -217,16 +217,29 @@ oc extract secrets/trustee-image-policy -n trustee-operator-system --to=-
                   "type": "sigstoreSigned",
                   "keyPath": "kbs:///default/conf-devhub-signature/pub-key"
               }
+          ],
+          "registry.access.redhat.com":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/redhat-signature/pub-key"
+              }
+          ],
+          "registry.redhat.io":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/redhat-signature/pub-key"
+              }
           ]
       }
   }
 }
 ----
 
-Which means that inside the CoCo component, when the image of the container is coming from `quay.io/confidential-devhub/signed`, they **must** ensure it is signed, and its signature will be checked against the Trustee key `conf-devhub-signature/pub-key`.
+Which means that inside the CoCo component, when the image of the container is coming from `quay.io/confidential-devhub/signed`, `registry.access.redhat.com` or `registry.redhat.io`, they **must** ensure it is signed, and its signature will be checked against the corresponding Trustee key.
 
-When instead the image is **not** coming from `quay.io/confidential-devhub/signed`, they should not check if it signed but just run it.
-The reason for this is to allow the user of the workshop to also run unsigned container images, as the majority of them are currently like this. In production this is of course not safe.
+When instead the image is **not** coming from `quay.io/confidential-devhub/signed`, `registry.access.redhat.com` or `registry.redhat.io`, they should not run it.
 
 So what happens when an image from `quay.io/confidential-devhub/signed` is not signed?
 

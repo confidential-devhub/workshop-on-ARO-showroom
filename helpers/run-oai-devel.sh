@@ -23,21 +23,6 @@ function wait_for_phase() {
     return 1
 }
 
-INITDATA_PATH=${INITDATA_PATH:-"$HOME/trustee/initdata-oai.toml"}
-# Expand ~ to $HOME (handles ~/path)
-INITDATA_PATH="${INITDATA_PATH/#\~/$HOME}"
-# Resolve to absolute path
-if [[ "$INITDATA_PATH" != /* ]]; then
-  INITDATA_PATH="$(cd "$(dirname "$INITDATA_PATH")" && pwd)/$(basename "$INITDATA_PATH")"
-fi
-
-if [[ ! -f "$INITDATA_PATH" ]]; then
-  echo "ERROR: INITDATA file not found: $INITDATA_PATH" >&2
-  echo "Please configure the INITDATA_PATH environment variable"
-  echo "For example: export INITDATA_PATH=\"/path/to/initdata.toml\""
-  exit 1
-fi
-
 echo "################################################"
 echo "Starting the script. Many of the following commands"
 echo "will periodically check on OCP for operations to"
@@ -49,11 +34,6 @@ echo "well."
 echo "This script will deploy the CoCo fraud-detection"
 echo "notebook as an OAI workbench."
 echo "################################################"
-
-NEW_INIT=$(cat $INITDATA_PATH | gzip | base64 -w0)
-echo ""
-echo $NEW_INIT
-echo ""
 
 ARO_LIST_JSON=$(az aro list -o json)
 CLUSTER_ID=${CLUSTER_ID:-$(echo "$ARO_LIST_JSON" | jq -r '.[0].clusterProfile.domain')}
@@ -69,7 +49,6 @@ apiVersion: kubeflow.org/v1
 kind: Notebook
 metadata:
   annotations:
-    io.katacontainers.config.hypervisor.cc_init_data: "$NEW_INIT"
     notebooks.opendatahub.io/inject-oauth: "true"
     opendatahub.io/image-display-name: "CoCo | Jupyter | Data Science | CPU | Python 3.12"
     notebooks.opendatahub.io/oauth-logout-url: https://rhods-dashboard-redhat-ods-applications.apps.${CLUSTER_ID}.${ARO_REGION}.aroapp.io/projects/${OAI_NS}?notebookLogout=${OAI_NAME}

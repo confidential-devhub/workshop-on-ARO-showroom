@@ -41,7 +41,7 @@ endif::[]
 
 These scripts replicate the instructions below, so keep in mind:
 
-* Container signature policy requires that the `quay.io/confidential-devhub/signed` images are signed by a specific key. Any other image is accepted.
+* Container signature policy requires that the `quay.io/confidential-devhub/signed`, `registry.access.redhat.com` and `registry.redhat.io` images are signed by a specific key. Any other non-signed image is rejected.
 ** Refer xref:configure-trustee.adoc#trustee-cisvp[here] if you want to change it.
 
 * `INITDATA` allows logs, but disallows generic exec.
@@ -241,7 +241,8 @@ The Trustee Operator returns the policy to the CoCo CVM components (which will r
 In this example, we are going to create a policy that:
 
 * Ensures that the images under `quay.io/confidential-devhub/signed` (regardless of the image or tag) are signed, otherwise they will not be run.
-* As a global policy, deny non-signed images from any other registry. This means only the signed images under `quay.io/confidential-devhub/signed` can be run. Such policy can be also more restrictive, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or more relaxed to accept any unsigned image and only check specific registries signature (change `reject` to `insecureAcceptAnything`). In a production environment, it is highly encouraged to have a restrictive policy.
+* Ensures that any image coming from Red Hat `registry.access.redhat.com` or `registry.redhat.io` (regardless of the image or tag) is signed, otherwise it will not be run.
+* As a global policy, deny non-signed images from any other registry. This means only the signed images under `quay.io/confidential-devhub/signed`, `registry.access.redhat.com` or `registry.redhat.io` can be run. Such policy can be also more restrictive, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or more relaxed to accept any unsigned image and only check specific registries signature (change `reject` to `insecureAcceptAnything`). In a production environment, it is highly encouraged to have a restrictive policy.
 
 Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
 
@@ -258,19 +259,35 @@ oc create secret generic $SIGNATURE_SECRET_NAME \
     -n trustee-operator-system
 ----
 
+Let's also download the Red Hat public key used to sign all RH images:
+[source,sh,role=execute]
+----
+# Download the key
+curl -L https://security.access.redhat.com/data/63405576.txt -o redhat-cosign-pub-key.pem
+
+RH_SIGNATURE_SECRET_NAME=redhat-signature
+RH_SIGNATURE_SECRET_FILE=pub-key
+
+oc create secret generic $RH_SIGNATURE_SECRET_NAME \
+    --from-file=$RH_SIGNATURE_SECRET_FILE=./redhat-cosign-pub-key.pem \
+    -n trustee-operator-system
+----
+
 If you want to sign your own container, refer to the https://developers.redhat.com/products/trusted-artifact-signer/overview[Red Hat Trusted Artifact Signer, window=blank] or other tools to sign container images. A simple guide on how to use upstream `cosign` is xref:sign-pod.adoc[here].
 
-Note that `$SIGNATURE_SECRET_NAME` will be later added in the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
+Note that `$SIGNATURE_SECRET_NAME` and `$RH_SIGNATURE_SECRET_NAME` will be later added in the xref:configure-trustee.adoc#trustee-kbsconfig[KbsConfig].
 
 Then, create `verification-policy.json` that enables signature verification.
 
 In this example, the transport method is `docker`. In case you want to change transport type, see https://github.com/containers/image/blob/main/docs/containers-transports.5.md[containers-transports 5, window=blank].
 
-Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`. Here is where we specify that `$SECURITY_POLICY_IMAGE` has to be signed with a key present in `default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE`.
+Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`. Here is where we specify that `$SECURITY_POLICY_IMAGE` has to be signed with a key present in `default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE`, and both `$RH_SECURITY_POLICY_IMAGE` and `$RH_SECURITY_POLICY_IMAGE2` have to be signed with a key present in `default/$RH_SIGNATURE_SECRET_NAME/$RH_SIGNATURE_SECRET_FILE`.
 
 [source,sh,role=execute]
 ----
 SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed
+RH_SECURITY_POLICY_IMAGE=registry.access.redhat.com
+RH_SECURITY_POLICY_IMAGE2=registry.redhat.io
 
 cat > verification-policy.json <<EOF
 {
@@ -286,6 +303,20 @@ cat > verification-policy.json <<EOF
               {
                   "type": "sigstoreSigned",
                   "keyPath": "kbs:///default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE"
+              }
+          ],
+          "$RH_SECURITY_POLICY_IMAGE":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/$RH_SIGNATURE_SECRET_NAME/$RH_SIGNATURE_SECRET_FILE"
+              }
+          ],
+          "$RH_SECURITY_POLICY_IMAGE2":
+          [
+              {
+                  "type": "sigstoreSigned",
+                  "keyPath": "kbs:///default/$RH_SIGNATURE_SECRET_NAME/$RH_SIGNATURE_SECRET_FILE"
               }
           ]
       }
@@ -630,6 +661,7 @@ oc patch kbsconfig trusteeconfig-kbs-config \
   --type=json \
   -p="[
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$RH_SIGNATURE_SECRET_NAME\"},
     {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
   ]"
 
