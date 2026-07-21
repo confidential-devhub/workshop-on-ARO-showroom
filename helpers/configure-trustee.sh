@@ -315,7 +315,9 @@ podman run \
     --platform azure \
     --tee snp \
     --authfile /pull-secret.json \
-    --initdata /initdata.toml
+    --initdata /initdata.toml \
+    --rekor-url rekor-server-sigstore-rekor-prod.apps.rosa.appsrep11ue1.tgem.p3.openshiftapps.com \
+    --rekor-pub-key-url https://rekor-server-sigstore-rekor-prod.apps.rosa.appsrep11ue1.tgem.p3.openshiftapps.com/api/v1/log/publicKey
 
 cat $PODDIR/rvps-reference-values.yaml
 oc apply -f $PODDIR/rvps-reference-values.yaml

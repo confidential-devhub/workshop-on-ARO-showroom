@@ -294,6 +294,8 @@ Sidecar Service manifest saved to: /home/azure/cococtl/app-sidecar-service.yaml
 Skipping kubectl apply (use --skip-apply=false to apply)
 ----
 
+Feel free to inspect `app-coco.yaml` and see how it has been modified to ensure it safely runs as a confidential container!
+
 == Run the CoCo workload
 
 Let's see what `cococtl` added:
