@@ -127,7 +127,7 @@ SIGNING_SECRET_NAME=sealed-signing-key
 SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run --root /podvm --security-opt label=disable \
-  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -v ~/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
   -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
@@ -147,7 +147,7 @@ SIGNING_SECRET_NAME=sealed-signing-key
 SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run \
-  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -v ~/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
   -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
