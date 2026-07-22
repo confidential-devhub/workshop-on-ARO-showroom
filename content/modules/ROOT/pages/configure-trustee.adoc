@@ -281,7 +281,7 @@ Then, create `verification-policy.json` that enables signature verification.
 
 In this example, the transport method is `docker`. In case you want to change transport type, see https://github.com/containers/image/blob/main/docs/containers-transports.5.md[containers-transports 5, window=blank].
 
-Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`. Here is where we specify that `$SECURITY_POLICY_IMAGE` has to be signed with a key present in `default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE`, and both `$RH_SECURITY_POLICY_IMAGE` and `$RH_SECURITY_POLICY_IMAGE2` have to be signed with a key present in `default/$RH_SIGNATURE_SECRET_NAME/$RH_SIGNATURE_SECRET_FILE`.
+Specify the container `registry/image` in `$SECURITY_POLICY_IMAGE`. Here is where we for example specify that `$SECURITY_POLICY_IMAGE` has to be signed with a key present in `default/$SIGNATURE_SECRET_NAME/$SIGNATURE_SECRET_FILE`.
 
 [source,sh,role=execute]
 ----

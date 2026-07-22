@@ -44,6 +44,60 @@ Also in this case, the application is told to fetch a key using the `DECRYPTION_
 
 In case you didn't do it xref:curl_pod.adoc#load-key-trustee[before], download the decryption key and upload it into the Trustee.
 
+[#sealed-signing-key]
+== Generate the sealed-secret signing key
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Operational security expert
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform this step!
+endif::[]
+
+The CoCo components inside the CVM verify the sealed secret signature before unsealing, so we need a P-256 EC signing keypair: the private key will be used to sign sealed secrets, and the public key is uploaded to Trustee for verification.
+
+[source,sh,role=execute]
+----
+cd ~/trustee
+
+pip install cryptography
+
+# Generate P-256 EC keypair in JWK format
+python3 -c "
+from cryptography.hazmat.primitives.asymmetric import ec
+import json, base64
+
+key = ec.generate_private_key(ec.SECP256R1())
+nums = key.private_numbers()
+b64url = lambda n, l: base64.urlsafe_b64encode(n.to_bytes(l, 'big')).rstrip(b'=').decode()
+
+jwk = {'kty':'EC','crv':'P-256','alg':'ES256','use':'sig','kid':'sealed-signing',
+       'd': b64url(nums.private_value, 32),
+       'x': b64url(nums.public_numbers.x, 32),
+       'y': b64url(nums.public_numbers.y, 32)}
+
+with open('sealed-signing-private.json','w') as f: json.dump(jwk, f, indent=2)
+pub = {k:v for k,v in jwk.items() if k != 'd'}
+with open('sealed-signing-public.json','w') as f: json.dump(pub, f, indent=2)
+print('Generated sealed-signing-private.json and sealed-signing-public.json')
+"
+
+SIGNING_SECRET_NAME=sealed-signing-key
+SIGNING_SECRET_FILE=jwk_public
+
+oc create secret generic $SIGNING_SECRET_NAME \
+    --from-file=$SIGNING_SECRET_FILE=./sealed-signing-public.json \
+    -n trustee-operator-system
+
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNING_SECRET_NAME\"}
+  ]"
+
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
+----
+
 == Create the sealed secret
 
 In order to create a sealed secret, we need to create this special secret into the untrusted cluster, in the namespace where the application will run.
@@ -56,8 +110,16 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 ----
 SECRET_NAME=fraud-dataset
 KEY_NAME=dataset_key
+SIGNING_SECRET_NAME=sealed-signing-key
+SIGNING_SECRET_FILE=jwk_public
 
-POINTER=$(podman run --root /podvm --security-opt label=disable -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${SECRET_NAME}/${KEY_NAME} --provider kbs | grep -v "Warning")
+POINTER=$(podman run --root /podvm --security-opt label=disable \
+  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret seal \
+  --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
+  --signing-jwk-path /signing-key.json \
+  vault --resource-uri kbs:///default/${SECRET_NAME}/${KEY_NAME} --provider kbs | grep -v "Warning")
 
 echo $POINTER
 ----
@@ -68,8 +130,16 @@ ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 ----
 SECRET_NAME=fraud-dataset
 KEY_NAME=dataset_key
+SIGNING_SECRET_NAME=sealed-signing-key
+SIGNING_SECRET_FILE=jwk_public
 
-POINTER=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${SECRET_NAME}/${KEY_NAME} --provider kbs | grep -v "Warning")
+POINTER=$(podman run \
+  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret seal \
+  --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
+  --signing-jwk-path /signing-key.json \
+  vault --resource-uri kbs:///default/${SECRET_NAME}/${KEY_NAME} --provider kbs | grep -v "Warning")
 
 echo $POINTER
 ----

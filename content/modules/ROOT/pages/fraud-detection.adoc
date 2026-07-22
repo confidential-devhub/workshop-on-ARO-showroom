@@ -94,16 +94,33 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
 endif::[]
 
+Before creating sealed secrets, ensure the signing key has been xref:sealed_pod.adoc#sealed-signing-key[generated and uploaded to Trustee].
+
 Let's now create the sealed secret that contains the pointer to the actual secret in trustee. Here we move to the **untrusted** cluster.
 
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
+SIGNING_SECRET_NAME=sealed-signing-key
+SIGNING_SECRET_FILE=jwk_public
+
 AZURE_SAS_SECRET_NAME=fraud-azure-sas
-AZ_SECRET=$(podman run --root /podvm --security-opt label=disable -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
+AZ_SECRET=$(podman run --root /podvm --security-opt label=disable \
+  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret seal \
+  --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
+  --signing-jwk-path /signing-key.json \
+  vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
 
 FD_SECRET_NAME=fraud-dataset
-KEY_SECRET=$(podman run --root /podvm --security-opt label=disable -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
+KEY_SECRET=$(podman run --root /podvm --security-opt label=disable \
+  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret seal \
+  --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
+  --signing-jwk-path /signing-key.json \
+  vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
 
 # namespace here is fraud-detection!
 oc create namespace fraud-detection 2> /dev/null # skip if already present
@@ -115,11 +132,26 @@ endif::[]
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
+SIGNING_SECRET_NAME=sealed-signing-key
+SIGNING_SECRET_FILE=jwk_public
+
 AZURE_SAS_SECRET_NAME=fraud-azure-sas
-AZ_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
+AZ_SECRET=$(podman run \
+  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret seal \
+  --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
+  --signing-jwk-path /signing-key.json \
+  vault --resource-uri kbs:///default/${AZURE_SAS_SECRET_NAME}/azure-sas --provider kbs | grep -v "Warning")
 
 FD_SECRET_NAME=fraud-dataset
-KEY_SECRET=$(podman run -it quay.io/confidential-devhub/coco-tools:0.3.0 /tools/secret seal vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
+KEY_SECRET=$(podman run \
+  -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
+  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret seal \
+  --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
+  --signing-jwk-path /signing-key.json \
+  vault --resource-uri kbs:///default/${FD_SECRET_NAME}/dataset_key --provider kbs | grep -v "Warning")
 
 # namespace here is fraud-detection!
 oc create namespace fraud-detection 2> /dev/null # skip if already present
