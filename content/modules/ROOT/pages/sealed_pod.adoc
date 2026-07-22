@@ -53,7 +53,11 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `opsec` (xref:index.adoc#panels[main window, upper tab]) user to perform this step!
 endif::[]
 
-The CoCo components inside the CVM verify the sealed secret signature before unsealing, so we need a P-256 EC signing keypair: the private key will be used to sign sealed secrets, and the public key is uploaded to Trustee for verification.
+As we saw, a sealed secret stored in the untrusted cluster is just a "pointer" to the real secret in Trustee. Because this pointer lives in the untrusted cluster, an attacker with cluster access could replace it with a different pointer — for example, one that redirects the application to fetch a different Trustee secret, or a secret from a malicious KBS endpoint entirely.
+
+To prevent this, sealed secrets are signed using https://datatracker.ietf.org/doc/html/rfc7515[JWS (JSON Web Signature)]. The opsec expert signs each pointer with a private key, and uploads the corresponding public key to Trustee. When the CoCo components inside the CVM receive a sealed secret, they first fetch the public key from Trustee and verify the JWS signature. If the pointer was tampered with, the signature check fails and the secret is not unsealed.
+
+We need a P-256 EC signing keypair (ES256 algorithm, JWK format): the private key stays on the bastion to sign sealed secrets, and the public key is uploaded to Trustee for verification.
 
 [source,sh,role=execute]
 ----
@@ -96,6 +100,8 @@ oc patch kbsconfig trusteeconfig-kbs-config \
   ]"
 
 oc rollout restart deployment/trustee-deployment -n trustee-operator-system
+
+cd -
 ----
 
 == Create the sealed secret
