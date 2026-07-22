@@ -223,7 +223,7 @@ Once you found the right tag, add `--image-tag 1.11.1` to the veritas command an
 
 === Sealed secret contains gibberish
 
-If you mounted a sealed secret, but when reading it the application reads something like `secret=sealed.fakejwsheader...` it simply means that the attestation failed. What you are reading is the "pointer" original value inside the secret, and since attestation failed it was not replaced by the actual secret content. Check the connectivity with Trustee and its logs.
+If you mounted a sealed secret, but when reading it the application reads something like `secret=sealed.eyJhbGci...` it simply means that the attestation failed. What you are reading is the "pointer" original value inside the secret (a signed JWS token), and since attestation failed it was not replaced by the actual secret content. Check the connectivity with Trustee and its logs.
 
 == CoCo pod inaccessible
 

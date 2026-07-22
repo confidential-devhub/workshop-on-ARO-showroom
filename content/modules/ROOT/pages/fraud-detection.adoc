@@ -107,7 +107,7 @@ SIGNING_SECRET_FILE=jwk_public
 AZURE_SAS_SECRET_NAME=fraud-azure-sas
 AZ_SECRET=$(podman run --root /podvm --security-opt label=disable \
   -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
-  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \
@@ -116,7 +116,7 @@ AZ_SECRET=$(podman run --root /podvm --security-opt label=disable \
 FD_SECRET_NAME=fraud-dataset
 KEY_SECRET=$(podman run --root /podvm --security-opt label=disable \
   -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
-  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \
@@ -138,7 +138,7 @@ SIGNING_SECRET_FILE=jwk_public
 AZURE_SAS_SECRET_NAME=fraud-azure-sas
 AZ_SECRET=$(podman run \
   -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
-  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \
@@ -147,7 +147,7 @@ AZ_SECRET=$(podman run \
 FD_SECRET_NAME=fraud-dataset
 KEY_SECRET=$(podman run \
   -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
-  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \

@@ -35,7 +35,7 @@ Also in this case, the application is told to fetch a key using the `DECRYPTION_
 .. As we have a sealed secret, the CoCo internal components take care of performing attestation to fetch the actual secret value
 .. The current sealed secret content is just a "pointer" that stores the path of the actual secret inside Trustee
 .. Once attestation is successful and the actual secret is received, it's mounted in the defined secret mount.
-. The container then starts. It detects `DECRYPTION_KEY_PATH` and expects to find the key in the secret volume mount.
+. The container then starts. It detects `DECRYPTION_KEY_PATH` and expects to find the key in the sealed secret volume mount (under `/sealed/`).
 . Once the key is found, it proceeds downloading the encrypted dataset from Azure
 . The encrypted dataset is then decrypted using the downloaded key
 . The model then consumes the dataset and evaluates the transactions.
@@ -121,7 +121,7 @@ SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run --root /podvm --security-opt label=disable \
   -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
-  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \
@@ -141,7 +141,7 @@ SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run \
   -v ~/trustee/sealed-signing-private.json:/signing-key.json:Z \
-  -it quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \
@@ -178,7 +178,7 @@ spec:
       image: quay.io/confidential-devhub/signed/fraud-detection:latest
       env:
         - name: DECRYPTION_KEY_PATH
-          value: /app/downloaded_keys/dataset_key
+          value: /sealed/decryption/dataset_key
       securityContext:
         privileged: false
         allowPrivilegeEscalation: false
@@ -190,10 +190,10 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       volumeMounts:
-          - name: downloaded-keys-volume
-            mountPath: "/app/downloaded_keys"
+          - name: decryption-key
+            mountPath: "/sealed/decryption"
   volumes:
-    - name: downloaded-keys-volume
+    - name: decryption-key
       secret:
         secretName: fraud-dataset-sealed
 EOF
@@ -203,7 +203,9 @@ cat sealed-fd.yaml
 echo ""
 ----
 
-And the container will find the content of `fraud-dataset/dataset_key` in `/app/downloaded_keys/dataset_key`!
+And the container will find the content of `fraud-dataset/dataset_key` in `/sealed/decryption/dataset_key`!
+
+NOTE: Sealed secret volumes must be mounted under the `/sealed` directory for CDH to recognize and unseal them. See the https://confidentialcontainers.org/docs/features/sealed-secrets/[CoCo sealed secrets documentation] for details.
 
 Alternatively, this pointer can also be also directly plugged in the podspec as environment variable:
 

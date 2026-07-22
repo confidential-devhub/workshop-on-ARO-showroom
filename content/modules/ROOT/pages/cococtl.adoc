@@ -268,9 +268,12 @@ Trustee KBS Configuration
 The following 1 sealed secret(s) must be uploaded to your Trustee KBS:
 
 1. kbs:///default/my-app-secret/secret-value
-   Sealed: sealed.fakejwsheader.eyJ2ZXJzaW9uIjoiMC4xLjAiLCJ0eXBlIjoidmF1bHQiLCJuYW1lIjoia2J
-           zOi8vL2RlZmF1bHQvbXktYXBwLXNlY3JldC9zZWNyZXQtdmFsdWUiLCJwcm92aWRlciI6ImticyIsInB
-           yb3ZpZGVyX3NldHRpbmdzIjp7fSwiYW5ub3RhdGlvbnMiOnt9fQ.fakesignature
+   Sealed: sealed.eyJhbGciOiJFUzI1NiIsImtpZCI6ImticzovLy9kZWZhdWx0L3NlYWxlZC
+           1zaWduaW5nLWtleS9qd2tfcHVibGljIn0.eyJ2ZXJzaW9uIjoiMC4xLjAiLCJ0eXBlI
+           joidmF1bHQiLCJuYW1lIjoia2JzOi8vL2RlZmF1bHQvbXktYXBwLXNlY3JldC9zZWNy
+           ZXQtdmFsdWUiLCJwcm92aWRlciI6ImticyIsInByb3ZpZGVyX3NldHRpbmdzIjp7fSwi
+           YW5ub3RhdGlvbnMiOnt9fQ.kX9R3z7LmN0pQ5vW8yB4tF1hD6jA9sU2eC7xKrG3nO8q
+           I5bJ4wE6dH1cMaP3uQfY0ZgT2iR4kL5nVwS8mDqEj7
 
 Secrets file: app-trustee-secrets.yaml
 
