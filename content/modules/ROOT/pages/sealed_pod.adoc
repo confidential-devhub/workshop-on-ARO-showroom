@@ -1,6 +1,6 @@
 = Attestation: sealed secrets
 
-pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer and Operational security expert
 
 Using initcontainer is a valid method to fetch a key, but it requires an additional sidecar to be loaded and additional unnecessary knowledge for the application developer, just to fetch the key.
 
@@ -61,7 +61,8 @@ We need a P-256 EC signing keypair (ES256 algorithm, JWK format): the private ke
 
 [source,sh,role=execute]
 ----
-cd ~/trustee
+mkdir -p ~/sealed-secrets
+cd ~/sealed-secrets
 
 pip install cryptography
 
@@ -105,6 +106,12 @@ cd -
 ----
 
 == Create the sealed secret
+
+pass:[<span style="color: red;"><b>PERSONA:</b></span>] Application developer
+
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
+NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform these steps!
+endif::[]
 
 In order to create a sealed secret, we need to create this special secret into the untrusted cluster, in the namespace where the application will run.
 
