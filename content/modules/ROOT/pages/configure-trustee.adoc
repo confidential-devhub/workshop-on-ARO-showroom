@@ -232,7 +232,7 @@ Sets whether to enforce the container image signature verification feature. If e
 
 First of all, we have three components to set up:
 
-* One or more secret containing the public key used by the trusted registry repository to sign the container images. Those have to reside in Trustee.
+* One or more secret containing the public key used to verify the container image signatures. Those have to reside in Trustee.
 * A secret containing the container image signature policy used in Trustee. This policy specifies which registry maps with which key added in the previous point. This has to reside in Trustee.
 * The xref:configure-trustee.adoc#trustee-initdata[initdata] config in the CoCo pod will have a section that points to that secret
 
@@ -244,7 +244,7 @@ In this example, we are going to create a policy that:
 * Ensures that any image coming from Red Hat `registry.access.redhat.com` or `registry.redhat.io` (regardless of the image or tag) is signed, otherwise it will not be run.
 * As a global policy, deny non-signed images from any other registry. This means only the signed images under `quay.io/confidential-devhub/signed`, `registry.access.redhat.com` or `registry.redhat.io` can be run. Such policy can be also more restrictive, for example allowing a specific container under the `confidential-devhub` org (by using `quay.io/confidential-devhub/my_container`), or more relaxed to accept any unsigned image and only check specific registries signature (change `reject` to `insecureAcceptAnything`). In a production environment, it is highly encouraged to have a restrictive policy.
 
-Let's create a secret containing the public key used to signed the above container image: because the image was built by the CoCo team, we need to download it first.
+Let's create a secret containing the public key used to verify the signature of the above container image: because the image was built by the CoCo team, we need to download it first.
 
 [source,sh,role=execute]
 ----
