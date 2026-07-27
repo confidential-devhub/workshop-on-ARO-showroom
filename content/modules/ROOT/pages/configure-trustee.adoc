@@ -523,6 +523,8 @@ Note that if the downloaded reference values do not match with the actual image 
 If you are not using the latest OSC release, or are unsure which version to use, please refer xref:troubleshooting.adoc#trouble-refvals[here].
 ====
 
+NOTE: The `coco-tools` container image only supports `linux/amd64`. It will not run natively on ARM-based systems.
+
 [#refval-fetch]
 // RHDP workshop
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
@@ -560,7 +562,7 @@ ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 Define where your initdata is:
 [source,sh,role=execute]
 ----
-INITDATA=/path/to/your/initdata.toml
+INITDATAFILE=/path/to/your/initdata.toml
 ----
 
 [source,sh,role=execute]
@@ -578,7 +580,7 @@ podman run \
   -v podvm:/workdir:Z \
   -w /workdir \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
-  -v $INITDATA:/initdata.tom:Zl \
+  -v $INITDATAFILE:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
   quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
     veritas \
