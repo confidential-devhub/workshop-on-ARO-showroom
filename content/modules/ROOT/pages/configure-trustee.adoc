@@ -87,7 +87,7 @@ ORG_NAME=RedHat
 ----
 
 
-Create the certs via cert manager operator::
+Create the cert-manager resources to generate the TLS certificates::
 
 [source,sh,role=execute]
 ----
