@@ -577,7 +577,7 @@ mkdir -p podvm
 
 podman run \
   --security-opt label=disable \
-  -v podvm:/workdir:Z \
+  -v ./podvm:/workdir:Z \
   -w /workdir \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
   -v $INITDATAFILE:/initdata.toml:Z \
