@@ -34,8 +34,8 @@ Create and apply `cc-fg.yaml` ConfigMap
 
 [source,sh,role=execute]
 ----
-mkdir -p ~/osc
-cd ~/osc
+mkdir -p $BASE_DIR/osc
+cd $BASE_DIR/osc
 
 cat > cc-fg.yaml <<EOF
 apiVersion: v1
@@ -118,7 +118,7 @@ echo "AZURE_NAT_ID: \"$AZURE_NAT_ID\""
 ----
 # Simulate Opsec providing initdata to untrusted admin
 # remember: this is measured, so if the admin changes it, attestation will fail!
-export INITDATA=$(cat ~/trustee/initdata.toml | gzip | base64 -w0)
+export INITDATA=$(cat $BASE_DIR/trustee/initdata.toml | gzip | base64 -w0)
 ----
 +
 [source,sh,role=execute]

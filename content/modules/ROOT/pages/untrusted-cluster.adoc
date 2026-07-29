@@ -6,6 +6,14 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 In order to use the admin user, click on the `[1:admin]` tmux window as illustrated in the xref:index.adoc#panels[picture].
 endif::[]
 
+== Set the working directory
+
+Set the working directory for this workshop session. On the bastion VM this is your home directory; locally it can be any folder you choose.
+
+[source,sh,role=execute]
+----
+export BASE_DIR=$(pwd)
+----
 
 [#credentials]
 == Log in into the environment

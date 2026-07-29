@@ -2,6 +2,15 @@
 
 This chapter focuses on setting up and configuring the trusted cluster. In this setup, we will first act as the **operational security** persona that installs and configure Trustee, and then as the **application developer** that stores its own secrets in Trustee. For each configuration, we will explain the purpose and rationale behind it.
 
+== Set the working directory
+
+Set the working directory for this workshop session. On the bastion VM this is your home directory; locally it can be any folder you choose.
+
+[source,sh,role=execute]
+----
+export BASE_DIR=$(pwd)
+----
+
 [#credentials]
 == Log in into the environment
 

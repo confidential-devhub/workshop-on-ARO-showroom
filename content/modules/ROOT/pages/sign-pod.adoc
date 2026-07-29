@@ -8,8 +8,8 @@ xref:configure-trustee.adoc#trustee-cisvp[Back to signature verification policy]
 +
 [source,sh,role=execute]
 ----
-mkdir -p cosign
-cd cosign
+mkdir -p $BASE_DIR/cosign
+cd $BASE_DIR/cosign
 
 curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.6.2/cosign-linux-amd64"
 

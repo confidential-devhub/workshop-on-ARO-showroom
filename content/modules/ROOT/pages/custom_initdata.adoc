@@ -98,7 +98,7 @@ echo "$CUSTOM_INITDATA" > custom-initdata.toml
 CUSTOM_INITDATA_B64=$(cat custom-initdata.toml | gzip | base64 -w0)
 echo ""
 echo "$CUSTOM_INITDATA_B64"
-echo "$CUSTOM_INITDATA_B64" > ~/custom-initdata-b64.toml
+echo "$CUSTOM_INITDATA_B64" > $BASE_DIR/custom-initdata-b64.toml
 
 initial_pcr=0000000000000000000000000000000000000000000000000000000000000000
 hash=$(sha256sum custom-initdata.toml | cut -d' ' -f1)
@@ -170,7 +170,7 @@ To keep things as simple as possible, we will use the xref:simple_pod.adoc[CoCo 
 [source,sh,role=execute]
 ----
 # simulate Opsec -> developer handover of initdata
-CUSTOM_INITDATA_B64=$(cat ~/custom-initdata-b64.toml)
+CUSTOM_INITDATA_B64=$(cat $BASE_DIR/custom-initdata-b64.toml)
 ----
 
 [source,sh,role=execute]
