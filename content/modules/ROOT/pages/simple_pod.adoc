@@ -184,7 +184,7 @@ endif::[]
 When a confidential container starts, its component internally look at the configured initdata and see that for the image, it has to get the following policy from Trustee:
 [source,sh,role=execute]
 ----
-cat ~/trustee/initdata.toml | grep -B 1 image_
+cat $BASE_DIR/trustee/initdata.toml | grep -B 1 image_
 ----
 
 [source,texinfo,subs="attributes"]

@@ -61,8 +61,8 @@ We need a P-256 EC signing keypair (ES256 algorithm, JWK format): the private ke
 
 [source,sh,role=execute]
 ----
-mkdir -p ~/sealed-secrets
-cd ~/sealed-secrets
+mkdir -p $BASE_DIR/sealed-secrets
+cd $BASE_DIR/sealed-secrets
 
 pip install cryptography
 
@@ -127,7 +127,7 @@ SIGNING_SECRET_NAME=sealed-signing-key
 SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run --root /podvm --security-opt label=disable \
-  -v ~/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
+  -v $BASE_DIR/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
   -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
@@ -147,7 +147,7 @@ SIGNING_SECRET_NAME=sealed-signing-key
 SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run \
-  -v ~/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
+  -v $BASE_DIR/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
   -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \

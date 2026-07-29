@@ -74,8 +74,8 @@ Of course the user can also bring his own existing keys, especially the `https` 
 Preparation:
 [source,sh,role=execute]
 ----
-mkdir -p trustee
-cd trustee
+mkdir -p $BASE_DIR/trustee
+cd $BASE_DIR/trustee
 
 DOMAIN=$(oc get ingress.config/cluster -o jsonpath='{.spec.domain}')
 NS=trustee-operator-system
@@ -544,7 +544,7 @@ podman run \
   -v /podvm:/workdir:Z \
   -w /workdir \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
-  -v /home/azure/trustee/initdata.toml:/initdata.toml:Z \
+  -v $BASE_DIR/trustee/initdata.toml:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
   quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
     veritas \
@@ -562,7 +562,7 @@ ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
 Define where your initdata is:
 [source,sh,role=execute]
 ----
-INITDATAFILE=/path/to/your/initdata.toml
+INITDATAFILE=$BASE_DIR/trustee/initdata.toml
 ----
 
 [source,sh,role=execute]

@@ -20,8 +20,8 @@ First, let's install `cococtl`: this has to be installed in both opsec and devel
 
 [source,sh,role=execute]
 ----
-mkdir -p ~/cococtl
-cd ~/cococtl
+mkdir -p $BASE_DIR/cococtl
+cd $BASE_DIR/cococtl
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -58,7 +58,7 @@ Now initialize `cococtl`:
 
 [source,sh,role=execute]
 ----
-cd ~/cococtl
+cd $BASE_DIR/cococtl
 
 cococtl init \
   --enable-sidecar \
@@ -115,7 +115,7 @@ Let's create a simple HTTP server pod that reads a secret from a Kubernetes Secr
 
 [source,sh,role=execute]
 ----
-cd ~/cococtl
+cd $BASE_DIR/cococtl
 
 cat > app.yaml << 'EOF'
 apiVersion: v1
