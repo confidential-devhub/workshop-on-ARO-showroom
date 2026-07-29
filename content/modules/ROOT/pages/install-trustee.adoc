@@ -28,6 +28,9 @@ Let's start with installing Trustee. In addition to the Trustee operator, we als
 == Install via command line
 
 Trustee:
+
+This command creates a dedicated namespace (trustee-operator-system) and sets up an OLM Subscription to automatically install the Trustee Operator from the Red Hat Operators catalog.
+
 [source,sh,role=execute]
 ----
 oc apply -f-<<EOF

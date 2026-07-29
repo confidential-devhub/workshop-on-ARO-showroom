@@ -57,5 +57,8 @@ echo azure_client_secret $AZ_CS
 echo azure_tenant_id $AZ_TID
 
 az login --service-principal -u $AZ_CID -p $AZ_CS --tenant $AZ_TID
+
+AZURE_SUB_ID=$(oc get secrets/azure-credentials -n kube-system -o json | jq -r .data.azure_subscription_id | base64 -d)
+az account set --subscription "$AZURE_SUB_ID"
 ----
 endif::[]

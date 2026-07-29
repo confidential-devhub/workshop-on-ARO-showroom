@@ -16,10 +16,12 @@ chmod +x install-osc.sh
 ----
 ====
 
-Let's install OSC to enable CoCo.
+Let's install the OpenShift Sandboxed Containers (OSC) operator to enable Confidential Containers (CoCo).
 
 [#cmdline]
 == Install via command line
+
+This command creates a dedicated namespace (openshift-sandboxed-containers-operator) and sets up an OLM Subscription to automatically install the OSC Operator from the Red Hat Operators catalog.
 
 [source,sh,role=execute]
 ----
