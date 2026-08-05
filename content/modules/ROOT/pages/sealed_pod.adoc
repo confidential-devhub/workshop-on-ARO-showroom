@@ -59,32 +59,20 @@ To prevent this, sealed secrets are signed using https://datatracker.ietf.org/do
 
 We need a P-256 EC signing keypair (ES256 algorithm, JWK format): the private key stays on the bastion to sign sealed secrets, and the public key is uploaded to Trustee for verification.
 
+ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 [source,sh,role=execute]
 ----
 mkdir -p $BASE_DIR/sealed-secrets
 cd $BASE_DIR/sealed-secrets
 
-pip install cryptography
+JWS_KID=sealed-signing
 
-# Generate P-256 EC keypair in JWK format
-python3 -c "
-from cryptography.hazmat.primitives.asymmetric import ec
-import json, base64
-
-key = ec.generate_private_key(ec.SECP256R1())
-nums = key.private_numbers()
-b64url = lambda n, l: base64.urlsafe_b64encode(n.to_bytes(l, 'big')).rstrip(b'=').decode()
-
-jwk = {'kty':'EC','crv':'P-256','alg':'ES256','use':'sig','kid':'sealed-signing',
-       'd': b64url(nums.private_value, 32),
-       'x': b64url(nums.public_numbers.x, 32),
-       'y': b64url(nums.public_numbers.y, 32)}
-
-with open('sealed-signing-private.json','w') as f: json.dump(jwk, f, indent=2)
-pub = {k:v for k,v in jwk.items() if k != 'd'}
-with open('sealed-signing-public.json','w') as f: json.dump(pub, f, indent=2)
-print('Generated sealed-signing-private.json and sealed-signing-public.json')
-"
+podman run --root /podvm --security-opt label=disable \
+  -v $BASE_DIR/sealed-secrets:/output:Z \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret keygen \
+  --kid $JWS_KID \
+  --output-dir /output"
 
 SIGNING_SECRET_NAME=sealed-signing-key
 SIGNING_SECRET_FILE=jwk_public
@@ -104,6 +92,43 @@ oc rollout restart deployment/trustee-deployment -n trustee-operator-system
 
 cd -
 ----
+endif::[]
+
+ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
+[source,sh,role=execute]
+----
+mkdir -p $BASE_DIR/sealed-secrets
+cd $BASE_DIR/sealed-secrets
+
+JWS_KID=sealed-signing
+
+podman run \
+  -v $BASE_DIR/sealed-secrets:/output:Z \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  secret keygen \
+  --kid $JWS_KID \
+  --output-dir /output"
+
+SIGNING_SECRET_NAME=sealed-signing-key
+SIGNING_SECRET_FILE=jwk_public
+
+oc create secret generic $SIGNING_SECRET_NAME \
+    --from-file=$SIGNING_SECRET_FILE=./sealed-signing-public.json \
+    -n trustee-operator-system
+
+oc patch kbsconfig trusteeconfig-kbs-config \
+  -n trustee-operator-system \
+  --type=json \
+  -p="[
+    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNING_SECRET_NAME\"}
+  ]"
+
+oc rollout restart deployment/trustee-deployment -n trustee-operator-system
+
+cd -
+----
+endif::[]
+
 
 == Create the sealed secret
 
