@@ -8,7 +8,7 @@ endif::[]
 
 In this example, we will show:
 
-* How easy is to modify an existing pod to make it run in CoCo
+* How easy it is to modify an existing pod to make it run in CoCo
 * How the default initdata restrictions apply, by trying to exec into the pod.
 * How the image signature policy work, by running an unsigned pod.
 
