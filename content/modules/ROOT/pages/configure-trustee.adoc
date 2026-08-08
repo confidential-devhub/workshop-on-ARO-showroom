@@ -204,7 +204,7 @@ oc get configmaps -n trustee-operator-system | grep trusteeconfig
 [#trustee-route]
 == Get the Trustee route
 
-When TrusteeConfig is created in "Restricted" mode, it creates a secure route with `passthrough` TLS termination for Trustee. External ingress traffic does not get decrypted by the router but forwarded directly to Trustee pod.
+When TrusteeConfig is created in "Restricted" mode, it creates a secure route with `passthrough` TLS termination for Trustee. External ingress traffic does not get decrypted by the router but is forwarded directly to Trustee pod.
 
 Create the route and set `TRUSTEE_HOST`, which together with `TRUSTEE_CERT` will be used later when configuring the xref:configure-trustee.adoc#trustee-ip[initdata].
 
@@ -374,7 +374,7 @@ The initdata content configures the following components:
 * Kata Agent, which enforces runtime policies and manages the lifecycle of the containers inside the pod VM.
 
 [#trustee-ip]
-=== Create the a default initdata policy
+=== Create the default initdata policy
 
 In this section, we will create the initdata that will be later set up as global in the xref:configure-osc.adoc#pp-cm[OSC operator configmap]. This policy will be used when the CoCo pod doesn't specify a specific one in its annotations.
 

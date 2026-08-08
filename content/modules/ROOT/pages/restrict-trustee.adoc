@@ -6,7 +6,7 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Remember to use the `devel` (xref:index.adoc#panels[main window, lower tab]) user to perform developer steps, and the `opsec` user to perform the operational security expert steps!
 endif::[]
 
-So far, for semplicity we always allowed all pods to be able to access the same Trustee resources.
+So far, for simplicity we always allowed all pods to be able to access the same Trustee resources.
 
 However, in a production environment, this is never the case. We want to restrict pods to be able to have their own their own secrets.
 
@@ -458,7 +458,7 @@ oc get configmap trusteeconfig-resource-policy \
 
 == Update the reference values
 
-As last step, we need to update the xref:configure-trustee.adoc#trustee-refval[reference values] to also accept the two new pcr8 values:
+As last step, we need to update the xref:configure-trustee.adoc#trustee-refval[reference values] to also accept the three new pcr8 values:
 
 [source,sh,role=execute]
 ----
