@@ -65,3 +65,5 @@ The above figure shows where each user is logged in.
 This is done to mimic a real scenario situation where different persona have different access levels.
 
 endif::[]
+
+// TODO: How about adding a note+link about Trubleshooting section with AI help?

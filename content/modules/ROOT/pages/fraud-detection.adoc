@@ -171,6 +171,11 @@ This notebook specifically uses python sdk to download the encrypted data from A
 
 Before running this notebook, ensure that `ROOT_VOLUME_SIZE` in the xref:configure-osc.adoc#pp-cm[peer-pods configmap] is set at least to `20` GB, as the steps in the guide will install a lot of python packages. If you modify that value, remember as always to to xref:configure-osc.adoc#pp-restart[restart the OSC deployment]!
 
+
+// TODO: Add this to check (run as opsec)
+//[opsec cococtl]$ oc get -n openshift-sandboxed-containers-operator cm peer-pods-cm -o jsonpath='{.data.ROOT_VOLUME_SIZE}'
+
+
 There are two ways to deploy the notebook:
 
 * Via a xref:fd-oai.adoc[Openshift AI (OAI) workbench]: everything is handled by Openshift AI. A `Notebook` object is created, and OAI takes care of deploying it and exposing it for the user. In such way, we integrate CoCo with Openshift AI traditional workbenches, that take care of most of the work.
