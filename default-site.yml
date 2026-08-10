@@ -31,6 +31,11 @@ ui:
         <script src="{{uiRootPath}}/js/vendor/execute-tracker.js"></script>
     - path: css/execute-tracker.css
       contents: |
+        .doc .execute pre.highlight code {
+          white-space: pre-wrap;
+          overflow-wrap: break-word;
+          overflow-x: visible;
+        }
         .doc .execute.is-copied pre.highlight code {
           background-color: #c8e6c9;
           transition: background-color 0.3s ease;
