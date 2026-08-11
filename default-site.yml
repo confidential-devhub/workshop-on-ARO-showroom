@@ -31,16 +31,19 @@ ui:
         <script src="{{uiRootPath}}/js/vendor/execute-tracker.js"></script>
     - path: css/execute-tracker.css
       contents: |
-        .doc .execute pre.highlight code {
+        .doc .execute pre.highlight code,
+        .doc .copypaste pre.highlight code {
           white-space: pre-wrap;
           overflow-wrap: break-word;
           overflow-x: visible;
         }
-        .doc .execute.is-copied pre.highlight code {
+        .doc .execute.is-copied pre.highlight code,
+        .doc .copypaste.is-copied pre.highlight code {
           background-color: #c8e6c9;
           transition: background-color 0.3s ease;
         }
-        .doc .execute.is-copied .copy-button {
+        .doc .execute.is-copied .copy-button,
+        .doc .copypaste.is-copied .copy-button {
           background-image: url(../img/checkmark.svg);
           background-color: #c8e6c9;
           border-color: #2e7d32;
@@ -49,9 +52,9 @@ ui:
       contents: |
         document.addEventListener("DOMContentLoaded", function () {
           document.addEventListener("click", function (e) {
-            var btn = e.target.closest(".execute .copy-button");
+            var btn = e.target.closest(".execute .copy-button, .copypaste .copy-button");
             if (!btn) return;
-            var block = btn.closest(".execute");
+            var block = btn.closest(".execute, .copypaste");
             if (!block) return;
             setTimeout(function () {
               if (btn.getAttribute("aria-label") === "Copied!") {
