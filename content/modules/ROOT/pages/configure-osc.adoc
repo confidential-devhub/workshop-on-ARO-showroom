@@ -121,6 +121,13 @@ echo "AZURE_NAT_ID: \"$AZURE_NAT_ID\""
 export INITDATA=$(cat $BASE_DIR/trustee/initdata.toml | gzip | base64 -w0)
 ----
 +
+. Before creating the ConfigMap, verify which confidential VM sizes are available in your region. Not all regions support the same instance types (e.g. `Standard_DC2as_v5` may not be available). Update `AZURE_INSTANCE_SIZE` and `AZURE_INSTANCE_SIZES` below accordingly.
++
+[source,sh,role=execute]
+----
+az vm list-sizes --location "${AZURE_REGION}" -o table | grep -i "Standard_DC"
+----
++
 [source,sh,role=execute]
 ----
 cat > pp-cm.yaml <<EOF
@@ -245,7 +252,27 @@ kata-oc   rendered-kata-oc-894630a1c9cdf3ebef8bd98c72e26608   True      False   
 ----
 
 === Verification
-. Make sure that the `AZURE_IMAGE_ID` in the `ConfigMap` is populated. If it isn't, wait that the job called `osc-podvm-image-creation-<random-letters>` finishes. In this ARO setup, it should take around 10 minutes.
+. Make sure that the `AZURE_IMAGE_ID` in the `ConfigMap` is populated. If it isn't, wait for the `osc-podvm-image-creation` job to finish. This job builds the base pod VM image containing the CoCo components and uploads it to Azure as a managed image. In this ARO setup, it should take around 10 minutes.
++
+Optionally, you can monitor the job progress:
++
+[source,sh,role=execute]
+----
+oc logs -f -n openshift-sandboxed-containers-operator -l job-name=osc-podvm-image-creation -c create
+----
++
+Once the VHD is uploaded, Azure creates the image version in the Shared Image Gallery. You can optionally monitor this Azure-side operation:
++
+[source,sh,role=execute]
+----
+az sig image-version list \
+  --resource-group "${CLUSTER_RESOURCE_GROUP}" \
+  --gallery-name $(oc get configmap azure-podvm-image-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.data.IMAGE_GALLERY_NAME}') \
+  --gallery-image-definition $(oc get configmap azure-podvm-image-cm -n openshift-sandboxed-containers-operator -o jsonpath='{.data.IMAGE_DEFINITION_NAME}') \
+  -o table
+----
++
+Verify that the image ID is populated:
 +
 [source,sh,role=execute]
 ----
@@ -267,7 +294,7 @@ NAME                            DESIRED   CURRENT   READY   UP-TO-DATE   AVAILAB
 osc-caa-ds   1         1         1       1            1           node-role.kubernetes.io/kata-oc=   22m
 ----
 
-. Make sure the `RuntimeClass` are created.
+. Make sure the `kata-remote` RuntimeClass is created. This is the runtime class that workloads will use to run in a Confidential VM.
 +
 [source,sh,role=execute]
 ----

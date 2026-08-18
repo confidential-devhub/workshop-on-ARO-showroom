@@ -156,7 +156,7 @@ And notice how an error is returned:
 error: Internal error occurred: error executing command in container: cannot enter container 8c0001fb69f7b8e728a3ccc8ad51d362f284f17450765f895db91dce7fc00413, with err rpc error: code = PermissionDenied desc = "ExecProcessRequest is blocked by policy: ": unknown
 ----
 
-This is the default INITDATA behavior.
+This is the expected behavior based on the default xref:configure-trustee.adoc#trustee-ip[INITDATA policy], where `ExecProcessRequest` is set to `false` and `ReadStreamRequest` is set to `true`.
 
 [#destroy]
 == Destroy the example pod
