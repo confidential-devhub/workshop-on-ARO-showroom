@@ -16,6 +16,7 @@ Before starting this workshop, we suggest to read the following blogposts to get
 * https://www.redhat.com/en/blog/exploring-openshift-confidential-containers-solution[Exploring the OpenShift Confidential Containers solution, window=blank]
 * https://www.redhat.com/en/blog/use-cases-and-ecosystem-openshift-confidential-containers[Use cases and ecosystem for OpenShift Confidential Containers, window=blank]
 * https://www.redhat.com/en/blog/understanding-confidential-containers-attestation-flow[Understanding the Confidential Containers Attestation Flow, window=blank]
+* https://www.redhat.com/en/blog/learn-about-confidential-computing-attestation[Learn about confidential computing attestation]
 * xref:index-theory.adoc[This workshop's theory chapter]
 
 All blogposts are under this https://www.redhat.com/en/blog/learn-about-confidential-containers[blog series, window=blank].
