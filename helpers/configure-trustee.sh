@@ -321,8 +321,8 @@ PROOTF=""
 if [[ $TRUSTEE_ENV == "rhdp" ]]; then
   PODDIR="/${PODDIR}"
   PROOTF="--root $PODDIR"
-  sudo mkdir -p $PODDIR
-  sudo chown azure:azure $PODDIR
+  # sudo mkdir -p $PODDIR
+  # sudo chown azure:azure $PODDIR
 else
   mkdir -p $PODDIR
 fi
