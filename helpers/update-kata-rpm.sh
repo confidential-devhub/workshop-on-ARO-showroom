@@ -27,36 +27,58 @@ if ! oc get node "$NODE_NAME" &> /dev/null; then
     exit 1
 fi
 
-create_debug_pod() {
-    local pod=""
-    local elapsed=0
-
-    echo "###### Starting debug pod ######" >&2
-    oc debug node/"$NODE_NAME" -n "$DEBUG_POD_NAMESPACE" -- sleep infinity &> /dev/null &
-
-    while [[ -z "$pod" && $elapsed -lt 60 ]]; do
-        pod=$(oc get pods -n "$DEBUG_POD_NAMESPACE" \
-            --field-selector spec.nodeName="$NODE_NAME" \
-            --sort-by=.metadata.creationTimestamp \
-            -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)
-        [[ -z "$pod" ]] && sleep 2
-        elapsed=$((elapsed + 2))
+cleanup_debug_pods() {
+    local stale
+    stale=$(oc get pods -n "$DEBUG_POD_NAMESPACE" \
+        --field-selector spec.nodeName="$NODE_NAME" \
+        -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true)
+    for p in $stale; do
+        echo "###### Cleaning up stale debug pod: $p ######" >&2
+        oc delete pod "$p" -n "$DEBUG_POD_NAMESPACE" --ignore-not-found=true --wait=false >&2
     done
+}
 
-    if [[ -z "$pod" ]]; then
-        echo "ERROR: Timed out waiting for debug pod on node '$NODE_NAME'." >&2
-        exit 1
-    fi
+create_debug_pod() {
+    local max_attempts=3
 
-    echo "###### Found debug pod: $pod ######" >&2
-    echo "###### Waiting for pod to be ready... ######" >&2
-    if ! oc wait --for=condition=Ready "pod/$pod" -n "$DEBUG_POD_NAMESPACE" --timeout=120s >&2; then
-        echo "ERROR: Pod '$pod' never became ready." >&2
+    for attempt in $(seq 1 $max_attempts); do
+        local pod=""
+        local elapsed=0
+
+        echo "###### Starting debug pod (attempt $attempt/$max_attempts) ######" >&2
+        cleanup_debug_pods
+        oc debug node/"$NODE_NAME" -n "$DEBUG_POD_NAMESPACE" -- sleep infinity &> /dev/null &
+
+        while [[ -z "$pod" && $elapsed -lt 60 ]]; do
+            pod=$(oc get pods -n "$DEBUG_POD_NAMESPACE" \
+                --field-selector spec.nodeName="$NODE_NAME",status.phase!=Succeeded,status.phase!=Failed \
+                --sort-by=.metadata.creationTimestamp \
+                -o jsonpath='{.items[-1:].metadata.name}' 2>/dev/null || true)
+            [[ -z "$pod" ]] && sleep 2
+            elapsed=$((elapsed + 2))
+        done
+
+        if [[ -z "$pod" ]]; then
+            echo "WARNING: Timed out waiting for debug pod to appear (attempt $attempt/$max_attempts)." >&2
+            [[ $attempt -eq $max_attempts ]] && { echo "ERROR: Failed to create debug pod after $max_attempts attempts." >&2; exit 1; }
+            sleep 5
+            continue
+        fi
+
+        echo "###### Found debug pod: $pod ######" >&2
+        echo "###### Waiting for pod to be ready... ######" >&2
+        if oc wait --for=condition=Ready "pod/$pod" -n "$DEBUG_POD_NAMESPACE" --timeout=120s >&2 2>/dev/null; then
+            echo "###### Pod is ready ######" >&2
+            echo "$pod"
+            return 0
+        fi
+
+        echo "WARNING: Pod '$pod' never became ready (attempt $attempt/$max_attempts)." >&2
         oc logs "pod/$pod" -n "$DEBUG_POD_NAMESPACE" >&2 || true
-        exit 1
-    fi
-    echo "###### Pod is ready ######" >&2
-    echo "$pod"
+        oc delete pod "$pod" -n "$DEBUG_POD_NAMESPACE" --ignore-not-found=true --wait=false >&2 || true
+        [[ $attempt -eq $max_attempts ]] && { echo "ERROR: Failed to create debug pod after $max_attempts attempts." >&2; exit 1; }
+        sleep 5
+    done
 }
 
 delete_debug_pod() {
@@ -118,19 +140,6 @@ if ! oc wait --for=condition=Ready "node/$NODE_NAME" --timeout=1200s; then
     exit 1
 fi
 echo "###### Node is ready ######"
-
-echo "###### Waiting for kubelet to accept connections... ######"
-local_elapsed=0
-while [[ $local_elapsed -lt 120 ]]; do
-    if oc exec -n "$DEBUG_POD_NAMESPACE" \
-        $(oc get pods -n "$DEBUG_POD_NAMESPACE" --field-selector spec.nodeName="$NODE_NAME" \
-            -o jsonpath='{.items[0].metadata.name}' 2>/dev/null) \
-        -- true &>/dev/null 2>&1; then
-        break
-    fi
-    sleep 10
-    local_elapsed=$((local_elapsed + 10))
-done
 
 DEBUG_POD_NAME=$(create_debug_pod)
 
