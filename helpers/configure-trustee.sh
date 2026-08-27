@@ -114,7 +114,7 @@ while [[ $(oc get endpoints cert-manager-webhook -n cert-manager -o jsonpath='{.
 done
 oc wait certificate kbs-https -n trustee-operator-system --for=condition=Ready --timeout=60s
 oc wait certificate kbs-token -n trustee-operator-system --for=condition=Ready --timeout=60s
-oc get secrets -n trustee-operator-system | grep /tls
+oc get secrets -n trustee-operator-system | grep /tls || true
 ####################################################################
 echo "################################################"
 
@@ -134,8 +134,8 @@ spec:
 EOF
 
 sleep 2
-oc get secrets -n trustee-operator-system | grep trusteeconfig
-oc get configmaps -n trustee-operator-system | grep trusteeconfig
+oc get secrets -n trustee-operator-system | grep trusteeconfig || true
+oc get configmaps -n trustee-operator-system | grep trusteeconfig || true
 
 echo "################################################"
 
@@ -155,7 +155,8 @@ SIGNATURE_SECRET_FILE=pub-key
 
 oc create secret generic $SIGNATURE_SECRET_NAME \
     --from-file=$SIGNATURE_SECRET_FILE=./cosign.pub \
-    -n trustee-operator-system
+    -n trustee-operator-system \
+    --dry-run=client -o yaml | oc apply -f-
 
 curl -L https://security.access.redhat.com/data/63405576.txt -o redhat-cosign-pub-key.pem
 
@@ -164,7 +165,8 @@ RH_SIGNATURE_SECRET_FILE=pub-key
 
 oc create secret generic $RH_SIGNATURE_SECRET_NAME \
     --from-file=$RH_SIGNATURE_SECRET_FILE=./redhat-cosign-pub-key.pem \
-    -n trustee-operator-system
+    -n trustee-operator-system \
+    --dry-run=client -o yaml | oc apply -f-
 
 SECURITY_POLICY_IMAGE=quay.io/confidential-devhub/signed
 RH_SECURITY_POLICY_IMAGE=registry.access.redhat.com
@@ -210,7 +212,8 @@ POLICY_SECRET_FILE=policy
 
 oc create secret generic $POLICY_SECRET_NAME \
   --from-file=$POLICY_SECRET_FILE=./verification-policy.json \
-  -n trustee-operator-system
+  -n trustee-operator-system \
+  --dry-run=client -o yaml | oc apply -f-
 
 ####################################################################
 echo "################################################"
@@ -327,6 +330,20 @@ else
   mkdir -p $PODDIR
 fi
 
+COCO_TOOLS_IMAGE=quay.io/openshift_sandboxed_containers/coco-tools:0.5.1
+MAX_RETRIES=5
+for attempt in $(seq 1 $MAX_RETRIES); do
+  echo "Pulling $COCO_TOOLS_IMAGE (attempt $attempt/$MAX_RETRIES)..."
+  if podman pull $PROOTF $COCO_TOOLS_IMAGE; then
+    break
+  fi
+  if [[ $attempt -eq $MAX_RETRIES ]]; then
+    echo "ERROR: Failed to pull $COCO_TOOLS_IMAGE after $MAX_RETRIES attempts" >&2
+    exit 1
+  fi
+  sleep 5
+done
+
 podman run \
   $PROOTF  \
   --security-opt label=disable \
@@ -335,7 +352,7 @@ podman run \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
   -v $INITDATA_PATH:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
-  quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  $COCO_TOOLS_IMAGE \
     veritas \
     --platform azure \
     --tee snp \
@@ -347,14 +364,28 @@ podman run \
 cat $PODDIR/rvps-reference-values.yaml
 oc apply -f $PODDIR/rvps-reference-values.yaml
 
-oc patch kbsconfig trusteeconfig-kbs-config \
-  -n trustee-operator-system \
-  --type=json \
-  -p="[
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$SIGNATURE_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$RH_SIGNATURE_SECRET_NAME\"},
-    {\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$POLICY_SECRET_NAME\"}
-  ]"
+EXISTING_SECRETS=$(oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
+  | jq -r '.spec.kbsSecretResources // [] | .[]')
+
+PATCH_OPS="["
+NEED_PATCH=false
+for secret in "$SIGNATURE_SECRET_NAME" "$RH_SIGNATURE_SECRET_NAME" "$POLICY_SECRET_NAME"; do
+  if ! echo "$EXISTING_SECRETS" | grep -qxF "$secret"; then
+    [[ "$NEED_PATCH" == "true" ]] && PATCH_OPS+=","
+    PATCH_OPS+="{\"op\": \"add\", \"path\": \"/spec/kbsSecretResources/-\", \"value\": \"$secret\"}"
+    NEED_PATCH=true
+  fi
+done
+PATCH_OPS+="]"
+
+if [[ "$NEED_PATCH" == "true" ]]; then
+  oc patch kbsconfig trusteeconfig-kbs-config \
+    -n trustee-operator-system \
+    --type=json \
+    -p="$PATCH_OPS"
+else
+  echo "kbsSecretResources already up to date, skipping patch"
+fi
 
 echo "Updated Kbsconfig - kbsSecretResources:"
 oc get kbsconfig trusteeconfig-kbs-config -n trustee-operator-system -o json \
