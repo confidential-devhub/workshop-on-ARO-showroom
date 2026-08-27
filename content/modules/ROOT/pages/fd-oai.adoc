@@ -78,6 +78,9 @@ chmod +x run-oai-devel.sh
 ./run-oai-devel.sh
 ----
 
+Which provides you the Notebook URL. Use your workshop kubeadmin credentials to access it.
+// TODO: But TBH I'd remove this section and only use the "Plain Jupyter notebook" as this is quite confusing
+
 
 == Run the application
 
