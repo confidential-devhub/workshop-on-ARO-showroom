@@ -1,0 +1,1 @@
+export VALUE_IN_MEMORY=123456
