@@ -13,7 +13,7 @@ ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
 NOTE: Because of CPU Quota limitations of this ARO subscription, and since each CoCo runs in a Confidential VM, you are just allowed to deploy max **two single CoCo pods** at time. Trying to deploy a third one will result in failure and container stuck in `ContainerCreating` state.
 endif::[]
 
-In this section, we will show you how easy is to modify an existing pod into CoCo and how to additionally customize it.
+In this section, we will show you how easy it is to modify an existing pod into CoCo and how to additionally customize it.
 
 == Mandatory options
 In order to run a pod as CoCo, it is mandatory to specify the `runtimeClassName` field in the pod `spec`. For peer-pods, the runtime class is called `kata-remote`.
