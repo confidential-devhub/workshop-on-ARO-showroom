@@ -1,0 +1,14 @@
+{{ if .Values.dev.enabled }}
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: trustee-operator-dev-catalog
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  displayName: Trustee Operator Dev Catalog
+  sourceType: grpc
+  image: "{{ .Values.dev.image | default "quay.io/redhat-user-workloads/ose-osc-tenant/trustee-fbc-4-19:latest" }}"
+  publisher: Confidential Containers Team
+{{- end }}

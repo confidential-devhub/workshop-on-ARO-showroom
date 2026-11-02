@@ -1,0 +1,18 @@
+# KbsConfig is created before TrusteeConfig reconciles. The operator's
+# smart-merge preserves kbsSecretResources, so the secrets listed here are
+# loaded into the Key Broker Service without a post-install patch.
+apiVersion: confidentialcontainers.org/v1alpha1
+kind: KbsConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: kbsconfig
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: trustee-operator
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  name: {{ .Values.kbsConfig.name | default "trusteeconfig-kbs-config" }}
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+spec:
+  kbsSecretResources:
+{{- range .Values.kbsConfig.secretResources }}
+    - {{ . }}
+{{- end }}

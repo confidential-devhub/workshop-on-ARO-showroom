@@ -1,0 +1,16 @@
+{{- if eq .Values.attestationPolicy "permissive" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: attestation-policy-permissive
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+data:
+  default.rego: |
+    package policy
+
+    # Permissive attestation policy - allows all attestations
+    # Use this for development and testing environments
+    default allow = true
+{{- end }}

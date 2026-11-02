@@ -1,0 +1,9 @@
+apiVersion: v2
+name: terminal-tabs
+description: One wetty terminal per workshop persona, each logged into the cluster with its own kubeconfig
+type: application
+version: 0.1.0
+appVersion: "3.2.1"
+maintainers:
+  - name: Emanuele Giuseppe Esposito
+    email: eesposito@redhat.com

@@ -1,0 +1,8 @@
+{{- if .Values.tests.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.tests.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+{{- end }}

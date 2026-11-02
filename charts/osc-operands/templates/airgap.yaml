@@ -1,0 +1,45 @@
+{{- if .Values.airgap.enabled }}
+{{- $registry := .Values.airgap.registry }}
+{{- $digestImages := list }}
+{{- $tagImages := list }}
+{{- range .Values.airgap.images }}
+  {{- if contains "@sha256:" . }}
+    {{- $digestImages = append $digestImages . }}
+  {{- else }}
+    {{- $tagImages = append $tagImages . }}
+  {{- end }}
+{{- end }}
+{{- if $digestImages }}
+apiVersion: config.openshift.io/v1
+kind: ImageDigestMirrorSet
+metadata:
+  name: osc-airgap-mirrors
+spec:
+  imageDigestMirrors:
+  {{- range $digestImages }}
+  {{- $parts := splitList "@" . }}
+  {{- $sourceRepo := index $parts 0 }}
+  {{- $name := $sourceRepo | splitList "/" | last }}
+  - source: {{ $sourceRepo }}
+    mirrors:
+    - {{ $registry }}/{{ $name }}
+  {{- end }}
+{{- end }}
+{{- if $tagImages }}
+---
+apiVersion: config.openshift.io/v1
+kind: ImageTagMirrorSet
+metadata:
+  name: osc-airgap-tag-mirrors
+spec:
+  imageTagMirrors:
+  {{- range $tagImages }}
+  {{- $parts := splitList ":" . }}
+  {{- $sourceRepo := index $parts 0 }}
+  {{- $name := $sourceRepo | splitList "/" | last }}
+  - source: {{ $sourceRepo }}
+    mirrors:
+    - {{ $registry }}/{{ $name }}
+  {{- end }}
+{{- end }}
+{{- end }}

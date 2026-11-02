@@ -1,0 +1,21 @@
+{{- if .Values.olmv1.enabled }}
+{{- if not (.Capabilities.APIVersions.Has "olm.operatorframework.io/v1/ClusterExtension") }}
+{{- fail "olmv1.enabled=true requires the ClusterExtension CRD (olm.operatorframework.io/v1), available in OpenShift 4.22+." }}
+{{- end }}
+apiVersion: olm.operatorframework.io/v1
+kind: ClusterExtension
+metadata:
+  name: sandboxed-containers
+spec:
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+  serviceAccount:
+    name: sandboxed-containers-installer
+  source:
+    sourceType: Catalog
+    catalog:
+      packageName: {{ .Values.olmv1.packageName }}
+      channels:
+        - {{ .Values.olmv1.channel }}
+      name: {{ if .Values.dev.enabled }}{{ .Values.olmv1.catalogName }}{{ else }}openshift-redhat-operators{{ end }}
+      upgradeConstraintPolicy: CatalogProvided
+{{- end }}

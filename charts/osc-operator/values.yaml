@@ -1,0 +1,26 @@
+---
+# Override the namespace where the operator is deployed.
+# The chart always creates this namespace.
+namespaceOverride: openshift-sandboxed-containers-operator
+
+dev:
+  # Enable development mode for the operator.
+  # This means it will use a custom catalog source and image.
+  enabled: false
+
+  # Only used for development purposes, not for production.
+  # For production, the official fbc will be used.
+  #image: quay.io/beraldoleal/openshift-sandboxed-containers-operator-catalog:1.10-1753889819
+  #image: quay.io/redhat-user-workloads/ose-osc-tenant/osc-test-fbc:osc-test-fbc-on-pull-request-h2x69-build-image-index
+  image: quay.io/redhat-user-workloads/ose-osc-tenant/osc-test-fbc:1.11.0-1763650883
+
+subscription:
+  config:
+    env: []
+
+# WARNING: OLMv1 requires OpenShift 4.22 or newer.
+olmv1:
+  enabled: false
+  catalogName: osc-operator-dev-catalog
+  packageName: sandboxed-containers-operator
+  channel: stable

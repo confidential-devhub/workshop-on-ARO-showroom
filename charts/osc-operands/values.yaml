@@ -1,0 +1,58 @@
+# Namespace where the OSC operands are deployed.
+# Must match the namespace used by the osc-operator chart.
+namespaceOverride: openshift-sandboxed-containers-operator
+
+kataconfig:
+  # Name of the KataConfig resource.
+  name: kataconfig-kata
+  # MachineConfigPool created by the operator for the selected nodes.
+  poolName: kata-oc
+
+confidential:
+  enabled: true
+
+# Node selection for the KataConfig.
+# The provisioning role labels the target node(s) with workerType=kataWorker
+# before this chart is applied (see the workshop guide).
+nodeSelector:
+  labels:
+    cloud:
+      workerType: kataWorker
+    baremetal:
+      node-role.kubernetes.io/worker: ""
+
+# Airgap / disconnected environment support (EXPERIMENTAL)
+airgap:
+  enabled: false
+  registry: ""
+  images: []
+
+# Cloud mode (peer pods)
+peerpods:
+  enabled: true
+  provider: azure
+  # SSH keys are optional for cloud peer pods. Leave the paths empty unless the
+  # deployment needs them; files must live under charts/osc-operands/files/.
+  sshKey:
+    publicKeyPath: ""
+    privateKeyPath: ""
+  providersConfigs:
+    all:
+      VXLAN_PORT: "9000"
+      PROXY_TIMEOUT: "5m"
+      PEERPODS_LIMIT_PER_NODE: "10"
+      ROOT_VOLUME_SIZE: "20"
+      TAGS: "key1=value1,key2=value2"
+      # gzip+base64 encoded initdata.toml produced by the provisioning role
+      INITDATA: ""
+
+    azure:
+      # Empty AZURE_IMAGE_ID lets the operator build the pod VM image.
+      AZURE_IMAGE_ID: ""
+      AZURE_RESOURCE_GROUP: ""
+      AZURE_REGION: ""
+      AZURE_SUBNET_ID: ""
+      AZURE_NSG_ID: ""
+      AZURE_INSTANCE_SIZES: "Standard_DC2as_v5,Standard_DC2es_v5,Standard_DC4as_v5,Standard_DC4es_v5,Standard_DC8es_v5,Standard_DC8as_v5"
+      # Leave empty to let the chart pick the confidential default.
+      AZURE_INSTANCE_SIZE: ""

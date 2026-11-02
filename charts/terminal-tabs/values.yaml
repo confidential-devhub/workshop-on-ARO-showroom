@@ -1,0 +1,46 @@
+---
+# Namespace where the terminal pods are deployed (normally the showroom namespace).
+namespaceOverride: ""
+# Create the namespace as part of the chart output.
+createNamespace: true
+
+image: quay.io/rhpds/wetty:v3.2.1
+
+# Bastion the terminals SSH into.
+bastion:
+  host: ""
+  port: 22
+  user: lab-user
+  password: ""
+
+# Routes are created as <hostPrefix>-<hostSuffix>-<terminal>.<domain>.
+# Leave hostSuffix empty to omit it. The router wildcard certificate
+# (*.<domain>) covers these hosts.
+route:
+  domain: ""
+  hostPrefix: terminal
+  hostSuffix: ""
+  tlsTermination: edge
+  insecurePolicy: Redirect
+  # Web terminals are long-lived websockets; the default 30s router timeout
+  # would drop them.
+  timeout: 3600s
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Each terminal starts an interactive shell with its own KUBECONFIG.
+# `admin` is the htpasswd cluster-admin user created by AgnosticD
+# (kubeadmin's own kubeconfig stays at /home/lab-user/.kube/config).
+terminals:
+  - name: opsec
+    kubeconfig: /home/lab-user/.kube/opsec.kubeconfig
+  - name: devel
+    kubeconfig: /home/lab-user/.kube/devel.kubeconfig
+  - name: admin
+    kubeconfig: /home/lab-user/.kube/admin.kubeconfig

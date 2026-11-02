@@ -1,0 +1,52 @@
+{{- if .Values.certManager.enabled }}
+# Self-signed issuer used by both KBS certificates.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Values.certManager.issuerName }}
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+spec:
+  selfSigned: {}
+---
+# RSA certificate for the KBS HTTPS endpoint.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.certManager.httpsCertificateName }}
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+spec:
+  commonName: {{ .Values.certManager.commonName }}
+  subject:
+    organizations:
+      - {{ .Values.certManager.organization }}
+  dnsNames:
+    - {{ .Values.crossCluster.route.host | default (printf "%s-%s.%s" (.Values.crossCluster.route.name | default "kbs-route") (.Values.namespaceOverride | default .Release.Namespace) (required "clusterDomain is required" .Values.clusterDomain)) | quote }}
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS8
+    size: 2048
+  duration: {{ .Values.certManager.duration }}
+  renewBefore: {{ .Values.certManager.renewBefore }}
+  secretName: {{ .Values.tlsCerts.httpsSecretName }}
+  issuerRef:
+    name: {{ .Values.certManager.issuerName }}
+    kind: Issuer
+---
+# ECDSA certificate used to sign attestation tokens.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.certManager.tokenCertificateName }}
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+spec:
+  dnsNames:
+    - {{ .Values.crossCluster.route.host | default (printf "%s-%s.%s" (.Values.crossCluster.route.name | default "kbs-route") (.Values.namespaceOverride | default .Release.Namespace) (required "clusterDomain is required" .Values.clusterDomain)) | quote }}
+  secretName: {{ .Values.tlsCerts.tokenSecretName }}
+  issuerRef:
+    name: {{ .Values.certManager.issuerName }}
+    kind: Issuer
+  privateKey:
+    algorithm: ECDSA
+    encoding: PKCS8
+    size: 256
+{{- end }}

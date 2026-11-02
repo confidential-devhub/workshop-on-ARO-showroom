@@ -1,0 +1,11 @@
+# trustee-og.yaml
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: trustee-operator-group
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  targetNamespaces:
+  - {{ .Values.namespaceOverride | default .Release.Namespace }}

@@ -1,0 +1,26 @@
+apiVersion: confidentialcontainers.org/v1alpha1
+kind: TrusteeConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: trusteeconfig
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: trustee-operator
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  name: {{ .Values.trusteeConfig.name | default "trusteeconfig" }}
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+spec:
+  # Restricted enforces TLS and strict attestation (required for this workshop).
+  profileType: {{ .Values.profileType }}
+
+  # The Route carries external traffic, so the KBS service stays ClusterIP.
+  kbsServiceType: {{ if .Values.crossCluster.enabled }}ClusterIP{{ else }}NodePort{{ end }}
+
+{{- if and (eq .Values.profileType "Restricted") .Values.tlsCerts.httpsSecretName }}
+  httpsSpec:
+    tlsSecretName: {{ .Values.tlsCerts.httpsSecretName }}
+{{- end }}
+
+{{- if and (eq .Values.profileType "Restricted") .Values.tlsCerts.tokenSecretName }}
+  attestationTokenVerificationSpec:
+    tlsSecretName: {{ .Values.tlsCerts.tokenSecretName }}
+{{- end }}

@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: osc-feature-gates
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+data:
+  confidential: "{{ .Values.confidential.enabled | default false }}"
+---
+{{- if .Values.peerpods.enabled }}
+{{- $provider := .Values.peerpods.provider | default "" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: peer-pods-cm
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+data:
+  CLOUD_PROVIDER: "{{ $provider }}"
+  DISABLECVM: "{{ not (.Values.confidential.enabled) }}"
+{{- $config := index .Values.peerpods.providersConfigs "all" | default dict }}
+{{- range $key, $value := $config }}
+  {{- if or (ne $key "INITDATA") ($.Values.confidential.enabled) }}
+  {{- if and (ne $value "") (not (hasPrefix "${" $value)) }}
+  {{ $key }}: "{{ $value }}"
+  {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- $config := index .Values.peerpods.providersConfigs $provider | default dict }}
+{{- range $key, $value := $config }}
+  {{- if and (eq $key "AZURE_INSTANCE_SIZE") (eq $value "") }}
+  {{- /* Auto-set AZURE_INSTANCE_SIZE based on confidential mode */}}
+  {{ $key }}: "{{ if $.Values.confidential.enabled }}Standard_DC2as_v5{{ else }}Standard_D8as_v5{{ end }}"
+  {{- else if and (ne $value "") (not (hasPrefix "${" $value)) }}
+  {{ $key }}: "{{ $value }}"
+  {{- end }}
+{{- end }}
+{{- end }}

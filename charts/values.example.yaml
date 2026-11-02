@@ -1,0 +1,94 @@
+---
+# Example values used by LB1150 (Confidential Containers on Red Hat OCP & MS Azure).
+#
+# Every top-level key holds the values file for the chart named after it:
+#   certManagerOperator -> charts/cert-manager-operator
+#   trusteeOperator     -> charts/trustee-operator
+#   oscOperator         -> charts/osc-operator
+#   trusteeOperands     -> charts/trustee-operands
+#   oscOperands         -> charts/osc-operands
+#   terminalTabs        -> charts/terminal-tabs
+# The provisioning role writes one file per chart from these blocks; this
+# single file is documentation, not a values file for a single chart.
+#
+# The provisioning role applies the charts in this order:
+#   1. cert-manager-operator
+#   2. trustee-operator
+#   3. osc-operator
+#   4. trustee-operands   (after the CSVs are ready)
+#   5. osc-operands       (after trustee-operands and the Azure network)
+#   6. terminal-tabs
+#
+# Charts are rendered with `helm template` and applied with `oc apply`
+# (never `helm install`: the OLM operators manage their own lifecycle).
+
+certManagerOperator:
+  namespaceOverride: cert-manager-operator
+
+trusteeOperator:
+  namespaceOverride: trustee-operator-system
+
+oscOperator:
+  namespaceOverride: openshift-sandboxed-containers-operator
+
+trusteeOperands:
+  namespaceOverride: trustee-operator-system
+  profileType: Restricted
+  # Taken from: oc get ingresses.config/cluster -o jsonpath='{.spec.domain}'
+  clusterDomain: apps.cluster.example.com
+  crossCluster:
+    enabled: true
+    route:
+      name: kbs-route
+      # Leave empty to let the router generate
+      # kbs-route-trustee-operator-system.<clusterDomain>.
+      host: ""
+      # Restricted profile: KBS terminates TLS itself (trustee-tls-cert).
+      termination: passthrough
+      insecurePolicy: None
+  certManager:
+    enabled: true
+  securityPolicy:
+    # Supplied with --set-file at install time:
+    #   --set-file securityPolicy.devhubPublicKey=helpers/cosign.pub
+    #   --set-file securityPolicy.redhatPublicKey=<redhat key>
+    devhubPublicKey: ""
+    redhatPublicKey: ""
+
+oscOperands:
+  namespaceOverride: openshift-sandboxed-containers-operator
+  confidential:
+    enabled: true
+  nodeSelector:
+    labels:
+      cloud:
+        workerType: kataWorker
+  peerpods:
+    enabled: true
+    provider: azure
+    providersConfigs:
+      azure:
+        AZURE_RESOURCE_GROUP: cluster-rg
+        AZURE_REGION: westus
+        AZURE_SUBNET_ID: /subscriptions/.../subnets/subnet
+        AZURE_NSG_ID: /subscriptions/.../networkSecurityGroups/nsg
+      all:
+        # gzip+base64 of initdata.toml (see helpers/configure-trustee.sh)
+        INITDATA: ""
+
+terminalTabs:
+  bastion:
+    host: bastion-guid.westus.cloudapp.azure.com
+    user: lab-user
+    password: secret
+  route:
+    domain: apps.cluster.example.com
+    hostPrefix: terminal
+    hostSuffix: guid
+  terminals:
+    - name: opsec
+      kubeconfig: /home/lab-user/.kube/opsec.kubeconfig
+    - name: devel
+      kubeconfig: /home/lab-user/.kube/devel.kubeconfig
+    - name: admin
+      kubeconfig: /home/lab-user/.kube/admin.kubeconfig

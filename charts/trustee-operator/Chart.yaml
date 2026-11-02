@@ -1,0 +1,9 @@
+apiVersion: v2
+name: trustee-operator
+description: A Helm chart to deploy the Red Hat build of Trustee Operator
+type: application
+version: 0.1.0
+appVersion: 0.3.0
+maintainers:
+  - name: Beraldo Leal
+    email: bleal@redhat.com

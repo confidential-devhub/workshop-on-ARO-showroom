@@ -1,0 +1,19 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: trustee-operator
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: trustee-operator
+  source: {{ if .Values.dev.enabled }}trustee-operator-dev-catalog{{ else }}redhat-operators{{ end }}
+  sourceNamespace: openshift-marketplace
+  {{- if .Values.subscription.config.env }}
+  config:
+    env:
+    {{- range .Values.subscription.config.env }}
+    - name: {{ .name }}
+      value: {{ .value | quote }}
+    {{- end }}
+  {{- end }}

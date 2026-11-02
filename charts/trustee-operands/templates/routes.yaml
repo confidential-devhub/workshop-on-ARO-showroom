@@ -1,0 +1,21 @@
+{{- if .Values.crossCluster.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ .Values.crossCluster.route.name | default "kbs-route" }}
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+spec:
+{{- if .Values.crossCluster.route.host }}
+  host: {{ .Values.crossCluster.route.host }}
+{{- end }}
+  to:
+    kind: Service
+    name: kbs-service
+  port:
+    targetPort: kbs-port
+  tls:
+    termination: {{ .Values.crossCluster.route.termination }}
+{{- if ne .Values.crossCluster.route.termination "passthrough" }}
+    insecureEdgeTerminationPolicy: {{ .Values.crossCluster.route.insecurePolicy }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,63 @@
+{{- if .Values.tests.enabled }}
+{{- if .Values.crossCluster.enabled }}
+# Test: External Route Access (HTTPS)
+# Tests external OpenShift Route connectivity to Trustee KBS via HTTPS
+# Verifies: Route exists, HTTPS/TLS termination, cross-cluster accessibility
+# Expected: Certificate error (self-signed) but route is accessible
+# Check: oc logs test-via-route -n {{ .Values.tests.namespace }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-via-route
+  namespace: {{ .Values.tests.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    test.description: "Tests external HTTPS route access to Trustee KBS"
+    test.url: "https://kbs-service-{{ .Values.namespaceOverride | default .Release.Namespace }}.{{ .Values.clusterDomain }}"
+    test.resource: "default/kbsres1/key1"
+    test.expected: "Certificate error expected (self-signed), route should be accessible"
+    test.tls: "edge termination with OpenShift self-signed certificate"
+  labels:
+    app: trustee-test
+    test-type: via-route
+spec:
+  restartPolicy: Never
+  containers:
+    - name: kbs-client
+      image: quay.io/confidential-containers/kbs-client:v0.15.0
+      env:
+        - name: TRUSTEE_URL
+          value: "https://kbs-service-{{ .Values.namespaceOverride | default .Release.Namespace }}.{{ .Values.clusterDomain }}"
+        - name: TEST_NAME
+          value: "External Route Access (HTTPS)"
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=========================================="
+          echo "Test: $TEST_NAME"
+          echo "URL: $TRUSTEE_URL"
+          echo "=========================================="
+          echo ""
+          echo "NOTE: Self-signed certificate warnings are expected"
+          echo ""
+          echo "Fetching key from $TRUSTEE_URL..."
+
+          if kbs-client --url "$TRUSTEE_URL" get-resource --path default/kbsres1/key1 2>&1 | tee /tmp/output.txt; then
+            echo ""
+            echo "✅ SUCCESS: Route access works!"
+            exit 0
+          else
+            if grep -q "InvalidCertificate" /tmp/output.txt; then
+              echo ""
+              echo "⚠️  EXPECTED: Certificate validation failed (self-signed cert)"
+              echo "Route is accessible but certificate needs to be trusted"
+              exit 0
+            else
+              echo ""
+              echo "❌ FAILED: Cannot access via route"
+              exit 1
+            fi
+          fi
+{{- end }}
+{{- end }}

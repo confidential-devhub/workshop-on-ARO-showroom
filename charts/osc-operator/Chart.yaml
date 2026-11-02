@@ -1,0 +1,9 @@
+apiVersion: v2
+name: osc-operator
+description: A Helm chart to deploy the OpenShift Sandboxed Containers Operator
+type: application
+version: 0.1.0
+appVersion: 1.11.0
+maintainers:
+  - name: Beraldo Leal
+    email: bleal@redhat.com

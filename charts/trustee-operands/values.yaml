@@ -1,0 +1,82 @@
+---
+# Namespace where the Trustee operands are deployed.
+# Must match the namespace used by the trustee-operator chart.
+namespaceOverride: trustee-operator-system
+
+# Trustee Security Profile.
+# Restricted: HTTPS + TLS certificates + strict attestation (production).
+# Permissive: relaxed settings for development only.
+profileType: Restricted
+
+# Cross-cluster exposure through an OpenShift Route.
+crossCluster:
+  enabled: true
+  route:
+    # Matches the resource name used throughout the workshop guide.
+    name: kbs-route
+    # Explicit host. When empty the router generates
+    # kbs-route-trustee-operator-system.<cluster ingress domain>.
+    host: ""
+    # The Restricted profile gives the KBS its own HTTPS certificate
+    # (trustee-tls-cert, dnsName = route host), so the route must let TLS
+    # through to the KBS pod. This also matches the route the
+    # trustee-operator creates for httpsSpec.tlsSecretName, so the two never
+    # disagree (the operator skips creating it when it already exists).
+    termination: passthrough
+    # Passthrough routes only accept None.
+    insecurePolicy: None
+
+# Cluster ingress domain, e.g. apps.cluster.example.com.
+# Required to build the Certificate dnsNames and the Route host.
+clusterDomain: ""
+
+# TLS secrets consumed by the TrusteeConfig (must exist before it reconciles).
+tlsCerts:
+  httpsSecretName: trustee-tls-cert
+  tokenSecretName: trustee-token-cert
+
+# Self-signed certificates issued by the cert-manager Operator.
+certManager:
+  enabled: true
+  issuerName: kbs-issuer
+  httpsCertificateName: kbs-https
+  tokenCertificateName: kbs-token
+  commonName: kbs-trustee-operator-system
+  organization: RedHat
+  duration: 8760h
+  renewBefore: 360h
+
+# TrusteeConfig resource name.
+trusteeConfig:
+  name: trusteeconfig
+
+# KbsConfig resource created before TrusteeConfig reconciles.
+# The operator's smart-merge preserves kbsSecretResources.
+kbsConfig:
+  name: trusteeconfig-kbs-config
+  secretResources:
+    - trustee-image-policy
+    - conf-devhub-signature
+    - redhat-signature
+
+# Container image signature verification.
+# Public keys are supplied at install time (the role passes --set-file values
+# from helpers/cosign.pub and the Red Hat release key), so the chart ships no keys.
+securityPolicy:
+  devhubPublicKey: ""
+  redhatPublicKey: ""
+  policySecret:
+    name: trustee-image-policy
+    key: policy
+  signedImages:
+    - image: quay.io/confidential-devhub/signed
+      signatureSecret: conf-devhub-signature
+    - image: registry.access.redhat.com
+      signatureSecret: redhat-signature
+    - image: registry.redhat.io
+      signatureSecret: redhat-signature
+
+# Test pods (disabled by default; the role runs its own smoke tests).
+tests:
+  enabled: false
+  namespace: trustee-tests

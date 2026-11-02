@@ -1,0 +1,51 @@
+{{- if .Values.tests.enabled }}
+# Test: Direct Service Access
+# Tests internal ClusterIP service connectivity to Trustee KBS via HTTP
+# Verifies: KBS pod health, internal DNS, attestation flow, secret retrieval
+# Expected: Pod completes successfully, retrieves kbsres1/key1 (value: res1val1)
+# Check: oc logs test-direct-service -n {{ .Values.tests.namespace }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-direct-service
+  namespace: {{ .Values.tests.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    test.description: "Tests internal ClusterIP service access to Trustee KBS"
+    test.url: "http://kbs-service.{{ .Values.namespaceOverride | default .Release.Namespace }}:8080"
+    test.resource: "default/kbsres1/key1"
+    test.expected: "res1val1 (base64: cmVzMXZhbDE=)"
+  labels:
+    app: trustee-test
+    test-type: direct-service
+spec:
+  restartPolicy: Never
+  containers:
+    - name: kbs-client
+      image: quay.io/confidential-containers/kbs-client:v0.15.0
+      env:
+        - name: TRUSTEE_URL
+          value: "http://kbs-service.{{ .Values.namespaceOverride | default .Release.Namespace }}:8080"
+        - name: TEST_NAME
+          value: "Direct Service Access (HTTP)"
+      command:
+        - /bin/sh
+        - -c
+        - |
+          echo "=========================================="
+          echo "Test: $TEST_NAME"
+          echo "URL: $TRUSTEE_URL"
+          echo "=========================================="
+          echo ""
+          echo "Fetching key from $TRUSTEE_URL..."
+
+          if kbs-client --url "$TRUSTEE_URL" get-resource --path default/kbsres1/key1; then
+            echo ""
+            echo "✅ SUCCESS: Direct service access works!"
+            exit 0
+          else
+            echo ""
+            echo "❌ FAILED: Cannot access via direct service"
+            exit 1
+          fi
+{{- end }}

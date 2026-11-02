@@ -1,0 +1,9 @@
+apiVersion: v2
+name: cert-manager-operator
+description: A Helm chart to deploy the cert-manager Operator for Red Hat OpenShift
+type: application
+version: 0.1.0
+appVersion: "stable-v1"
+maintainers:
+  - name: Emanuele Giuseppe Esposito
+    email: eesposito@redhat.com

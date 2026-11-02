@@ -1,0 +1,12 @@
+---
+# Namespace where the cert-manager Operator is deployed.
+namespaceOverride: cert-manager-operator
+
+subscription:
+  # Channel of the cert-manager Operator for Red Hat OpenShift
+  channel: stable-v1
+  # Package name in the redhat-operators catalog
+  name: openshift-cert-manager-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic

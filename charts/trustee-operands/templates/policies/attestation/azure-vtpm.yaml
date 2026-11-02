@@ -1,0 +1,117 @@
+{{- if eq .Values.attestationPolicy "azure-vtpm" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: attestation-policy-azure-vtpm
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+data:
+  default.rego: |
+    package policy
+    import rego.v1
+    # This policy validates multiple TEE platforms
+    # The policy is meant to capture the TCB requirements
+    # for confidential containers.
+    # This policy is used to generate an EAR Appraisal.
+    # More information can be found at
+    # <https://datatracker.ietf.org/doc/draft-ietf-rats-ar4si/>
+    default executables := 33
+    default hardware := 97
+    default configuration := 36
+
+    executables := 3 if {
+      input.sample.launch_digest in data.reference.launch_digest
+    }
+
+    hardware := 2 if {
+      input.sample.svn in data.reference.svn
+    }
+
+    executables := 3 if {
+      input.snp.measurement in data.reference.snp_launch_measurement
+    }
+
+    hardware := 2 if {
+      input.snp.reported_tcb_bootloader in data.reference.snp_bootloader
+      input.snp.reported_tcb_microcode in data.reference.snp_microcode
+      input.snp.reported_tcb_snp in data.reference.snp_snp_svn
+      input.snp.reported_tcb_tee in data.reference.snp_tee_svn
+    }
+
+    configuration := 2 if {
+      input.snp.policy_debug_allowed == "0"
+      input.snp.policy_migrate_ma == "0"
+      input.snp.platform_smt_enabled in data.reference.snp_smt_enabled
+      input.snp.platform_tsme_enabled in data.reference.snp_tsme_enabled
+      input.snp.policy_abi_major in data.reference.snp_guest_abi_major
+      input.snp.policy_abi_minor in data.reference.snp_guest_abi_minor
+      input.snp.policy_single_socket in data.reference.snp_single_socket
+      input.snp.policy_smt_allowed in data.reference.snp_smt_allowed
+    }
+
+    else := 3 if {
+      input.snp.policy_debug_allowed == "0"
+      input.snp.policy_migrate_ma == "0"
+    }
+
+    executables := 3 if {
+      input.tdx.quote.body.rtmr_1 in data.reference.rtmr_1
+      input.tdx.quote.body.rtmr_2 in data.reference.rtmr_2
+    }
+
+    hardware := 2 if {
+      # Check that this is a TDX quote signed by the Intel SGX Quoting Enclave.
+      input.tdx.quote.header.tee_type == "81000000"
+      input.tdx.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
+      # Check TDX Module version and its hash. Also check OVMF code hash.
+      input.tdx.quote.body.mr_seam in data.reference.mr_seam
+      input.tdx.quote.body.tcb_svn in data.reference.tcb_svn
+      input.tdx.quote.body.mr_td in data.reference.mr_td
+    }
+
+    configuration := 2 if {
+      input.tdx.td_attributes.debug == false
+      input.tdx.quote.body.xfam in data.reference.xfam
+    }
+
+    executables := 3 if {
+      input.azsnpvtpm.measurement in data.reference.measurement
+      input.azsnpvtpm.tpm.pcr11 in data.reference.snp_pcr11
+    }
+
+    hardware := 2 if {
+      input.azsnpvtpm.reported_tcb_bootloader in data.reference.tcb_bootloader
+      input.azsnpvtpm.reported_tcb_microcode in data.reference.tcb_microcode
+      input.azsnpvtpm.reported_tcb_snp in data.reference.tcb_snp
+      input.azsnpvtpm.reported_tcb_tee in data.reference.tcb_tee
+    }
+
+    configuration := 2 if {
+      input.azsnpvtpm.platform_smt_enabled in data.reference.smt_enabled
+      input.azsnpvtpm.platform_tsme_enabled in data.reference.tsme_enabled
+      input.azsnpvtpm.policy_abi_major in data.reference.abi_major
+      input.azsnpvtpm.policy_abi_minor in data.reference.abi_minor
+      input.azsnpvtpm.policy_single_socket in data.reference.single_socket
+      input.azsnpvtpm.policy_smt_allowed in data.reference.smt_allowed
+    }
+
+    ##### Azure vTPM TDX
+    executables := 3 if {
+      input.aztdxvtpm.tpm.pcr11 in data.reference.tdx_pcr11
+    }
+
+    hardware := 2 if {
+      # Check that the quote is a TDX quote signed by the Intel SGX Quoting Enclave.
+      input.aztdxvtpm.quote.header.tee_type == "81000000"
+      input.aztdxvtpm.quote.header.vendor_id == "939a7233f79c4ca9940a0db3957f0607"
+      # Check TDX Module version and its hash. Also check OVMF code hash.
+      input.aztdxvtpm.quote.body.mr_seam in data.reference.mr_seam
+      input.aztdxvtpm.quote.body.tcb_svn in data.reference.tcb_svn
+      input.aztdxvtpm.quote.body.mr_td in data.reference.mr_td
+    }
+
+    configuration := 2 if {
+      input.aztdxvtpm.quote.body.xfam in data.reference.xfam
+    }
+{{- end }}

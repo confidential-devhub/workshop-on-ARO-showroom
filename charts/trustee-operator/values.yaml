@@ -1,0 +1,26 @@
+---
+# Trustee Operator requires OpenShift Container Platform 4.16 or later.
+# See: https://docs.redhat.com/en/documentation/red_hat_build_of_trustee
+
+# Override the namespace where the operator is deployed.
+# The chart always creates this namespace.
+namespaceOverride: trustee-operator-system
+
+dev:
+  # Enable development mode for the operator.
+  # This means it will use a custom catalog source, custom FBC image, and image mirrors.
+  # When enabled, ImageTagMirrorSet and ImageDigestMirrorSet will be created to redirect
+  # registry.redhat.io images to quay.io for unreleased Konflux builds.
+  enabled: false
+
+  # Only used for development purposes, not for production.
+  # For production, the official fbc from redhat-operators catalog will be used.
+  # Image format: quay.io/redhat-user-workloads/ose-osc-tenant/trustee-fbc-4-{VERSION}:{TAG}
+  # Available versions: 4-16, 4-17, 4-18, 4-19, etc.
+  # RH Build of Trustee v1.0.0 with TrusteeConfig support:
+  #image: quay.io/redhat-user-workloads/ose-osc-tenant/trustee-test-fbc:1.0.0-1762506809
+  image: quay.io/redhat-user-workloads/ose-osc-tenant/trustee-test-fbc:1.0.0-1763473348
+
+subscription:
+  config:
+    env: []

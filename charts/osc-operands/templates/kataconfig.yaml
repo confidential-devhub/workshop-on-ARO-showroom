@@ -1,0 +1,14 @@
+apiVersion: kataconfiguration.openshift.io/v1
+kind: KataConfig
+metadata:
+  name: {{ .Values.kataconfig.name | default "kataconfig-kata" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  {{- if .Values.nodeSelector }}
+  kataConfigPoolSelector:
+    matchLabels:
+  {{- $labels := ternary .Values.nodeSelector.labels.cloud .Values.nodeSelector.labels.baremetal .Values.peerpods.enabled }}
+  {{ toYaml $labels | indent 6 }}
+  {{- end }}
+  enablePeerPods: {{ .Values.peerpods.enabled | default false }}

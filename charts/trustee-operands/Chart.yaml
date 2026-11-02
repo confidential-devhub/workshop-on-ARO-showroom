@@ -1,0 +1,9 @@
+apiVersion: v2
+name: trustee-operands
+description: A Helm chart with the Trustee operands (TrusteeConfig, KbsConfig, certificates, policy)
+type: application
+version: 0.1.0
+appVersion: 0.3.0
+maintainers:
+  - name: Beraldo Leal
+    email: bleal@redhat.com

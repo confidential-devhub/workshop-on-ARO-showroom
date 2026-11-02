@@ -1,0 +1,14 @@
+{{- if and .Values.olmv1.enabled .Values.dev.enabled }}
+{{- if not (.Capabilities.APIVersions.Has "olm.operatorframework.io/v1/ClusterCatalog") }}
+{{- fail "olmv1.enabled=true requires the ClusterCatalog CRD (olm.operatorframework.io/v1), available in OpenShift 4.22+." }}
+{{- end }}
+apiVersion: olm.operatorframework.io/v1
+kind: ClusterCatalog
+metadata:
+  name: {{ .Values.olmv1.catalogName }}
+spec:
+  source:
+    type: Image
+    image:
+      ref: "{{ .Values.dev.image }}"
+{{- end }}

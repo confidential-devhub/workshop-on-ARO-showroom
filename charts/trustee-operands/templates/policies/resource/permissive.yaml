@@ -1,0 +1,15 @@
+{{- if eq .Values.resourcePolicy "permissive" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: resource-policy-permissive
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+data:
+  policy.rego: |
+    package policy
+    # Permissive resource access policy - allows all resource access
+    # Use this for development and testing environments
+    default allow = true
+{{- end }}

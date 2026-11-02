@@ -1,0 +1,20 @@
+---
+type: showroom
+default_width: 40
+persist_url_state: true
+view_switcher:
+  enabled: true
+  default_mode: split
+tabs:
+  - name: Terminal - opsec
+    url: '${opsec_url}'
+  - name: Terminal - devel
+    url: '${devel_url}'
+  - name: Terminal - admin
+    url: '${admin_url}'
+  - name: OpenShift Console
+    url: '${openshift_console_url}'
+  - name: OpenShift Sandboxed Containers Docs
+    url: 'https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_confidential_containers_on_microsoft_azure_red_hat_openshift/index'
+  - name: Red Hat build of Trustee Docs
+    url: 'https://docs.redhat.com/en/documentation/openshift_sandboxed_containers/1.13/html/deploying_red_hat_build_of_trustee_for_workloads_running_on_microsoft_azure/index'

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: osc-operands
+description: A Helm chart with the OpenShift Sandboxed Containers operands (KataConfig, peer pods)
+type: application
+version: 0.1.0
+appVersion: 1.11.0
+maintainers:
+  - name: Beraldo Leal
+    email: bleal@redhat.com

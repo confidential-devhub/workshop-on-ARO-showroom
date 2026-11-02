@@ -1,0 +1,18 @@
+{{- if eq .Values.resourcePolicy "restrictive" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: resource-policy-restrictive
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+data:
+  policy.rego: |
+    package policy
+    # Restrictive resource access policy - denies access by default
+    # Use this for production environments with security requirements
+    default allow = false
+    allow {
+      input["attester_type"] != "sample"
+    }
+{{- end }}

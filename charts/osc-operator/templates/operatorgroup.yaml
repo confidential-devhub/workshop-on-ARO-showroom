@@ -1,0 +1,12 @@
+{{- if not .Values.olmv1.enabled }}
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: sandboxed-containers-operator-group
+  namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  targetNamespaces:
+  - {{ .Values.namespaceOverride | default .Release.Namespace }}
+{{- end }}

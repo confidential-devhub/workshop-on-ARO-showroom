@@ -1,0 +1,14 @@
+{{- if and .Values.dev.enabled (not .Values.olmv1.enabled) }}
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: osc-operator-dev-catalog
+  namespace: openshift-marketplace
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  displayName: OSC Operator Dev Catalog version 2
+  sourceType: grpc
+  image: "{{ .Values.dev.image }}"
+  publisher: Confidential Containers Team
+{{- end }}
