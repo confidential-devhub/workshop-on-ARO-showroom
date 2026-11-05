@@ -42,7 +42,9 @@ peerpods:
       PROXY_TIMEOUT: "5m"
       PEERPODS_LIMIT_PER_NODE: "10"
       ROOT_VOLUME_SIZE: "20"
-      TAGS: "key1=value1,key2=value2"
+      # Optional Azure tags for the peer pod VMs, e.g. "owner=lab,env=demo".
+      # Empty omits the TAGS key from peer-pods-cm entirely.
+      TAGS: ""
       # gzip+base64 encoded initdata.toml produced by the provisioning role
       INITDATA: ""
 
