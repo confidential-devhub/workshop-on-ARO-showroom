@@ -70,7 +70,7 @@ JWS_KID=sealed-signing
 
 podman run --root /podvm --security-opt label=disable \
   -v $BASE_DIR/sealed-secrets:/output:Z \
-  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.2-rc1 \
   secret keygen \
   --kid $JWS_KID \
   --output-dir /output"
@@ -105,7 +105,7 @@ JWS_KID=sealed-signing
 
 podman run \
   -v $BASE_DIR/sealed-secrets:/output:Z \
-  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.2-rc1 \
   secret keygen \
   --kid $JWS_KID \
   --output-dir /output"
@@ -154,7 +154,7 @@ SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run --root /podvm --security-opt label=disable \
   -v $BASE_DIR/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
-  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.2-rc1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \
@@ -174,7 +174,7 @@ SIGNING_SECRET_FILE=jwk_public
 
 POINTER=$(podman run \
   -v $BASE_DIR/sealed-secrets/sealed-signing-private.json:/signing-key.json:Z \
-  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  -i quay.io/openshift_sandboxed_containers/coco-tools:0.5.2-rc1 \
   secret seal \
   --signing-kid kbs:///default/$SIGNING_SECRET_NAME/$SIGNING_SECRET_FILE \
   --signing-jwk-path /signing-key.json \

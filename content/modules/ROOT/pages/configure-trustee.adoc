@@ -546,7 +546,7 @@ podman run \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
   -v $BASE_DIR/trustee/initdata.toml:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
-  quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.2-rc1 \
     veritas \
     --platform azure \
     --tee snp \
@@ -582,7 +582,7 @@ podman run \
   -v ./cluster-pull-secret.json:/pull-secret.json:Z \
   -v $INITDATAFILE:/initdata.toml:Z \
   -e REGISTRY_AUTH_FILE=/pull-secret.json \
-  quay.io/openshift_sandboxed_containers/coco-tools:0.5.1 \
+  quay.io/openshift_sandboxed_containers/coco-tools:0.5.2-rc1 \
     veritas \
     --platform azure \
     --tee snp \

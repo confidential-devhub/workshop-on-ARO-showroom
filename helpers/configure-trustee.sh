@@ -330,7 +330,7 @@ else
   mkdir -p $PODDIR
 fi
 
-COCO_TOOLS_IMAGE=quay.io/openshift_sandboxed_containers/coco-tools:0.5.1
+COCO_TOOLS_IMAGE=quay.io/openshift_sandboxed_containers/coco-tools:0.5.2-rc1
 MAX_RETRIES=5
 for attempt in $(seq 1 $MAX_RETRIES); do
   echo "Pulling $COCO_TOOLS_IMAGE (attempt $attempt/$MAX_RETRIES)..."
