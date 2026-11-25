@@ -12,7 +12,7 @@ In order to do so, we will switch between the two persona:
 pass:[<span style="color: red;"><b>PERSONA:</b></span>] Untrusted admin
 
 ifeval::["{azure_resource_group}" != "insert_your_rg_here"]
-NOTE: Remember to use the `uadmin` (xref:index.adoc#panels[admin window]) user to perform these steps!
+NOTE: Remember to use the `admin` (xref:index.adoc#panels[admin window]) user to perform these steps!
 endif::[]
 
 === Prerequisites

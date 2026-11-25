@@ -33,12 +33,12 @@ az login --service-principal \
 If you need to use the web UI (not necessary in this workshop):
 
 * Navigate to the {aro_console}[Openshift Console, window=blank]
-* Login as `uadmin`:
-** *Username:* uadmin
-** *Password:* uadmin
+* Login as admin:
+** *Username:* {coco_admin_user}
+** *Password:* {coco_admin_password}
 * Login as devel:
-** *Username:* devel
-** *Password:* devel
+** *Username:* {coco_devel_user}
+** *Password:* {coco_devel_password}
 endif::[]
 
 ifeval::["{azure_resource_group}" == "insert_your_rg_here"]
