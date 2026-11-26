@@ -26,7 +26,7 @@ All blogposts are under this https://www.redhat.com/en/blog/learn-about-confiden
 
 This workshop demystifies the CoCo threat model and architecture. We will demonstrate the different roles and knowledge requirements of various personas in a typical Kubernetes environment.
 
-We will show performed by 3 different personas:
+We will show 3 different personas:
 
 * The *operational security (OpSec)* persona, which is responsible of the overall security and ensuring that CoCo is actually working and protecting the workload. This persona knows well what CoCo is, studied the whole xref:index-theory.adoc[CoCo theory chapter] of this workshop, and knows how to install and configure it (especially Trustee), and has access to Trustee to insert secrets and configure the policies.
 
