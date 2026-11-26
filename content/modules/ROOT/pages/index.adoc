@@ -32,7 +32,7 @@ We will show 3 different personas:
 
 * The *cluster admin* persona, in charge of maintaining and monitoring the cluster. In the CoCo threat model, the **cluster admin is not trusted**. This person can potentially see what a traditional pod is doing, read secrets inside the cluster, and manipulate settings and container images.
 
-* The *application developer* persona, which has **very to no little knowledge of CoCo**. He/she doesn't need to know about the CoCo architecture, what attestation is, and doesn't need to do **any** modification in the application to run it with CoCo. In some environment, this persona could very well be completely oblivious to CoCo, if operations like the secret management is handled by the operational security persona. In others, it has to have a very minimal knowledge, for example know that secrets are stored and managed somewhere else (Trustee).
+* The *application developer* persona, which has **very little to no knowledge of CoCo**. He/she doesn't need to know about the CoCo architecture, what attestation is, and doesn't need to do **any** modification in the application to run it with CoCo. In some environment, this persona could very well be completely oblivious to CoCo, if operations like the secret management is handled by the operational security persona. In others, it has to have a very minimal knowledge, for example know that secrets are stored and managed somewhere else (Trustee).
 
 The workshop will show the steps performed by the above users in two phases: setup and deployment.
 
