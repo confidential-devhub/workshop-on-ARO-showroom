@@ -34,6 +34,8 @@ We will show 3 different personas:
 
 * The *application developer* persona, which has **very little to no knowledge of CoCo**. He/she doesn't need to know about the CoCo architecture, what attestation is, and doesn't need to do **any** modification in the application to run it with CoCo. In some environment, this persona could very well be completely oblivious to CoCo, if operations like the secret management is handled by the operational security persona. In others, it has to have a very minimal knowledge, for example know that secrets are stored and managed somewhere else (Trustee).
 
+TODO: // Insert image of 3 persona
+
 During the catalog deployment, the workshop will automatically perform the setup steps below, simulating the correspective users actions:
 
 . Setup phase 1: install and configure the trusted cluster (Trustee and secrets)
@@ -42,11 +44,17 @@ During the catalog deployment, the workshop will automatically perform the setup
 . Setup phase 2: install and configure the untrusted cluster (where CoCo runs)
   .. The *cluster admin* installs and configures OSC in the **untrusted** cluster, where the CoCo application will be first checked by Trustee and its policies, and then run.
 
+TODO: Image of setup
+
 The focus in this workshop will be on the deployment phase:
+
   . The *application developer* provides the application-specific secrets to the *operational security* persona that then uploads them in Trustee (or in a more relaxed env, uploads them directly) and creates the necessary sealed secres (more on this later).
   . The *application developer* launches various applications
   .. If they behave as expected, and secrets are available, it means the application is running securely despite not trusting the cluster and admin where it runs.
   .. If they don't, it means something has been compromised or forbidden by security policies. The developer needs the operational security responsible helo to understand what is happening and how to solve the issue.
+
+TODO: Image of deployment phase
+
 
 == Theory vs Practice
 
@@ -55,12 +63,13 @@ Because the Trustee operator contains the reference values and secrets that are 
 Because of the limitations of this workshop, it is not possible to set up two clusters.
 You can assume that **everything running in the trustee-operator-system namespace should run in a trusted, separate environment**.
 
+TODO: // Insert image of separated cluster vs this workshop
+
 In order to simulate this, we restricted the user privileges so that:
 * The *cluster admin* called `admin` cannot access the `trustee-operator-system` namespace (Where Trustee runs)
 * The *operational security* persona called `opsec` can only access the `trustee-operator-system` namespace
 * The *application developer* called `devel` can only access the `default` and `fraud-detection` namespaces
 This is done to mimic a real scenario situation where different persona have different access levels.
-
 
 [#panels]
 image::panels.png[link=self, window=blank]
@@ -69,4 +78,30 @@ The above figure shows the workshop interface.
 Looking at the right panel, you will notice three terminal tabs, one per persona (opsec, devel and admin), each logged into the cluster with its own OpenShift user.
 Next to them there is the OCP console (not necessarily needed in the workhop), and the documentation for OSC and Trustee.
 
-endif::[]
+== A crash course on kata containers
+
+A kata container is simply a pod running in a virtual machine (VM), which is pretty transparent to the container/platform but adds an additional layer of isolation.
+
+The goal of kata containers is to **sandbox** the application, meaning it cannot escape its environment and acces the host platform or other tenants.
+
+TODO: Image of kata containers
+
+A confidential container is just an "upgraded" version of kata: it runs the pod in a confidential virtual machine (CVM), which differs from a normal VM because it has a hardware-based trusted execution environment
+(TEE) which allows it to encrypt its own memory, so that not even **the host that created it is able to inspect the memory of the running CVM**.
+
+Like Kata, this isolates workloads from each other and protects the cluster from the workload—but it goes a step further with guest isolation, protecting the workload from the cluster itself.
+
+TODO: image of coco
+
+=== Bare metal vs cloud
+
+This lab runs on Azure cloud. It runs a Single Node Openshift cluster with everything pre-installed on it.
+
+However, we need to make an architectural distinction between cloud and bare metal deployments:
+
+* On bare metal, a kata confidential VM (CVM) runs typically **inside** the cluster worker node
+* On cloud environment, there are some limitations on nested virtualization, so we use the *peer-pods* technology which allows to run the CVM **outside** the worker node, but connecting it to the cluster to make it look as it was inside.
+
+TODO: image BM vs peer-pods
+
+Ok, let's now start looking inside the cluster!
