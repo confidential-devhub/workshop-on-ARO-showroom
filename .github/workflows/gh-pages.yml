@@ -7,7 +7,7 @@ on:
     types:
       - completed
   push:
-    branches: [showroom, next]
+    branches: [showroom, next, azure]
     paths-ignore:
       - "README.adoc"
       - ".gitignore"
@@ -34,6 +34,11 @@ jobs:
         with:
           ref: next
           path: next-branch
+      - name: checkout azure
+        uses: actions/checkout@v4
+        with:
+          ref: azure
+          path: azure-branch
       - name: configure pages
         uses: actions/configure-pages@v5
       - name: setup node
@@ -48,12 +53,17 @@ jobs:
       - name: build next branch
         working-directory: next-branch
         run: antora generate default-site.yml --stacktrace
+      - name: build azure branch
+        working-directory: azure-branch
+        run: antora generate default-site.yml --stacktrace
       - name: combine sites
         run: |
           mkdir -p www
           cp -r showroom-branch/www/* www/
           mkdir -p www/next
           cp -r next-branch/www/* www/next/
+          mkdir -p www/azure
+          cp -r azure-branch/www/* www/azure/
       - name: upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
